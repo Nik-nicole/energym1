@@ -1,0 +1,93 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENTE
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String?
+  role          Role      @default(CLIENTE)
+  sedeId        String?
+  sede          Sede?     @relation(fields: [sedeId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Sede {
+  id            String    @id @default(cuid())
+  nombre        String
+  direccion     String
+  ciudad        String
+  telefono      String
+  email         String?
+  descripcion   String    @db.Text
+  imagen        String?
+  latitud       Float
+  longitud      Float
+  horario       String
+  activo        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  usuarios      User[]
+  noticias      Noticia[]
+  planesEnSede  PlanSede[]
+}
+
+model Plan {
+  id            String    @id @default(cuid())
+  nombre        String
+  precio        Float
+  descripcion   String    @db.Text
+  beneficios    String[]  @default([])
+  duracion      String
+  tipo          String    @default("STANDARD")
+  esVip         Boolean   @default(false)
+  activo        Boolean   @default(true)
+  destacado     Boolean   @default(false)
+  orden         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sedes         PlanSede[]
+}
+
+model PlanSede {
+  id        String   @id @default(cuid())
+  planId    String
+  sedeId    String
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  sede      Sede     @relation(fields: [sedeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([planId, sedeId])
+}
+
+model Noticia {
+  id              String    @id @default(cuid())
+  titulo          String
+  contenido       String    @db.Text
+  resumen         String?
+  imagen          String?
+  sedeId          String?
+  sede            Sede?     @relation(fields: [sedeId], references: [id])
+  esPromocion     Boolean   @default(false)
+  fechaInicio     DateTime?
+  fechaFin        DateTime?
+  activo          Boolean   @default(true)
+  destacado       Boolean   @default(false)
+  fechaPublicacion DateTime @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}

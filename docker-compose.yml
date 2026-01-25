@@ -1,0 +1,50 @@
+# docker-compose.yml para FitZone Gym
+# Para usar en el futuro cuando se implemente Docker
+
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: fitzone-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fitzone_user
+      POSTGRES_PASSWORD: fitzone_password_change_me
+      POSTGRES_DB: fitzone_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fitzone_user -d fitzone_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aplicación Next.js
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fitzone-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://fitzone_user:fitzone_password_change_me@db:5432/fitzone_db
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+
+# INSTRUCCIONES:
+# 1. Asegurar que las variables de entorno estén configuradas en .env
+# 2. Ejecutar: docker-compose up -d
+# 3. Ejecutar migraciones: docker-compose exec app npx prisma db push
+# 4. Ejecutar seed: docker-compose exec app npx prisma db seed

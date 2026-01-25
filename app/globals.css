@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-magenta: #D604E0;
+  --primary-blue: #040AE0;
+  --primary-black: #000000;
+  --text-light: #F8F8F8;
+  --text-muted: #A0A0A0;
+  --bg-dark: #0A0A0A;
+  --bg-card: #141414;
+  --bg-card-hover: #1E1E1E;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-light);
+  min-height: 100vh;
+}
+
+[data-hydration-error] {
+  display: none !important;
+}
+
+@layer utilities {
+  .gradient-text {
+    background: linear-gradient(135deg, var(--primary-magenta), var(--primary-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .gradient-bg {
+    background: linear-gradient(135deg, var(--primary-magenta), var(--primary-blue));
+  }
+  
+  .gradient-border {
+    border-image: linear-gradient(135deg, var(--primary-magenta), var(--primary-blue)) 1;
+  }
+  
+  .card-glow {
+    box-shadow: 0 0 30px rgba(214, 4, 224, 0.15);
+  }
+  
+  .card-glow-hover:hover {
+    box-shadow: 0 0 40px rgba(214, 4, 224, 0.25);
+  }
+}
+
+.hero-gradient {
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 10, 0.3) 0%,
+    rgba(10, 10, 10, 0.7) 50%,
+    rgba(10, 10, 10, 0.95) 100%
+  );
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(214, 4, 224, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(214, 4, 224, 0.5); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
