@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { Menu, X, Dumbbell, User, LogOut, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { CartButton } from "./cart-button";
 
 export function Header() {
   const sessionData = useSession();
@@ -19,6 +20,15 @@ export function Header() {
 
   const isAdmin = session?.user?.role === "ADMIN";
   const isAuthenticated = mounted && status === "authenticated";
+
+  // Debug: Verificar sesión y rol
+  useEffect(() => {
+    if (mounted && session) {
+      console.log("Session:", session);
+      console.log("User role:", session.user?.role);
+      console.log("Is admin:", isAdmin);
+    }
+  }, [mounted, session, isAdmin]);
 
   const handleSignOut = () => {
     signOut?.({ callbackUrl: "/" });
@@ -39,25 +49,38 @@ export function Header() {
           <Link href="/#planes" className="text-gray-300 hover:text-white transition-colors">
             Planes
           </Link>
+          <Link href="/marketplace" className="text-gray-300 hover:text-white transition-colors">
+            Tienda
+          </Link>
           <Link href="/#noticias" className="text-gray-300 hover:text-white transition-colors">
             Noticias
           </Link>
+          <CartButton />
           {isAuthenticated ? (
             <>
-              {isAdmin && (
-                <Link href="/admin" className="flex items-center gap-1 text-[#D604E0] hover:text-[#E640F0] transition-colors">
-                  <Settings className="w-4 h-4" />
-                  Admin
-                </Link>
+              {isAdmin ? (
+                <>
+                  <Link href="/admin" className="flex items-center gap-1 text-[#D604E0] hover:text-[#E640F0] transition-colors">
+                    <Settings className="w-4 h-4" />
+                    Panel Admin
+                  </Link>
+                  <button onClick={handleSignOut} className="flex items-center gap-1 text-gray-400 hover:text-red-400 transition-colors">
+                    <LogOut className="w-4 h-4" />
+                    Salir
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/perfil" className="flex items-center gap-1 text-gray-300 hover:text-white transition-colors">
+                    <User className="w-4 h-4" />
+                    Perfil
+                  </Link>
+                  <button onClick={handleSignOut} className="flex items-center gap-1 text-gray-400 hover:text-red-400 transition-colors">
+                    <LogOut className="w-4 h-4" />
+                    Salir
+                  </button>
+                </>
               )}
-              <Link href="/perfil" className="flex items-center gap-1 text-gray-300 hover:text-white transition-colors">
-                <User className="w-4 h-4" />
-                Perfil
-              </Link>
-              <button onClick={handleSignOut} className="flex items-center gap-1 text-gray-400 hover:text-red-400 transition-colors">
-                <LogOut className="w-4 h-4" />
-                Salir
-              </button>
             </>
           ) : (
             <>
@@ -87,12 +110,21 @@ export function Header() {
             <nav className="flex flex-col p-4 gap-4">
               <Link href="/#sedes" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Sedes</Link>
               <Link href="/#planes" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Planes</Link>
+              <Link href="/marketplace" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Tienda</Link>
               <Link href="/#noticias" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Noticias</Link>
               {isAuthenticated ? (
                 <>
-                  {isAdmin && <Link href="/admin" onClick={() => setMenuOpen(false)} className="text-[#D604E0] py-2">Panel Admin</Link>}
-                  <Link href="/perfil" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Mi Perfil</Link>
-                  <button onClick={() => { setMenuOpen(false); handleSignOut(); }} className="text-red-400 py-2 text-left">Cerrar Sesión</button>
+                  {isAdmin ? (
+                    <>
+                      <Link href="/admin" onClick={() => setMenuOpen(false)} className="text-[#D604E0] py-2">Panel Admin</Link>
+                      <button onClick={() => { setMenuOpen(false); handleSignOut(); }} className="text-red-400 py-2 text-left">Cerrar Sesión</button>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/perfil" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Mi Perfil</Link>
+                      <button onClick={() => { setMenuOpen(false); handleSignOut(); }} className="text-red-400 py-2 text-left">Cerrar Sesión</button>
+                    </>
+                  )}
                 </>
               ) : (
                 <>

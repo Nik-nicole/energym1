@@ -1,30 +1,50 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { redirect } from "next/navigation";
-import { Header } from "@/components/ui/header";
+import { AdminLayout } from "../_components/admin-layout";
 import { NoticiasAdmin } from "./_components/noticias-admin";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminNoticiasPage() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    redirect("/login");
+async function getNoticiasData() {
+  try {
+    const noticias = await prisma.noticia.findMany({
+      include: {
+        sede: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+      orderBy: { fechaPublicacion: "desc" },
+    });
+
+    const sedes = await prisma.sede.findMany({
+      select: {
+        id: true,
+        nombre: true,
+      },
+      where: { activo: true },
+      orderBy: { nombre: "asc" },
+    });
+
+    return { noticias, sedes };
+  } catch (error) {
+    console.error("Error fetching noticias:", error);
+    return null;
+  }
+}
+
+export default async function NoticiasPage() {
+  const data = await getNoticiasData();
+
+  if (!data) {
+    notFound();
   }
 
-  const [noticias, sedes] = await Promise.all([
-    prisma.noticia.findMany({
-      orderBy: { fechaPublicacion: "desc" },
-      include: { sede: { select: { id: true, nombre: true } } },
-    }),
-    prisma.sede.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
-  ]);
-
   return (
-    <main className="min-h-screen bg-[#0A0A0A]">
-      <Header />
-      <NoticiasAdmin initialNoticias={noticias} sedes={sedes} />
-    </main>
+    <AdminLayout>
+      <NoticiasAdmin noticias={data.noticias} sedes={data.sedes} />
+    </AdminLayout>
   );
 }

@@ -25,6 +25,11 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // Verificar si el usuario está activo
+        if (!user.isActive) {
+          return null;
+        }
+
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
@@ -38,7 +43,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.firstName,
-          role: user.role,
+          role: user.role === "CLIENTE" ? "USER" : user.role, // Convertir CLIENTE a USER para compatibilidad
           sedeId: user.sedeId,
           sedeName: user?.sede?.nombre ?? null,
         };

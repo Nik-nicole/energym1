@@ -1,10 +1,11 @@
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding database...");
+  try {
+    console.log("Seeding database...");
 
   // Crear sedes
   const sedeNorte = await prisma.sede.upsert({
@@ -296,7 +297,7 @@ async function main() {
       password: hashedPassword,
       firstName: "John",
       lastName: "Doe",
-      role: Role.ADMIN,
+      role: "ADMIN",
       sedeId: "sede-norte",
     },
   });
@@ -313,21 +314,85 @@ async function main() {
       password: clientPassword,
       firstName: "María",
       lastName: "García",
-      role: Role.CLIENTE,
+      role: "CLIENTE",
       sedeId: "sede-centro",
     },
   });
 
   console.log("Usuario cliente creado:", clientUser.email);
 
+  // Crear productos de ejemplo
+  const productos = [
+    {
+      nombre: "Proteína Whey Premium",
+      descripcion: "Proteína de suero de alta calidad para recuperación muscular. Sabor vainilla, 2kg.",
+      precio: 149900,
+      categoria: "SUPLEMENTOS",
+      stock: 50,
+      destacado: true,
+      sedeId: sedeNorte.id,
+    },
+    {
+      nombre: "Guantes de Entrenamiento",
+      descripcion: "Guantes profesionales con muñequera ajustable. Perfectos para levantamiento de pesas.",
+      precio: 45900,
+      categoria: "ACCESORIOS",
+      stock: 30,
+      destacado: false,
+      sedeId: sedeNorte.id,
+    },
+    {
+      nombre: "Creatina Monohidratada",
+      descripcion: "Creatina pura para mejorar fuerza y rendimiento. 300g.",
+      precio: 89000,
+      categoria: "SUPLEMENTOS",
+      stock: 25,
+      destacado: true,
+      sedeId: sedeCentro.id,
+    },
+    {
+      nombre: "Cinta de Correr Profesional",
+      descripcion: "Cinta eléctrica con inclinación automática y monitor cardíaco.",
+      precio: 2500000,
+      categoria: "EQUIPOS",
+      stock: 5,
+      destacado: true,
+      sedeId: sedeCentro.id,
+    },
+    {
+      nombre: "Shaker Proteico",
+      descripcion: "Shaker de 700ml con esfera mezcladora. Diseño ergonómico.",
+      precio: 25000,
+      categoria: "ACCESORIOS",
+      stock: 100,
+      destacado: false,
+      sedeId: sedeSur.id,
+    },
+    {
+      nombre: "Mancuernas Ajustables",
+      descripcion: "Set de mancuernas ajustables de 2.5kg a 25kg. Incluye rack.",
+      precio: 890000,
+      categoria: "EQUIPOS",
+      stock: 10,
+      destacado: true,
+      sedeId: sedeSur.id,
+    }
+  ];
+
+  for (const producto of productos) {
+    await prisma.producto.create({
+      data: producto,
+    });
+  }
+
+  console.log("Productos creados");
   console.log("Seeding completado exitosamente!");
+  } catch (error) {
+  console.error("Error en seed:", error);
+  throw error;
+} finally {
+  await prisma.$disconnect();
+}
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main();

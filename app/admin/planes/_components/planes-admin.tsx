@@ -1,9 +1,53 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowLeft, Plus, Edit2, Trash2, Crown, Check, X, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Package, Edit, Trash2, Plus, Star, Clock, DollarSign, MapPin } from "lucide-react";
+import { toast } from "sonner";
+
+interface Sede {
+  id: string;
+  nombre: string;
+}
+
+interface PlanSede {
+  id: string;
+  sedeId: string;
+  planId: string;
+  sede: Sede;
+}
 
 interface Plan {
   id: string;
@@ -17,26 +61,32 @@ interface Plan {
   activo: boolean;
   destacado: boolean;
   orden: number;
-  sedes: { sede: { id: string; nombre: string } }[];
+  createdAt: string;
+  updatedAt: string;
+  sedes: PlanSede[];
+  _count: {
+    sedes: number;
+  };
 }
 
 interface PlanesAdminProps {
-  initialPlanes: Plan[];
-  sedes: { id: string; nombre: string }[];
+  planes: Plan[];
+  sedes: Sede[];
 }
 
-export function PlanesAdmin({ initialPlanes, sedes }: PlanesAdminProps) {
-  const [planes, setPlanes] = useState<Plan[]>(initialPlanes ?? []);
-  const [showForm, setShowForm] = useState(false);
+export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
+  const [planesList, setPlanesList] = useState<Plan[]>(planes);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     nombre: "",
     precio: 0,
     descripcion: "",
-    beneficios: "",
-    duracion: "Mensual",
+    beneficios: [""],
+    duracion: "",
     tipo: "STANDARD",
     esVip: false,
     activo: true,
@@ -50,8 +100,8 @@ export function PlanesAdmin({ initialPlanes, sedes }: PlanesAdminProps) {
       nombre: "",
       precio: 0,
       descripcion: "",
-      beneficios: "",
-      duracion: "Mensual",
+      beneficios: [""],
+      duracion: "",
       tipo: "STANDARD",
       esVip: false,
       activo: true,
@@ -59,269 +109,569 @@ export function PlanesAdmin({ initialPlanes, sedes }: PlanesAdminProps) {
       orden: 0,
       sedeIds: [],
     });
-    setEditingPlan(null);
-    setShowForm(false);
   };
 
-  const openEdit = (plan: Plan) => {
-    setFormData({
-      nombre: plan?.nombre ?? "",
-      precio: plan?.precio ?? 0,
-      descripcion: plan?.descripcion ?? "",
-      beneficios: (plan?.beneficios ?? []).join("\n"),
-      duracion: plan?.duracion ?? "Mensual",
-      tipo: plan?.tipo ?? "STANDARD",
-      esVip: plan?.esVip ?? false,
-      activo: plan?.activo ?? true,
-      destacado: plan?.destacado ?? false,
-      orden: plan?.orden ?? 0,
-      sedeIds: (plan?.sedes ?? []).map((s) => s?.sede?.id ?? ""),
-    });
-    setEditingPlan(plan);
-    setShowForm(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const handleCreate = async () => {
+    setIsLoading(true);
     try {
-      const payload = {
-        ...formData,
-        beneficios: formData.beneficios.split("\n").filter((b) => b.trim()),
-      };
-
-      const url = editingPlan ? `/api/planes/${editingPlan.id}` : "/api/planes";
-      const method = editingPlan ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const response = await fetch("/api/admin/planes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
       });
 
-      if (res.ok) {
-        const updatedPlan = await res.json();
-        if (editingPlan) {
-          setPlanes((prev) => prev.map((p) => (p.id === editingPlan.id ? updatedPlan : p)));
-        } else {
-          setPlanes((prev) => [...prev, updatedPlan]);
-        }
-        resetForm();
-      }
+      if (!response.ok) throw new Error("Error al crear plan");
+
+      const newPlan = await response.json();
+      setPlanesList([...planesList, newPlan]);
+      setIsCreateDialogOpen(false);
+      resetForm();
+      toast.success("Plan creado exitosamente");
     } catch (error) {
-      console.error("Error saving plan:", error);
+      toast.error("Error al crear plan");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleEdit = (plan: Plan) => {
+    setEditingPlan(plan);
+    setFormData({
+      nombre: plan.nombre,
+      precio: plan.precio,
+      descripcion: plan.descripcion,
+      beneficios: plan.beneficios.length > 0 ? plan.beneficios : [""],
+      duracion: plan.duracion,
+      tipo: plan.tipo,
+      esVip: plan.esVip,
+      activo: plan.activo,
+      destacado: plan.destacado,
+      orden: plan.orden,
+      sedeIds: plan.sedes.map((ps) => ps.sedeId),
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingPlan) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/planes/${editingPlan.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error("Error al actualizar plan");
+
+      const updatedPlan = await response.json();
+      setPlanesList(planesList.map((p) => (p.id === updatedPlan.id ? updatedPlan : p)));
+      setIsEditDialogOpen(false);
+      setEditingPlan(null);
+      resetForm();
+      toast.success("Plan actualizado exitosamente");
+    } catch (error) {
+      toast.error("Error al actualizar plan");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Estás seguro de eliminar este plan?")) return;
-
+    setIsLoading(true);
     try {
-      const res = await fetch(`/api/planes/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setPlanes((prev) => prev.filter((p) => p.id !== id));
-      }
+      const response = await fetch(`/api/admin/planes/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar plan");
+
+      setPlanesList(planesList.filter((p) => p.id !== id));
+      toast.success("Plan eliminado exitosamente");
     } catch (error) {
-      console.error("Error deleting plan:", error);
+      toast.error("Error al eliminar plan");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-      minimumFractionDigits: 0,
-    }).format(price ?? 0);
+  const addBeneficio = () => {
+    setFormData({
+      ...formData,
+      beneficios: [...formData.beneficios, ""],
+    });
+  };
+
+  const updateBeneficio = (index: number, value: string) => {
+    const newBeneficios = [...formData.beneficios];
+    newBeneficios[index] = value;
+    setFormData({
+      ...formData,
+      beneficios: newBeneficios,
+    });
+  };
+
+  const removeBeneficio = (index: number) => {
+    if (formData.beneficios.length > 1) {
+      setFormData({
+        ...formData,
+        beneficios: formData.beneficios.filter((_, i) => i !== index),
+      });
+    }
   };
 
   return (
-    <div className="pt-24 pb-16">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Link href="/admin" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-4">
-            <ArrowLeft className="w-4 h-4" /> Volver al panel
-          </Link>
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">Gestionar Planes</h1>
-            <button
-              onClick={() => setShowForm(true)}
-              className="px-4 py-2 gradient-bg rounded-lg font-medium flex items-center gap-2 hover:opacity-90"
-            >
-              <Plus className="w-5 h-5" /> Nuevo Plan
-            </button>
-          </div>
-        </motion.div>
-
-        {showForm && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-[#141414] rounded-xl p-6 border border-white/10 mb-8"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">{editingPlan ? "Editar Plan" : "Nuevo Plan"}</h2>
-              <button onClick={resetForm} className="text-gray-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Nombre</label>
-                  <input
-                    type="text"
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Planes</h1>
+          <p className="text-muted-foreground">
+            Gestiona los planes de membresía
+          </p>
+        </div>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={resetForm}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo Plan
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Crear Nuevo Plan</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nombre">Nombre</Label>
+                  <Input
+                    id="nombre"
                     value={formData.nombre}
-                    onChange={(e) => setFormData((p) => ({ ...p, nombre: e.target.value }))}
-                    required
-                    className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
+                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    placeholder="Nombre del plan"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Precio (COP)</label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="precio">Precio</Label>
+                  <Input
+                    id="precio"
                     type="number"
+                    step="0.01"
                     value={formData.precio}
-                    onChange={(e) => setFormData((p) => ({ ...p, precio: Number(e.target.value) }))}
-                    required
-                    className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
+                    onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
+                    placeholder="0.00"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Descripción</label>
-                <textarea
+              <div className="space-y-2">
+                <Label htmlFor="descripcion">Descripción</Label>
+                <Textarea
+                  id="descripcion"
                   value={formData.descripcion}
-                  onChange={(e) => setFormData((p) => ({ ...p, descripcion: e.target.value }))}
-                  rows={2}
-                  className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
+                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                  placeholder="Descripción del plan"
+                  rows={3}
                 />
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Beneficios (uno por línea)</label>
-                <textarea
-                  value={formData.beneficios}
-                  onChange={(e) => setFormData((p) => ({ ...p, beneficios: e.target.value }))}
-                  rows={4}
-                  className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
-                />
+              <div className="space-y-2">
+                <Label>Beneficios</Label>
+                {formData.beneficios.map((beneficio, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      value={beneficio}
+                      onChange={(e) => updateBeneficio(index, e.target.value)}
+                      placeholder="Beneficio"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeBeneficio(index)}
+                      disabled={formData.beneficios.length === 1}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={addBeneficio}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Agregar Beneficio
+                </Button>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Duración</label>
-                  <select
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="duracion">Duración</Label>
+                  <Input
+                    id="duracion"
                     value={formData.duracion}
-                    onChange={(e) => setFormData((p) => ({ ...p, duracion: e.target.value }))}
-                    className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
-                  >
-                    <option value="Mensual">Mensual</option>
-                    <option value="Trimestral">Trimestral</option>
-                    <option value="Semestral">Semestral</option>
-                    <option value="Anual">Anual</option>
-                  </select>
+                    onChange={(e) => setFormData({ ...formData, duracion: e.target.value })}
+                    placeholder="Ej: 1 mes, 3 meses, 1 año"
+                  />
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Orden</label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="orden">Orden</Label>
+                  <Input
+                    id="orden"
                     type="number"
                     value={formData.orden}
-                    onChange={(e) => setFormData((p) => ({ ...p, orden: Number(e.target.value) }))}
-                    className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
+                    onChange={(e) => setFormData({ ...formData, orden: parseInt(e.target.value) })}
+                    placeholder="Orden de visualización"
                   />
                 </div>
-                <div className="flex items-center gap-4 pt-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.esVip}
-                      onChange={(e) => setFormData((p) => ({ ...p, esVip: e.target.checked }))}
-                      className="rounded"
-                    />
-                    <span className="text-sm">VIP</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.activo}
-                      onChange={(e) => setFormData((p) => ({ ...p, activo: e.target.checked }))}
-                      className="rounded"
-                    />
-                    <span className="text-sm">Activo</span>
-                  </label>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tipo">Tipo</Label>
+                  <Select
+                    value={formData.tipo}
+                    onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="STANDARD">Standard</SelectItem>
+                      <SelectItem value="PREMIUM">Premium</SelectItem>
+                      <SelectItem value="BASIC">Basic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Sedes</Label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {sedes.map((sede) => (
+                      <div key={sede.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`sede-${sede.id}`}
+                          checked={formData.sedeIds.includes(sede.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({
+                                ...formData,
+                                sedeIds: [...formData.sedeIds, sede.id],
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                sedeIds: formData.sedeIds.filter((id) => id !== sede.id),
+                              });
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`sede-${sede.id}`}>{sede.nombre}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Sedes disponibles</label>
-                <div className="flex flex-wrap gap-2">
-                  {(sedes ?? []).map((sede) => (
-                    <label key={sede?.id ?? ""} className="flex items-center gap-2 px-3 py-1 bg-[#0A0A0A] rounded-lg cursor-pointer border border-white/10">
-                      <input
-                        type="checkbox"
-                        checked={formData.sedeIds.includes(sede?.id ?? "")}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData((p) => ({ ...p, sedeIds: [...p.sedeIds, sede?.id ?? ""] }));
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="esVip"
+                    checked={formData.esVip}
+                    onCheckedChange={(checked) => setFormData({ ...formData, esVip: checked })}
+                  />
+                  <Label htmlFor="esVip">Plan VIP</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="destacado"
+                    checked={formData.destacado}
+                    onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
+                  />
+                  <Label htmlFor="destacado">Destacado</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="activo"
+                    checked={formData.activo}
+                    onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                  />
+                  <Label htmlFor="activo">Activo</Label>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleCreate} disabled={isLoading}>
+                {isLoading ? "Creando..." : "Crear Plan"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {planesList.map((plan) => (
+          <Card key={plan.id} className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="h-5 w-5 text-purple-600" />
+                    {plan.nombre}
+                  </CardTitle>
+                  <div className="flex items-center gap-2 mt-1">
+                    {plan.esVip && <Badge variant="default">VIP</Badge>}
+                    {plan.destacado && <Badge variant="secondary">Destacado</Badge>}
+                    <Badge variant={plan.activo ? "default" : "secondary"}>
+                      {plan.activo ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-green-600">
+                    ${plan.precio.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {plan.duracion}
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {plan.descripcion}
+                </p>
+                {plan.beneficios.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Beneficios:</p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      {plan.beneficios.slice(0, 3).map((beneficio, index) => (
+                        <li key={index} className="flex items-center gap-1">
+                          <span className="w-1 h-1 bg-green-500 rounded-full"></span>
+                          {beneficio}
+                        </li>
+                      ))}
+                      {plan.beneficios.length > 3 && (
+                        <li className="text-xs text-muted-foreground">
+                          +{plan.beneficios.length - 3} más...
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    <span>{plan._count.sedes} sedes</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{new Date(plan.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(plan)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar plan?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción no se puede deshacer. Se eliminará permanentemente el plan "{plan.nombre}".
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDelete(plan.id)}>
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Plan</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-nombre">Nombre</Label>
+                <Input
+                  id="edit-nombre"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  placeholder="Nombre del plan"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-precio">Precio</Label>
+                <Input
+                  id="edit-precio"
+                  type="number"
+                  step="0.01"
+                  value={formData.precio}
+                  onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-descripcion">Descripción</Label>
+              <Textarea
+                id="edit-descripcion"
+                value={formData.descripcion}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                placeholder="Descripción del plan"
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Beneficios</Label>
+              {formData.beneficios.map((beneficio, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    value={beneficio}
+                    onChange={(e) => updateBeneficio(index, e.target.value)}
+                    placeholder="Beneficio"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeBeneficio(index)}
+                    disabled={formData.beneficios.length === 1}
+                  >
+                    Eliminar
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" onClick={addBeneficio}>
+                <Plus className="mr-2 h-4 w-4" />
+                Agregar Beneficio
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-duracion">Duración</Label>
+                <Input
+                  id="edit-duracion"
+                  value={formData.duracion}
+                  onChange={(e) => setFormData({ ...formData, duracion: e.target.value })}
+                  placeholder="Ej: 1 mes, 3 meses, 1 año"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-orden">Orden</Label>
+                <Input
+                  id="edit-orden"
+                  type="number"
+                  value={formData.orden}
+                  onChange={(e) => setFormData({ ...formData, orden: parseInt(e.target.value) })}
+                  placeholder="Orden de visualización"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-tipo">Tipo</Label>
+                <Select
+                  value={formData.tipo}
+                  onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STANDARD">Standard</SelectItem>
+                    <SelectItem value="PREMIUM">Premium</SelectItem>
+                    <SelectItem value="BASIC">Basic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Sedes</Label>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {sedes.map((sede) => (
+                    <div key={sede.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-sede-${sede.id}`}
+                        checked={formData.sedeIds.includes(sede.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData({
+                              ...formData,
+                              sedeIds: [...formData.sedeIds, sede.id],
+                            });
                           } else {
-                            setFormData((p) => ({ ...p, sedeIds: p.sedeIds.filter((id) => id !== sede?.id) }));
+                            setFormData({
+                              ...formData,
+                              sedeIds: formData.sedeIds.filter((id) => id !== sede.id),
+                            });
                           }
                         }}
-                        className="rounded"
                       />
-                      <span className="text-sm">{sede?.nombre ?? ""}</span>
-                    </label>
+                      <Label htmlFor={`edit-sede-${sede.id}`}>{sede.nombre}</Label>
+                    </div>
                   ))}
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={resetForm} className="px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20">
-                  Cancelar
-                </button>
-                <button type="submit" disabled={loading} className="px-4 py-2 gradient-bg rounded-lg font-medium flex items-center gap-2">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  {editingPlan ? "Actualizar" : "Crear"}
-                </button>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-esVip"
+                  checked={formData.esVip}
+                  onCheckedChange={(checked) => setFormData({ ...formData, esVip: checked })}
+                />
+                <Label htmlFor="edit-esVip">Plan VIP</Label>
               </div>
-            </form>
-          </motion.div>
-        )}
-
-        <div className="grid gap-4">
-          {(planes ?? []).map((plan, index) => (
-            <motion.div
-              key={plan?.id ?? index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={`bg-[#141414] rounded-xl p-4 border ${
-                plan?.esVip ? "border-[#D604E0]/50" : "border-white/10"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {plan?.esVip && <Crown className="w-5 h-5 text-[#D604E0]" />}
-                  <div>
-                    <h3 className="font-semibold">{plan?.nombre ?? ""}</h3>
-                    <p className="text-gray-400 text-sm">{formatPrice(plan?.precio ?? 0)} / {plan?.duracion ?? ""}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className={`px-2 py-1 text-xs rounded ${plan?.activo ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
-                    {plan?.activo ? "Activo" : "Inactivo"}
-                  </span>
-                  <button onClick={() => openEdit(plan)} className="p-2 text-gray-400 hover:text-white">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(plan?.id ?? "")} className="p-2 text-gray-400 hover:text-red-400">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-destacado"
+                  checked={formData.destacado}
+                  onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
+                />
+                <Label htmlFor="edit-destacado">Destacado</Label>
               </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-activo"
+                  checked={formData.activo}
+                  onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                />
+                <Label htmlFor="edit-activo">Activo</Label>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdate} disabled={isLoading}>
+              {isLoading ? "Actualizando..." : "Actualizar Plan"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

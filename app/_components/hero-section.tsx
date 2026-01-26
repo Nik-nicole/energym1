@@ -19,15 +19,13 @@ export function HeroSection() {
         <div className="absolute inset-0 hero-gradient" />
       </div>
 
-      <div className="relative z-10 max-w-[1200px] mx-auto px-4 pt-24 pb-16 text-center">
+      <div className="relative z-10 max-w-[1200px] mx-auto px-4 pt-60 pb-24 justify-center text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <span className="inline-block px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm text-gray-300 mb-6 border border-white/20">
-            🏋️‍♂️ 3 Sedes en Bogotá
-          </span>
+          
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
             Transforma tu vida con{" "}
             <span className="gradient-text">FitZone</span>
@@ -62,21 +60,7 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="grid grid-cols-3 gap-4 max-w-xl mx-auto"
         >
-          <div className="bg-black/40 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-            <Dumbbell className="w-8 h-8 text-[#D604E0] mx-auto mb-2" />
-            <div className="text-2xl font-bold">500+</div>
-            <div className="text-gray-400 text-sm">Equipos</div>
-          </div>
-          <div className="bg-black/40 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-            <Users className="w-8 h-8 text-[#040AE0] mx-auto mb-2" />
-            <div className="text-2xl font-bold">10K+</div>
-            <div className="text-gray-400 text-sm">Miembros</div>
-          </div>
-          <div className="bg-black/40 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-            <Award className="w-8 h-8 text-[#D604E0] mx-auto mb-2" />
-            <div className="text-2xl font-bold">50+</div>
-            <div className="text-gray-400 text-sm">Entrenadores</div>
-          </div>
+          
         </motion.div>
       </div>
 
