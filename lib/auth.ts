@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { Role } from "@prisma/client";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -16,37 +17,42 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          include: { sede: true },
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+            include: { sede: true },
+          });
 
-        if (!user) {
+          if (!user) {
+            return null;
+          }
+
+          // Verificar si el usuario está activo
+          if (!user.isActive) {
+            return null;
+          }
+
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          );
+
+          if (!isPasswordValid) {
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: `${user.firstName} ${user.lastName || ''}`,
+            role: user.role,
+            sedeId: user.sedeId,
+            sedeName: user?.sede?.nombre ?? null,
+          };
+        } catch (error) {
+          console.error("Error en autenticación:", error);
           return null;
         }
-
-        // Verificar si el usuario está activo
-        if (!user.isActive) {
-          return null;
-        }
-
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
-
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.firstName,
-          role: user.role === "CLIENTE" ? "USER" : user.role, // Convertir CLIENTE a USER para compatibilidad
-          sedeId: user.sedeId,
-          sedeName: user?.sede?.nombre ?? null,
-        };
       },
     }),
   ],
@@ -54,27 +60,28 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role;
-        token.sedeId = (user as any).sedeId;
-        token.sedeName = (user as any).sedeName;
+        token.role = user.role;
+        token.sedeId = user.sedeId;
+        token.sedeName = user.sedeName;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
-        (session.user as any).sedeId = token.sedeId;
-        (session.user as any).sedeName = token.sedeName;
+        session.user.id = token.id;
+        session.user.role = token.role;
+        session.user.sedeId = token.sedeId;
+        session.user.sedeName = token.sedeName;
       }
       return session;
     },
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as const,
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

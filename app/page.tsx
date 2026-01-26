@@ -4,6 +4,7 @@ import { Footer } from "@/components/ui/footer";
 import { HeroSection } from "./_components/hero-section";
 import { SedesSection } from "./_components/sedes-section";
 import { PlanesSection } from "./_components/planes-section";
+import { HomeStoreSection } from "./_components/home-store-section";
 import { MarketplaceSection } from "./_components/marketplace-section";
 import { NoticiasSection } from "./_components/noticias-section";
 import { CTASection } from "./_components/cta-section";
@@ -55,7 +56,7 @@ export default async function HomePage() {
       <HeroSection />
       <SedesSection sedes={sedes} />
       <PlanesSection planes={planes} />
-      <MarketplaceSection productos={productos as any} />
+      <HomeStoreSection productos={productos as any} />
       <NoticiasSection noticias={noticias} />
       <CTASection />
       <Footer />

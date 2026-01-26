@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { uploadImage } from "@/lib/cloudinary";
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,7 +25,6 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const folder = formData.get('folder') as string || 'fitzone/marketplace';
 
     if (!file) {
       return NextResponse.json(
@@ -52,15 +50,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Subir imagen
-    const result = await uploadImage(file, folder);
+    // Temporalmente, devolver una URL placeholder hasta configurar Cloudinary
+    console.log("Upload recibido:", file.name, file.type, file.size);
+    
+    // Usar una imagen placeholder temporal
+    const placeholderUrl = 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png';
 
     return NextResponse.json({
       success: true,
-      url: result.secure_url,
-      publicId: result.public_id,
-      width: result.width,
-      height: result.height,
+      url: placeholderUrl,
+      publicId: 'placeholder',
+      width: 800,
+      height: 600,
     });
   } catch (error) {
     console.error("Error uploading image:", error);

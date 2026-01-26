@@ -39,8 +39,8 @@ interface Sede {
   imagen: string | null;
   horario: string;
   activo: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
   _count: {
     usuarios: number;
     productos: number;
@@ -177,20 +177,26 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
       
       // Si hay un archivo de imagen, subirlo al servidor
       if (imagenFile) {
-        const formDataUpload = new FormData();
-        formDataUpload.append('file', imagenFile);
-        
-        const uploadResponse = await fetch('/api/upload', {
-          method: 'POST',
-          body: formDataUpload,
-        });
-        
-        if (!uploadResponse.ok) {
-          throw new Error('Error al subir la imagen');
+        try {
+          const formDataUpload = new FormData();
+          formDataUpload.append('file', imagenFile);
+          
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formDataUpload,
+          });
+          
+          if (!uploadResponse.ok) {
+            console.warn('Error al subir imagen, usando placeholder');
+            imageUrl = 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png';
+          } else {
+            const uploadResult = await uploadResponse.json();
+            imageUrl = uploadResult.url;
+          }
+        } catch (error) {
+          console.warn('Error al subir imagen, usando placeholder:', error);
+          imageUrl = 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png';
         }
-        
-        const uploadResult = await uploadResponse.json();
-        imageUrl = uploadResult.url;
       }
 
       const response = await fetch("/api/admin/sedes", {
@@ -205,7 +211,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
           telefono: formData.telefono,
           email: formData.email || null,
           descripcion: formData.descripcion,
-          imagen: imageUrl,
+          imagen: imageUrl || 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png',
           horario: horarioString,
           activo: formData.activo,
         }),

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { Header } from "@/components/ui/header";
 import { Footer } from "@/components/ui/footer";
-import { MarketplaceClient } from "./_components/marketplace-client";
+import { MarketplaceSidebarFixed } from "./_components/marketplace-sidebar-fixed";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ export default async function MarketplacePage() {
   return (
     <main className="min-h-screen flex flex-col">
       <Header />
-      <MarketplaceClient productos={productos as any} sedes={sedes} />
+      <MarketplaceSidebarFixed productos={productos as any} sedes={sedes} />
       <Footer />
     </main>
   );

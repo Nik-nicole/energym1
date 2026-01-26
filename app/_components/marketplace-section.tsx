@@ -52,7 +52,7 @@ export function MarketplaceSection({ productos }: MarketplaceSectionProps) {
           {productosDestacados.map((producto, index) => (
             <div
               key={producto.id}
-              className="bg-[#141414] rounded-2xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 group"
+              className="bg-[#1A1A1A] rounded-2xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 group"
             >
               {/* Imagen del producto */}
               <div className="aspect-square bg-gradient-to-br from-[#040AE0]/10 to-[#D604E0]/10 rounded-xl mb-4 overflow-hidden">

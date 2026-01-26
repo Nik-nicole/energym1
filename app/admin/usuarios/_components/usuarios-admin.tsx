@@ -78,10 +78,10 @@ interface User {
   role: string;
   image: string | null;
   sedeId: string | null;
-  sede?: Sede;
+  sede: Sede | null;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
   planActivo?: {
     id: string;
     nombre: string;

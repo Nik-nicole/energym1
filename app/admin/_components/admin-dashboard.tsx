@@ -31,7 +31,7 @@ interface RecentUser {
   lastName: string | null;
   email: string;
   role: string;
-  createdAt: string;
+  createdAt: Date;
 }
 
 interface AdminDashboardProps {

@@ -50,13 +50,13 @@ interface Noticia {
   sedeId: string | null;
   sede: Sede | null;
   esPromocion: boolean;
-  fechaInicio: string | null;
-  fechaFin: string | null;
+  fechaInicio: Date | null;
+  fechaFin: Date | null;
   activo: boolean;
   destacado: boolean;
-  fechaPublicacion: string;
-  createdAt: string;
-  updatedAt: string;
+  fechaPublicacion: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface NoticiasAdminProps {
@@ -133,8 +133,8 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
       imagen: noticia.imagen || "",
       sedeId: noticia.sedeId || "",
       esPromocion: noticia.esPromocion,
-      fechaInicio: noticia.fechaInicio || "",
-      fechaFin: noticia.fechaFin || "",
+      fechaInicio: noticia.fechaInicio ? noticia.fechaInicio.toISOString().split('T')[0] : "",
+      fechaFin: noticia.fechaFin ? noticia.fechaFin.toISOString().split('T')[0] : "",
       activo: noticia.activo,
       destacado: noticia.destacado,
     });
