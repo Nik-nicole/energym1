@@ -1,17 +1,36 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, Loader2, AlertCircle } from "lucide-react";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Mostrar mensaje de error si viene del middleware
+    const errorMessage = searchParams.get("message");
+    if (errorMessage) {
+      setError(errorMessage);
+    }
+
+    // Redirigir si ya está logueado
+    if (session) {
+      if (session.user.role === "ADMIN") {
+        router.replace("/admin");
+      } else {
+        router.replace("/perfil");
+      }
+    }
+  }, [searchParams, session, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +47,15 @@ export function LoginForm() {
       if (result?.error) {
         setError("Credenciales incorrectas. Intenta de nuevo.");
       } else {
-        router.replace("/perfil");
+        // Redirigir según el rol del usuario
+        const sessionResult = await fetch("/api/auth/session");
+        const sessionData = await sessionResult.json();
+        
+        if (sessionData?.user?.role === "ADMIN") {
+          router.replace("/admin");
+        } else {
+          router.replace("/perfil");
+        }
       }
     } catch (err) {
       setError("Error al iniciar sesión. Intenta de nuevo.");

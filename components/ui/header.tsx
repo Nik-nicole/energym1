@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { Menu, X, Dumbbell, User, LogOut, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CartButton } from "./cart-button";
+import { LogoutConfirmDialog } from "../logout-confirm-dialog";
 
 export function Header() {
   const sessionData = useSession();
@@ -13,6 +14,7 @@ export function Header() {
   const status = sessionData?.status;
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -64,7 +66,7 @@ export function Header() {
                     <Settings className="w-4 h-4" />
                     Panel Admin
                   </Link>
-                  <button onClick={handleSignOut} className="flex items-center gap-1 text-gray-400 hover:text-red-400 transition-colors">
+                  <button onClick={() => setIsLogoutDialogOpen(true)} className="flex items-center gap-1 text-[#D604E0] hover:text-[#E640F0] transition-colors">
                     <LogOut className="w-4 h-4" />
                     Salir
                   </button>
@@ -75,7 +77,7 @@ export function Header() {
                     <User className="w-4 h-4" />
                     Perfil
                   </Link>
-                  <button onClick={handleSignOut} className="flex items-center gap-1 text-gray-400 hover:text-red-400 transition-colors">
+                  <button onClick={() => setIsLogoutDialogOpen(true)} className="flex items-center gap-1 text-[#D604E0] hover:text-[#E640F0] transition-colors">
                     <LogOut className="w-4 h-4" />
                     Salir
                   </button>
@@ -117,12 +119,12 @@ export function Header() {
                   {isAdmin ? (
                     <>
                       <Link href="/admin" onClick={() => setMenuOpen(false)} className="text-[#D604E0] py-2">Panel Admin</Link>
-                      <button onClick={() => { setMenuOpen(false); handleSignOut(); }} className="text-red-400 py-2 text-left">Cerrar Sesión</button>
+                      <button onClick={() => { setMenuOpen(false); setIsLogoutDialogOpen(true); }} className="text-[#D604E0] py-2 text-left">Cerrar Sesión</button>
                     </>
                   ) : (
                     <>
                       <Link href="/perfil" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Mi Perfil</Link>
-                      <button onClick={() => { setMenuOpen(false); handleSignOut(); }} className="text-red-400 py-2 text-left">Cerrar Sesión</button>
+                      <button onClick={() => { setMenuOpen(false); setIsLogoutDialogOpen(true); }} className="text-[#D604E0] py-2 text-left">Cerrar Sesión</button>
                     </>
                   )}
                 </>
@@ -136,6 +138,12 @@ export function Header() {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Diálogo de confirmación para cerrar sesión */}
+      <LogoutConfirmDialog 
+        open={isLogoutDialogOpen} 
+        onOpenChange={setIsLogoutDialogOpen} 
+      />
     </header>
   );
 }
