@@ -1,8 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { CustomSwitch } from "@/components/ui/custom-switch";
+import { ControlledInput } from "@/components/ui/controlled-input";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ControlledTextarea } from "@/components/ui/controlled-textarea";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -21,11 +29,28 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { MapPin, Phone, Mail, Edit, Trash2, Plus, Users, Package, Newspaper, Clock, Upload, Image as ImageIcon } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  MapPin,
+  Phone,
+  Mail,
+  Edit,
+  Trash2,
+  Plus,
+  Users,
+  Package,
+  Newspaper,
+  Clock,
+  Upload,
+  Image as ImageIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface Sede {
@@ -140,10 +165,12 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
     // Parsear el string de horario
     const partes = horarioString.split('|');
     partes.forEach(parte => {
-      const match = parte.match(/(\w+):\s*(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+      // Usar regex que soporte caracteres con tildes y otros caracteres Unicode
+      const match = parte.match(/([^:]+):\s*(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
       if (match) {
         const [, dia, apertura, cierre] = match;
-        const diaIndex = diasSemana.findIndex(d => d.toLowerCase() === dia.toLowerCase());
+        const diaNormalizado = dia.toLowerCase().trim();
+        const diaIndex = diasSemana.findIndex(d => d.toLowerCase() === diaNormalizado);
         if (diaIndex !== -1) {
           horariosParsed[diaIndex] = {
             dia: diasSemana[diaIndex],
@@ -340,64 +367,84 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="nombre" className="text-[#F8F8F8]">Nombre</Label>
-                  <Input
+                  <ControlledInput
                     id="nombre"
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     placeholder="Nombre de la sede"
+                    maxLength={100}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ciudad" className="text-[#F8F8F8]">Ciudad</Label>
-                  <Input
+                  <ControlledInput
                     id="ciudad"
                     value={formData.ciudad}
                     onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
                     placeholder="Ciudad"
+                    maxLength={50}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="direccion" className="text-[#F8F8F8]">Dirección</Label>
-                <Input
+                <ControlledInput
                   id="direccion"
                   value={formData.direccion}
                   onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
                   placeholder="Dirección completa"
+                  maxLength={200}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="telefono" className="text-[#F8F8F8]">Teléfono</Label>
-                  <Input
+                  <ControlledInput
                     id="telefono"
                     value={formData.telefono}
                     onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                     placeholder="Teléfono"
+                    type="tel"
+                    maxLength={20}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-[#F8F8F8]">Email</Label>
-                  <Input
+                  <ControlledInput
                     id="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="Email (opcional)"
+                    type="email"
+                    maxLength={100}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="descripcion" className="text-[#F8F8F8]">Descripción</Label>
-                <Textarea
+                <ControlledTextarea
                   id="descripcion"
                   value={formData.descripcion}
-                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, descripcion: e.target.value })}
                   placeholder="Descripción de la sede"
+                  maxLength={500}
+                  showCharCount={true}
+                  showWarning={true}
                   rows={3}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
@@ -424,22 +471,14 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                         className="flex items-center justify-between p-3 rounded-lg border border-[#1A1A1A] hover:bg-[#1A1A1A] hover:border-[#D604E0]/30 transition-all duration-200"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="relative">
-                            <Switch
-                              checked={horario.abierto}
-                              onCheckedChange={(checked) => {
-                                const nuevosHorarios = [...horarios];
-                                nuevosHorarios[index].abierto = checked;
-                                setHorarios(nuevosHorarios);
-                              }}
-                              className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
-                            />
-                            <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
-                              <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
-                                horario.abierto ? 'translate-x-5' : 'translate-x-0.5'
-                              }`} />
-                            </div>
-                          </div>
+                          <CustomSwitch
+                            checked={horario.abierto}
+                            onCheckedChange={(checked) => {
+                              const nuevosHorarios = [...horarios];
+                              nuevosHorarios[index].abierto = checked;
+                              setHorarios(nuevosHorarios);
+                            }}
+                          />
                           <div className="flex flex-col">
                             <span className={`text-sm font-semibold capitalize ${
                               horario.abierto ? 'text-white' : 'text-[#606060]'
@@ -546,7 +585,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <Switch
+                <CustomSwitch
                   id="activo"
                   checked={formData.activo}
                   onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
@@ -848,64 +887,84 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre</Label>
-                <Input
-                  id="edit-nombre"
+                <ControlledInput
+                  id="nombre"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   placeholder="Nombre de la sede"
+                  maxLength={100}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-ciudad" className="text-[#F8F8F8]">Ciudad</Label>
-                <Input
-                  id="edit-ciudad"
+                <ControlledInput
+                  id="ciudad"
                   value={formData.ciudad}
                   onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
                   placeholder="Ciudad"
+                  maxLength={50}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-direccion" className="text-[#F8F8F8]">Dirección</Label>
-              <Input
-                id="edit-direccion"
+              <ControlledInput
+                id="direccion"
                 value={formData.direccion}
                 onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
                 placeholder="Dirección completa"
+                maxLength={200}
+                showCharCount={true}
+                showWarning={true}
                 className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-telefono" className="text-[#F8F8F8]">Teléfono</Label>
-                <Input
-                  id="edit-telefono"
+                <ControlledInput
+                  id="telefono"
                   value={formData.telefono}
                   onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                   placeholder="Teléfono"
+                  type="tel"
+                  maxLength={20}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-email" className="text-[#F8F8F8]">Email</Label>
-                <Input
-                  id="edit-email"
+                <ControlledInput
+                  id="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="Email (opcional)"
+                  type="email"
+                  maxLength={100}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-descripcion" className="text-[#F8F8F8]">Descripción</Label>
-              <Textarea
+              <ControlledTextarea
                 id="edit-descripcion"
                 value={formData.descripcion}
-                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, descripcion: e.target.value })}
                 placeholder="Descripción de la sede"
+                maxLength={500}
+                showCharCount={true}
+                showWarning={true}
                 rows={3}
                 className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
               />
@@ -932,22 +991,14 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                       className="flex items-center justify-between p-3 rounded-lg border border-[#1A1A1A] hover:bg-[#1A1A1A] hover:border-[#D604E0]/30 transition-all duration-200"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <Switch
-                            checked={horario.abierto}
-                            onCheckedChange={(checked) => {
-                              const nuevosHorarios = [...horarios];
-                              nuevosHorarios[index].abierto = checked;
-                              setHorarios(nuevosHorarios);
-                            }}
-                            className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
-                          />
-                          <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
-                            <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
-                              horario.abierto ? 'translate-x-5' : 'translate-x-0.5'
-                            }`} />
-                          </div>
-                        </div>
+                        <CustomSwitch
+                          checked={horario.abierto}
+                          onCheckedChange={(checked) => {
+                            const nuevosHorarios = [...horarios];
+                            nuevosHorarios[index].abierto = checked;
+                            setHorarios(nuevosHorarios);
+                          }}
+                        />
                         <div className="flex flex-col">
                           <span className={`text-sm font-semibold capitalize ${
                             horario.abierto ? 'text-white' : 'text-[#606060]'
@@ -1056,7 +1107,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Switch
+              <CustomSwitch
                 id="edit-activo"
                 checked={formData.activo}
                 onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}

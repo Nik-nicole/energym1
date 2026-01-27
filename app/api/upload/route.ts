@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { uploadImage } from "@/lib/cloudinary";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,18 +51,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Temporalmente, devolver una URL placeholder hasta configurar Cloudinary
     console.log("Upload recibido:", file.name, file.type, file.size);
-    
-    // Usar una imagen placeholder temporal
-    const placeholderUrl = 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png';
+
+    // Subir imagen a Cloudinary
+    const result = await uploadImage(file, 'fitzone/sedes');
 
     return NextResponse.json({
       success: true,
-      url: placeholderUrl,
-      publicId: 'placeholder',
-      width: 800,
-      height: 600,
+      url: result.secure_url,
+      publicId: result.public_id,
+      width: result.width,
+      height: result.height,
     });
   } catch (error) {
     console.error("Error uploading image:", error);
