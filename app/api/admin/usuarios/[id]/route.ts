@@ -63,13 +63,7 @@ export async function PUT(
 
     const user = await prisma.user.update({
       where: { id: params.id },
-      data: {
-        firstName,
-        lastName,
-        email,
-        role: role || "CLIENTE",
-        sedeId: sedeId || null,
-      },
+      data: updateData,
       include: {
         sede: {
           select: {

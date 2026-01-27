@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { ControlledInput } from "@/components/ui/controlled-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
 import {
   Select,
   SelectContent,
@@ -32,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import {
   Table,
   TableBody,
@@ -40,6 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
 import {
   Users,
   Edit,
@@ -116,7 +121,6 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
     confirmPassword: "",
     role: "CLIENTE",
     sedeId: sedes.length > 0 ? sedes[0].id : "",
-    isActive: true,
   });
 
   const [formErrors, setFormErrors] = useState({
@@ -153,7 +157,6 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       confirmPassword: "",
       role: "CLIENTE",
       sedeId: sedes.length > 0 ? sedes[0].id : "",
-      isActive: true,
     });
     setFormErrors({
       firstName: "",
@@ -278,7 +281,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
           password: formData.password,
           role: formData.role,
           sedeId: formData.sedeId || null,
-          isActive: formData.isActive,
+          isActive: true,
         }),
       });
 
@@ -322,7 +325,6 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       confirmPassword: "",
       role: user.role,
       sedeId: user.sedeId || "",
-      isActive: user.isActive !== false,
     });
     setFormErrors({
       firstName: "",
@@ -580,11 +582,14 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="nombre" className="text-[#F8F8F8]">Nombre</Label>
-                  <Input
+                  <ControlledInput
                     id="nombre"
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     placeholder="Nombre"
+                    maxLength={50}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                   {formErrors.firstName && (
@@ -593,11 +598,14 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="apellido" className="text-[#F8F8F8]">Apellido</Label>
-                  <Input
+                  <ControlledInput
                     id="apellido"
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                     placeholder="Apellido"
+                    maxLength={50}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                   {formErrors.lastName && (
@@ -607,12 +615,15 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-[#F8F8F8]">Email</Label>
-                <Input
+                <ControlledInput
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="Email"
+                  maxLength={100}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
                 {formErrors.email && (
@@ -621,12 +632,15 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-[#F8F8F8]">Contraseña</Label>
-                <Input
+                <ControlledInput
                   id="password"
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Contraseña"
+                  maxLength={50}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
                 {formErrors.password && (
@@ -635,12 +649,15 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="text-[#F8F8F8]">Confirmar Contraseña</Label>
-                <Input
+                <ControlledInput
                   id="confirmPassword"
                   type="password"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="Confirmar contraseña"
+                  maxLength={50}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
                 {formErrors.confirmPassword && (
@@ -681,14 +698,6 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                   </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="activo"
-                  checked={formData.isActive}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-                />
-                <Label htmlFor="activo" className="text-[#F8F8F8]">Usuario activo</Label>
               </div>
             </div>
             <div className="flex justify-end space-x-2">
@@ -940,14 +949,6 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                 </Select>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="edit-activo"
-                checked={formData.isActive}
-                onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-              />
-              <Label htmlFor="edit-activo" className="text-[#F8F8F8]">Usuario activo</Label>
-            </div>
           </div>
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
@@ -1039,7 +1040,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                     <p><span className="text-[#A0A0A0]">Nombre:</span> <span className="text-white">{formData.firstName} {formData.lastName}</span></p>
                     <p><span className="text-[#A0A0A0]">Email:</span> <span className="text-white">{formData.email}</span></p>
                     <p><span className="text-[#A0A0A0]">Rol:</span> <span className="text-white">{formData.role}</span></p>
-                    <p><span className="text-[#A0A0A0]">Estado:</span> <span className="text-white">{formData.isActive ? "Activo" : "Inactivo"}</span></p>
+                    <p><span className="text-[#A0A0A0]">Estado:</span> <span className="text-white">Activo</span></p>
                   </div>
                 </div>
                 <p className="text-[#A0A0A0] text-sm">
@@ -1100,5 +1101,5 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }
