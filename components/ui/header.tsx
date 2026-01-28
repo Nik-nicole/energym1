@@ -38,12 +38,19 @@ export function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
-      <div className="max-w-[1200px] mx-auto px-4 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 group">
-          <Dumbbell className="w-8 h-8 text-[#D604E0] group-hover:scale-110 transition-transform" />
-          <span className="text-2xl font-bold gradient-text">FitZone</span>
+      <div className="max-w-[1200px] mx-auto px-4 py-2 flex items-center justify-between">
+        {/* Logo - Izquierda */}
+        <Link href="/" className="flex items-center group">
+          <div className="p-1">
+            <img
+              src="/logo.png"
+              alt="Energym Logo"
+              className="w-48 h-16 object-contain scale-150 group-hover:scale-155 transition-transform"
+            />
+          </div>
         </Link>
 
+        {/* Navegación - Centro */}
         <nav className="hidden md:flex items-center gap-6">
           <Link href="/#sedes" className="text-gray-300 hover:text-white transition-colors">
             Sedes
@@ -57,6 +64,10 @@ export function Header() {
           <Link href="/#noticias" className="text-gray-300 hover:text-white transition-colors">
             Noticias
           </Link>
+        </nav>
+
+        {/* Acciones - Derecha */}
+        <div className="flex items-center gap-4">
           <CartButton />
           {isAuthenticated ? (
             <>
@@ -94,8 +105,9 @@ export function Header() {
               </Link>
             </>
           )}
-        </nav>
+        </div>
 
+        {/* Menú móvil */}
         <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden text-white p-2">
           {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>

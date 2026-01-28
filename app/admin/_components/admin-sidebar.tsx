@@ -72,9 +72,17 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
       <div className={cn("pb-12 w-48 bg-[#141414] border-r border-[#1E1E1E]", className)}>
         <div className="space-y-4 py-4">
           <div className="px-3 py-2">
-            <h2 className="mb-2 px-4 text-lg font-semibold gradient-text">
+            <div className="flex justify-center mb-4">
+              <img
+                src="/logo.png"
+                alt="Energym Logo"
+                className="w-32 h-16 object-contain"
+              />
+            </div>
+            <h2 className="mb-2 px-4 text-lg font-semibold text-white text-left">
               Panel Admin
             </h2>
+            <Separator className="bg-[#ffffff]" />
             <div className="space-y-1">
               {menuItems.slice(0, -1).map((item) => (
                 <Button

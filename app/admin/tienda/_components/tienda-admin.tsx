@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { CustomSwitch } from "@/components/ui/custom-switch";
+import { ControlledInput } from "@/components/ui/controlled-input";
+import { ControlledTextarea } from "@/components/ui/controlled-textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ShoppingBag, Edit, Trash2, Plus, Package, DollarSign, MapPin, Star, Eye, Calendar, User, TrendingUp } from "lucide-react";
+import { ShoppingBag, Edit, Trash2, Plus, Package, DollarSign, MapPin, Star, Eye, Calendar, User, TrendingUp, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { OrdersStats } from "./orders-stats";
@@ -119,8 +122,19 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
     stock: 0,
     activo: true,
     destacado: false,
-    sedeId: "",
   });
+
+  const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -132,19 +146,48 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
       stock: 0,
       activo: true,
       destacado: false,
-      sedeId: "",
     });
+    setImagenFile(null);
   };
 
   const handleCreate = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/admin/tienda", {
+      let imageUrl = formData.imagen;
+      
+      // Si hay un archivo de imagen, subirlo al servidor
+      if (imagenFile) {
+        try {
+          const formDataUpload = new FormData();
+          formDataUpload.append('file', imagenFile);
+          
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formDataUpload,
+          });
+          
+          if (!uploadResponse.ok) {
+            console.warn('Error al subir imagen, usando placeholder');
+            imageUrl = 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png';
+          } else {
+            const uploadResult = await uploadResponse.json();
+            imageUrl = uploadResult.url;
+          }
+        } catch (error) {
+          console.warn('Error al subir imagen, usando placeholder:', error);
+          imageUrl = 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png';
+        }
+      }
+      
+      const response = await fetch("/api/admin/productos", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          imagen: imageUrl,
+        }),
       });
 
       if (!response.ok) throw new Error("Error al crear producto");
@@ -172,7 +215,6 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
       stock: producto.stock,
       activo: producto.activo,
       destacado: producto.destacado,
-      sedeId: producto.sedeId,
     });
     setIsEditDialogOpen(true);
   };
@@ -182,12 +224,41 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
 
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/admin/tienda/${editingProducto.id}`, {
+      let imageUrl = formData.imagen;
+      
+      // Si hay un archivo de imagen, subirlo al servidor
+      if (imagenFile) {
+        try {
+          const formDataUpload = new FormData();
+          formDataUpload.append('file', imagenFile);
+          
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formDataUpload,
+          });
+          
+          if (!uploadResponse.ok) {
+            console.warn('Error al subir imagen, usando placeholder');
+            imageUrl = 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png';
+          } else {
+            const uploadResult = await uploadResponse.json();
+            imageUrl = uploadResult.url;
+          }
+        } catch (error) {
+          console.warn('Error al subir imagen, usando placeholder:', error);
+          imageUrl = 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png';
+        }
+      }
+      
+      const response = await fetch(`/api/admin/productos/${editingProducto.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          imagen: imageUrl,
+        }),
       });
 
       if (!response.ok) throw new Error("Error al actualizar producto");
@@ -208,7 +279,7 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
   const handleDelete = async (id: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/admin/tienda/${id}`, {
+      const response = await fetch(`/api/admin/productos/${id}`, {
         method: "DELETE",
       });
 
@@ -222,9 +293,7 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
       setIsLoading(false);
     }
   };
-
-  return (
-    <div className="space-y-6">
+  return(      <div className="space-y-6">
       {/* Header con tabs */}
       <div className="flex justify-between items-center">
         <div>
@@ -235,61 +304,73 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button onClick={resetForm} className="gradient-bg hover:opacity-90 transition-opacity">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Producto
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
             <DialogHeader>
-              <DialogTitle>Crear Nuevo Producto</DialogTitle>
+              <DialogTitle className="gradient-text">Crear Nuevo Producto</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre</Label>
-                  <Input
+                  <Label htmlFor="nombre" className="text-[#F8F8F8]">Nombre</Label>
+                  <ControlledInput
                     id="nombre"
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     placeholder="Nombre del producto"
+                    maxLength={100}
+                    showCharCount={true}
+                    showWarning={true}
+                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="precio">Precio</Label>
-                  <Input
+                  <Label htmlFor="precio" className="text-[#F8F8F8]">Precio</Label>
+                  <ControlledInput
                     id="precio"
                     type="number"
-                    step="0.01"
+                    step="1"
                     value={formData.precio}
                     onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
-                    placeholder="0.00"
+                    placeholder="0"
+                    maxLength={10}
+                    showCharCount={true}
+                    showWarning={true}
+                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="descripcion">Descripción</Label>
-                <Textarea
+                <Label htmlFor="descripcion" className="text-[#F8F8F8]">Descripción</Label>
+                <ControlledTextarea
                   id="descripcion"
                   value={formData.descripcion}
                   onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                   placeholder="Descripción del producto"
                   rows={3}
+                  maxLength={500}
+                  showCharCount={true}
+                  showWarning={true}
+                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="categoria">Categoría</Label>
+                  <Label htmlFor="categoria" className="text-[#F8F8F8]">Categoría</Label>
                   <Select
                     value={formData.categoria}
                     onValueChange={(value) => setFormData({ ...formData, categoria: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
                       <SelectValue placeholder="Seleccionar categoría" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
                       {categorias.map((categoria) => (
-                        <SelectItem key={categoria} value={categoria}>
+                        <SelectItem key={categoria} value={categoria} className="text-white hover:bg-[#1E1E1E] focus:bg-[#D604E0]">
                           {categoria}
                         </SelectItem>
                       ))}
@@ -297,67 +378,97 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="stock">Stock</Label>
-                  <Input
+                  <Label htmlFor="stock" className="text-[#F8F8F8]">Stock</Label>
+                  <ControlledInput
                     id="stock"
                     type="number"
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
                     placeholder="0"
+                    maxLength={6}
+                    showCharCount={true}
+                    showWarning={true}
+                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sedeId">Sede</Label>
-                <Select
-                  value={formData.sedeId}
-                  onValueChange={(value) => setFormData({ ...formData, sedeId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar sede" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sedes.map((sede) => (
-                      <SelectItem key={sede.id} value={sede.id}>
-                        {sede.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="imagen">URL de Imagen</Label>
-                <Input
-                  id="imagen"
-                  value={formData.imagen}
-                  onChange={(e) => setFormData({ ...formData, imagen: e.target.value })}
-                  placeholder="URL de la imagen (opcional)"
-                />
+                <Label htmlFor="imagen" className="text-[#F8F8F8F]">Imagen del Producto</Label>
+                <div className="border-2 border-dashed border-[#1E1E1E] rounded-lg p-4">
+                  <input
+                    type="file"
+                    id="imagen"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setImagenFile(file);
+                        // Preview de la imagen
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setFormData({ ...formData, imagen: reader.result as string });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="imagen"
+                    className="flex flex-col items-center justify-center cursor-pointer"
+                  >
+                    {formData.imagen || imagenFile ? (
+                      <div className="relative">
+                        <img
+                          src={formData.imagen || (imagenFile ? URL.createObjectURL(imagenFile) : "")}
+                          alt="Preview"
+                          className="h-32 w-32 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImagenFile(null);
+                            setFormData({ ...formData, imagen: "" });
+                          }}
+                          className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 text-xs hover:bg-red-700 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="h-12 w-12 text-[#A0A0A0] mb-2" />
+                        <p className="text-sm text-[#A0A0A0]">Click para subir imagen</p>
+                        <p className="text-xs text-[#A0A0A0]">PNG, JPG hasta 10MB</p>
+                      </>
+                    )}
+                  </label>
+                </div>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
-                  <Switch
+                  <CustomSwitch
                     id="activo"
                     checked={formData.activo}
                     onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
                   />
-                  <Label htmlFor="activo">Activo</Label>
+                  <Label htmlFor="activo" className="text-[#F8F8F8]">Activo</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Switch
+                  <CustomSwitch
                     id="destacado"
                     checked={formData.destacado}
                     onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
                   />
-                  <Label htmlFor="destacado">Destacado</Label>
+                  <Label htmlFor="destacado" className="text-[#F8F8F8]">Destacado</Label>
                 </div>
               </div>
             </div>
             <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
                 Cancelar
               </Button>
-              <Button onClick={handleCreate} disabled={isLoading}>
+              <Button onClick={handleCreate} disabled={isLoading} className="gradient-bg hover:opacity-90">
                 {isLoading ? "Creando..." : "Crear Producto"}
               </Button>
             </div>
@@ -443,15 +554,12 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
                   <span className="text-xs text-[#040AE0] font-medium">
                     {producto.categoria}
                   </span>
-                  <span className="text-xs text-gray-400">
-                    {producto.sede.nombre}
-                  </span>
                 </div>
 
                 {/* Precio */}
                 <div className="flex items-end justify-between mb-2">
                   <span className="text-lg font-bold text-white">
-                    ${producto.precio.toFixed(2)}
+                    {formatCurrency(producto.precio)}
                   </span>
                   <div className="text-right">
                     {producto.stock > 0 ? (
@@ -560,7 +668,7 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold gradient-text">
-                          ${item.order.totalAmount.toFixed(2)}
+                          {formatCurrency(item.order.totalAmount)}
                         </p>
                       </div>
                     </div>
@@ -583,56 +691,68 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
           <DialogHeader>
-            <DialogTitle>Editar Producto</DialogTitle>
+            <DialogTitle className="gradient-text">Editar Producto</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-nombre">Nombre</Label>
-                <Input
+                <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre</Label>
+                <ControlledInput
                   id="edit-nombre"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   placeholder="Nombre del producto"
+                  maxLength={100}
+                  showCharCount={true}
+                  showWarning={true}
+                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-precio">Precio</Label>
-                <Input
+                <Label htmlFor="edit-precio" className="text-[#F8F8F8]">Precio</Label>
+                <ControlledInput
                   id="edit-precio"
                   type="number"
-                  step="0.01"
+                  step="1"
                   value={formData.precio}
                   onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
-                  placeholder="0.00"
+                  placeholder="0"
+                  maxLength={10}
+                  showCharCount={true}
+                  showWarning={true}
+                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-descripcion">Descripción</Label>
-              <Textarea
+              <Label htmlFor="edit-descripcion" className="text-[#F8F8F8]">Descripción</Label>
+              <ControlledTextarea
                 id="edit-descripcion"
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                 placeholder="Descripción del producto"
                 rows={3}
+                maxLength={500}
+                showCharCount={true}
+                showWarning={true}
+                className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-categoria">Categoría</Label>
+                <Label htmlFor="edit-categoria" className="text-[#F8F8F8]">Categoría</Label>
                 <Select
                   value={formData.categoria}
                   onValueChange={(value) => setFormData({ ...formData, categoria: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
                     <SelectValue placeholder="Seleccionar categoría" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
                     {categorias.map((categoria) => (
-                      <SelectItem key={categoria} value={categoria}>
+                      <SelectItem key={categoria} value={categoria} className="text-white hover:bg-[#1E1E1E] focus:bg-[#D604E0]">
                         {categoria}
                       </SelectItem>
                     ))}
@@ -640,72 +760,102 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-stock">Stock</Label>
-                <Input
+                <Label htmlFor="edit-stock" className="text-[#F8F8F8]">Stock</Label>
+                <ControlledInput
                   id="edit-stock"
                   type="number"
                   value={formData.stock}
                   onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
                   placeholder="0"
+                  maxLength={6}
+                  showCharCount={true}
+                  showWarning={true}
+                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-sedeId">Sede</Label>
-              <Select
-                value={formData.sedeId}
-                onValueChange={(value) => setFormData({ ...formData, sedeId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar sede" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sedes.map((sede) => (
-                    <SelectItem key={sede.id} value={sede.id}>
-                      {sede.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-imagen">URL de Imagen</Label>
-              <Input
-                id="edit-imagen"
-                value={formData.imagen}
-                onChange={(e) => setFormData({ ...formData, imagen: e.target.value })}
-                placeholder="URL de la imagen (opcional)"
-              />
+              <Label htmlFor="edit-imagen" className="text-[#F8F8F8]">Imagen del Producto</Label>
+              <div className="border-2 border-dashed border-[#1E1E1E] rounded-lg p-4">
+                <input
+                  type="file"
+                  id="edit-imagen"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setImagenFile(file);
+                      // Preview de la imagen
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setFormData({ ...formData, imagen: reader.result as string });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="edit-imagen"
+                  className="flex flex-col items-center justify-center cursor-pointer"
+                >
+                  {formData.imagen || imagenFile ? (
+                    <div className="relative">
+                      <img
+                        src={formData.imagen || (imagenFile ? URL.createObjectURL(imagenFile) : "")}
+                        alt="Preview"
+                        className="h-32 w-32 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImagenFile(null);
+                          setFormData({ ...formData, imagen: "" });
+                        }}
+                        className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 text-xs hover:bg-red-700 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-12 w-12 text-[#A0A0A0] mb-2" />
+                      <p className="text-sm text-[#A0A0A0]">Click para subir imagen</p>
+                      <p className="text-xs text-[#A0A0A0]">PNG, JPG hasta 10MB</p>
+                    </>
+                  )}
+                </label>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <Switch
+                <CustomSwitch
                   id="edit-activo"
                   checked={formData.activo}
                   onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
                 />
-                <Label htmlFor="edit-activo">Activo</Label>
+                <Label htmlFor="edit-activo" className="text-[#F8F8F8]">Activo</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <Switch
+                <CustomSwitch
                   id="edit-destacado"
                   checked={formData.destacado}
                   onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
                 />
-                <Label htmlFor="edit-destacado">Destacado</Label>
+                <Label htmlFor="edit-destacado" className="text-[#F8F8F8]">Destacado</Label>
               </div>
             </div>
           </div>
           <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
               Cancelar
             </Button>
-            <Button onClick={handleUpdate} disabled={isLoading}>
+            <Button onClick={handleUpdate} disabled={isLoading} className="gradient-bg hover:opacity-90">
               {isLoading ? "Actualizando..." : "Actualizar Producto"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }

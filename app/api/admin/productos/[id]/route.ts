@@ -69,11 +69,11 @@ export async function PUT(
     const producto = await prisma.producto.update({
       where: { id },
       data: {
-        ...(nombre && { nombre }),
-        ...(descripcion && { descripcion }),
-        ...(precio && { precio: parseFloat(precio) }),
+        ...(nombre !== undefined && { nombre }),
+        ...(descripcion !== undefined && { descripcion }),
+        ...(precio !== undefined && { precio: parseFloat(precio) }),
         ...(imagen !== undefined && { imagen }),
-        ...(categoria && { categoria }),
+        ...(categoria !== undefined && { categoria }),
         ...(stock !== undefined && { stock: parseInt(stock) }),
         ...(activo !== undefined && { activo }),
         ...(destacado !== undefined && { destacado }),
@@ -86,10 +86,7 @@ export async function PUT(
       }
     });
 
-    return NextResponse.json({
-      success: true,
-      producto
-    });
+    return NextResponse.json(producto);
   } catch (error) {
     console.error("Error updating producto:", error);
     return NextResponse.json(

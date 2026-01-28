@@ -873,44 +873,56 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre</Label>
-                <Input
+                <ControlledInput
                   id="edit-nombre"
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   placeholder="Nombre"
+                  maxLength={50}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-apellido" className="text-[#F8F8F8]">Apellido</Label>
-                <Input
+                <ControlledInput
                   id="edit-apellido"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   placeholder="Apellido"
+                  maxLength={50}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-email" className="text-[#F8F8F8]">Email</Label>
-              <Input
+              <ControlledInput
                 id="edit-email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="Email"
+                maxLength={100}
+                showCharCount={true}
+                showWarning={true}
                 className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-password" className="text-[#F8F8F8]">Nueva Contraseña (dejar en blanco para no cambiar)</Label>
-              <Input
+              <ControlledInput
                 id="edit-password"
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="Nueva contraseña"
+                maxLength={50}
+                showCharCount={true}
+                showWarning={true}
                 className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
               />
             </div>

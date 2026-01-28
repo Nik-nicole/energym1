@@ -30,13 +30,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   MapPin,
   Phone,
@@ -52,6 +51,22 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const CIUDADES_COLOMBIA = [
+  "Bogotá",
+  "Medellín",
+  "Cali",
+  "Barranquilla",
+  "Cartagena",
+  "Cúcuta",
+  "Ibagué",
+  "Bucaramanga",
+  "Soledad",
+  "Santa Marta",
+  "Villavicencio",
+  "Manizales",
+  "Pereira",
+];
 
 interface Sede {
   id: string;
@@ -380,16 +395,25 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ciudad" className="text-[#F8F8F8]">Ciudad</Label>
-                  <ControlledInput
-                    id="ciudad"
+                  <Select
                     value={formData.ciudad}
-                    onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                    placeholder="Ciudad"
-                    maxLength={50}
-                    showCharCount={true}
-                    showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, ciudad: value })}
+                  >
+                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
+                      <SelectValue placeholder="Selecciona una ciudad" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                      {CIUDADES_COLOMBIA.map((ciudad) => (
+                        <SelectItem
+                          key={ciudad}
+                          value={ciudad}
+                          className="text-white hover:bg-[#1E1E1E] focus:bg-[#D604E0]"
+                        >
+                          {ciudad}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
@@ -900,16 +924,25 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-ciudad" className="text-[#F8F8F8]">Ciudad</Label>
-                <ControlledInput
-                  id="ciudad"
+                <Select
                   value={formData.ciudad}
-                  onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                  placeholder="Ciudad"
-                  maxLength={50}
-                  showCharCount={true}
-                  showWarning={true}
-                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                />
+                  onValueChange={(value) => setFormData({ ...formData, ciudad: value })}
+                >
+                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
+                    <SelectValue placeholder="Selecciona una ciudad" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                    {CIUDADES_COLOMBIA.map((ciudad) => (
+                      <SelectItem
+                        key={ciudad}
+                        value={ciudad}
+                        className="text-white hover:bg-[#1E1E1E] focus:bg-[#D604E0]"
+                      >
+                        {ciudad}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="space-y-2">

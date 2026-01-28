@@ -26,10 +26,16 @@ export function HeroSection() {
           transition={{ duration: 0.6 }}
         >
           
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-            Transforma tu vida con{" "}
-            <span className="gradient-text">FitZone</span>
-          </h1>
+          <div className="flex flex-col items-center justify-center mb-6">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight text-center">
+              Transforma tu vida con
+            </h1>
+            <img
+              src="/logo.png"
+              alt="Energym Logo"
+              className="w-64 h-32 object-contain mt-4"
+            />
+          </div>
           <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto mb-8">
             La cadena de gimnasios líder en Bogotá. Equipamiento premium,
             entrenadores certificados y programas personalizados para alcanzar
