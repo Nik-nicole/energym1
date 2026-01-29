@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 
 interface ControlledInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   maxLength?: number
-  type?: 'text' | 'number' | 'email' | 'tel' | 'url' | 'password'
+  type?: 'text' | 'number' | 'email' | 'tel' | 'url' | 'password' | 'date'
   showCharCount?: boolean
   format?: 'currency' | 'phone' | 'uppercase' | 'lowercase'
   showWarning?: boolean
