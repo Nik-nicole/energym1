@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateStaticParams() {
   const sedes = await prisma.sede.findMany({ select: { id: true } });
-  return sedes.map((sede) => ({ id: sede.id }));
+  return sedes.map((sede: { id: string }) => ({ id: sede.id }));
 }
 
 async function getSedeData(id: string) {
@@ -37,7 +37,7 @@ async function getSedeData(id: string) {
 
     return {
       sede,
-      planes: planes.map((ps) => ps.plan),
+      planes: planes.map((ps: any) => ps.plan),
       noticias,
     };
   } catch (error) {
