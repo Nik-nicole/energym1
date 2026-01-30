@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 import { RegistroForm } from "./_components/registro-form";
 import { Header } from "@/components/ui/header";
 import { Dumbbell } from "lucide-react";

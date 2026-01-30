@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/ui/header";
 import { NoticiasAdmin } from "./_components/noticias-admin";
