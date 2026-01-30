@@ -349,8 +349,34 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
 
       if (!response.ok) throw new Error("Error al eliminar sede");
 
+      const result = await response.json();
       setSedesList(sedesList.filter((s) => s.id !== id));
-      toast.success("Sede eliminada exitosamente");
+      
+      // Mostrar mensaje detallado con estadísticas
+      const stats = result.estadisticas;
+      let mensaje = "Sede eliminada exitosamente";
+      
+      if (stats) {
+        const detalles = [];
+        if (stats.usuariosDesvinculados > 0) {
+          detalles.push(`${stats.usuariosDesvinculados} usuarios desvinculados`);
+        }
+        if (stats.productosEliminados > 0) {
+          detalles.push(`${stats.productosEliminados} productos eliminados`);
+        }
+        if (stats.noticiasDesvinculadas > 0) {
+          detalles.push(`${stats.noticiasDesvinculadas} noticias desvinculadas`);
+        }
+        if (stats.planesEliminados > 0) {
+          detalles.push(`${stats.planesEliminados} planes eliminados`);
+        }
+        
+        if (detalles.length > 0) {
+          mensaje += ` (${detalles.join(", ")})`;
+        }
+      }
+      
+      toast.success(mensaje);
     } catch (error) {
       toast.error("Error al eliminar sede");
     } finally {
@@ -632,134 +658,156 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
       {/* Grid de Sedes - Estilo Landing Page */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {sedesList.map((sede) => (
-          <div
-            key={sede.id}
-            onClick={() => handleView(sede)}
-            className="group cursor-pointer transform transition-all duration-300 hover:scale-105"
-          >
-            <div className="relative overflow-hidden rounded-2xl bg-[#141414] border border-[#1E1E1E] hover:border-[#D604E0]/50 transition-all duration-300">
-              {/* Imagen de la sede */}
-              <div className="relative h-64 overflow-hidden">
-                {sede.imagen ? (
-                  <img
-                    src={sede.imagen}
-                    alt={sede.nombre}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#D604E0]/20 to-[#3B82F6]/20 flex items-center justify-center">
-                    <MapPin className="h-12 w-12 text-[#A0A0A0]" />
-                  </div>
-                )}
-                
-                {/* Overlay con información sobre la imagen */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-                  <div className="absolute bottom-0 left-0 right-0 p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-[#D604E0] transition-colors duration-300">
-                          {sede.nombre}
-                        </h3>
-                        <div className="flex items-center text-white/80 text-sm">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          <span>{sede.ciudad}</span>
+          <div key={sede.id}>
+            <div
+              onClick={() => handleView(sede)}
+              className="group cursor-pointer transform transition-all duration-300 hover:scale-105"
+            >
+              <div className="relative overflow-hidden rounded-2xl bg-[#141414] border border-[#1E1E1E] hover:border-[#D604E0]/50 transition-all duration-300">
+                {/* Imagen de la sede */}
+                <div className="relative h-64 overflow-hidden">
+                  {sede.imagen ? (
+                    <img
+                      src={sede.imagen}
+                      alt={sede.nombre}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-[#D604E0]/20 to-[#3B82F6]/20 flex items-center justify-center">
+                      <MapPin className="h-12 w-12 text-[#A0A0A0]" />
+                    </div>
+                  )}
+                  
+                  {/* Overlay con información sobre la imagen */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                    <div className="absolute bottom-0 left-0 right-0 p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="text-2xl font-bold text-white mb-1 group-hover:text-[#D604E0] transition-colors duration-300">
+                            {sede.nombre}
+                          </h3>
+                          <div className="flex items-center text-white/80 text-sm">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            <span>{sede.ciudad}</span>
+                          </div>
+                        </div>
+                        {/* Badge de estado con fondo sólido */}
+                        <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          sede.activo 
+                            ? 'bg-green-500 text-white border border-green-600' 
+                            : 'bg-red-500 text-white border border-red-600'
+                        }`}>
+                          {sede.activo ? 'Activa' : 'Inactiva'}
                         </div>
                       </div>
-                      {/* Badge de estado con fondo sólido */}
-                      <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        sede.activo 
-                          ? 'bg-green-500 text-white border border-green-600' 
-                          : 'bg-red-500 text-white border border-red-600'
-                      }`}>
-                        {sede.activo ? 'Activa' : 'Inactiva'}
-                      </div>
-                    </div>
-                    
-                    {/* Información esencial: ubicación, teléfono y email */}
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center gap-2 text-white/70 text-xs">
-                        <MapPin className="h-3 w-3" />
-                        <span className="truncate">{sede.direccion}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-white/70 text-xs">
-                        <Phone className="h-3 w-3" />
-                        <span>{sede.telefono}</span>
-                      </div>
-                      {sede.email && (
+                      
+                      {/* Información esencial: ubicación, teléfono y email */}
+                      <div className="space-y-2 mb-3">
                         <div className="flex items-center gap-2 text-white/70 text-xs">
-                          <Mail className="h-3 w-3" />
-                          <span className="truncate">{sede.email}</span>
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate">{sede.direccion}</span>
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Estadísticas minimalistas */}
-                    <div className="flex items-center gap-4 text-white/60 text-xs">
-                      <div className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        <span>{sede._count.usuarios}</span>
+                        <div className="flex items-center gap-2 text-white/70 text-xs">
+                          <Phone className="h-3 w-3" />
+                          <span>{sede.telefono}</span>
+                        </div>
+                        {sede.email && (
+                          <div className="flex items-center gap-2 text-white/70 text-xs">
+                            <Mail className="h-3 w-3" />
+                            <span className="truncate">{sede.email}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Package className="h-3 w-3" />
-                        <span>{sede._count.productos}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Newspaper className="h-3 w-3" />
-                        <span>{sede._count.noticias}</span>
+                      
+                      {/* Estadísticas minimalistas */}
+                      <div className="flex items-center gap-4 text-white/60 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          <span>{sede._count.usuarios}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Package className="h-3 w-3" />
+                          <span>{sede._count.productos}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Newspaper className="h-3 w-3" />
+                          <span>{sede._count.noticias}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              {/* Botones de acción con colores de la página */}
-              <div className="p-4 bg-[#141414]">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEdit(sede);
-                    }}
-                    className="flex-1 border-[#D604E0]/50 text-[#D604E0] hover:bg-[#D604E0]/10 hover:border-[#D604E0] hover:text-white transition-all duration-200"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 border-[#3B82F6]/50 text-[#3B82F6] hover:bg-[#3B82F6]/10 hover:border-[#3B82F6] hover:text-white transition-all duration-200"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Eliminar
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-[#141414] border-[#1E1E1E]">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white">¿Eliminar sede?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-[#A0A0A0]">
-                          Esta acción no se puede deshacer. Se eliminará permanentemente la sede "{sede.nombre}".
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-[#1E1E1E] text-[#F8F8F8] hover:bg-[#2A2A2A]">Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDelete(sede.id)}
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          Eliminar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                
+                {/* Botones de acción con colores de la página */}
+                <div className="p-4 bg-[#141414]">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(sede);
+                      }}
+                      className="flex-1 border-[#D604E0]/50 text-[#D604E0] hover:bg-[#D604E0]/10 hover:border-[#D604E0] hover:text-white transition-all duration-200"
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        // Abrir diálogo de eliminación manualmente
+                        const deleteDialog = document.getElementById(`delete-dialog-${sede.id}`);
+                        if (deleteDialog) {
+                          deleteDialog.click();
+                        }
+                      }}
+                      className="flex-1 border-[#3B82F6]/50 text-[#3B82F6] hover:bg-[#3B82F6]/10 hover:border-[#3B82F6] hover:text-white transition-all duration-200"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
+            
+            {/* AlertDialog separado fuera del contenedor con onClick */}
+            <AlertDialog>
+              <AlertDialogTrigger id={`delete-dialog-${sede.id}`} className="hidden" />
+              <AlertDialogContent className="bg-[#141414] border-[#1E1E1E]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-white">¿Eliminar sede permanentemente?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-[#A0A0A0] space-y-2">
+                    <p>Esta acción <strong>no se puede deshacer</strong>. Se eliminará permanentemente la sede <strong>"{sede.nombre}"</strong>.</p>
+                    
+                    <div className="mt-3 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                      <p className="text-red-400 font-semibold mb-2">⚠️ También se eliminará/desvinculará:</p>
+                      <ul className="text-sm text-red-300 space-y-1">
+                        <li>• Todos los productos de esta sede ({sede._count.productos})</li>
+                        <li>• Los planes asociados a esta sede ({sede._count.planesEnSede})</li>
+                        <li>• Los usuarios serán desvinculados ({sede._count.usuarios})</li>
+                        <li>• Las noticias serán desvinculadas ({sede._count.noticias})</li>
+                      </ul>
+                    </div>
+                    
+                    <p className="text-xs text-gray-400 mt-2">Los usuarios y noticias no se eliminarán, solo perderán la relación con esta sede.</p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-[#1E1E1E] text-[#F8F8F8] hover:bg-[#2A2A2A]">Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleDelete(sede.id)}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Sí, Eliminar Todo
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         ))}
       </div>

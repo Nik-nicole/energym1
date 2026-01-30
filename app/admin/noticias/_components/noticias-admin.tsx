@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Edit, Trash2, Plus, Upload, Image as ImageIcon, X, Heart, MessageCircle, Share2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Type, Image, Palette, Minus2, Plus2 } from "lucide-react";
+import { Edit, Trash2, Plus, Upload, Image as ImageIcon, X, Heart, MessageCircle, Share2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Type, Image, Palette, Minus, Plus as PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { EnhancedNoticiaForm } from "@/components/admin/enhanced-noticia-form";
@@ -106,7 +106,7 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
     destacado: false,
   });
 
-  const [contentBlocks, setContentBlocks] = useState([
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([
     { id: 1, type: 'titulo', content: '', estilo: { alineacion: 'left', color: '#ffffff', tamaño: 'grande' } }
   ]);
 
@@ -176,7 +176,8 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
             centro: 'display: block; margin: 0 auto 1rem; max-width: 400px;',
             sin: 'display: none;'
           };
-          return `<img src="${block.imagenSettings?.url}" alt="${block.imagenSettings?.alt}" style="${imageStyles[block.imagenSettings?.posicion || 'izquierda']}">`;
+          const imagenSettings = block.imagenSettings;
+          return `<img src="${imagenSettings?.url || ''}" alt="${imagenSettings?.alt || ''}" style="${imageStyles[imagenSettings?.posicion || 'izquierda']}">`;
         default:
           return ''
       }

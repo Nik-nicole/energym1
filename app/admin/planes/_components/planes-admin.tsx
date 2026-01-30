@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
+import { ControlledInput } from "@/components/ui/controlled-input";
+import { ControlledTextarea } from "@/components/ui/controlled-textarea";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -250,35 +250,44 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="nombre" className="text-[#F8F8F8]">Nombre</Label>
-                  <Input
+                  <ControlledInput
                     id="nombre"
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     placeholder="Nombre del plan"
+                    maxLength={100}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="precio" className="text-[#F8F8F8]">Precio</Label>
-                  <Input
+                  <ControlledInput
                     id="precio"
                     type="number"
                     step="0.01"
                     value={formData.precio}
                     onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
                     placeholder="0.00"
+                    maxLength={10}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="descripcion" className="text-[#F8F8F8]">Descripción</Label>
-                <Textarea
+                <ControlledTextarea
                   id="descripcion"
                   value={formData.descripcion}
                   onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                   placeholder="Descripción del plan"
                   rows={3}
+                  maxLength={500}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
@@ -286,10 +295,13 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                 <Label className="text-[#F8F8F8]">Beneficios</Label>
                 {formData.beneficios.map((beneficio, index) => (
                   <div key={index} className="flex gap-2">
-                    <Input
+                    <ControlledInput
                       value={beneficio}
                       onChange={(e) => updateBeneficio(index, e.target.value)}
                       placeholder="Beneficio"
+                      maxLength={200}
+                      showCharCount={true}
+                      showWarning={true}
                       className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                     />
                     <Button
@@ -334,12 +346,15 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="orden" className="text-[#F8F8F8]">Orden</Label>
-                  <Input
+                  <ControlledInput
                     id="orden"
                     type="number"
                     value={formData.orden}
                     onChange={(e) => setFormData({ ...formData, orden: parseInt(e.target.value) })}
                     placeholder="Orden de visualización"
+                    maxLength={3}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
@@ -579,35 +594,44 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre</Label>
-                <Input
+                <ControlledInput
                   id="edit-nombre"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   placeholder="Nombre del plan"
+                  maxLength={100}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-precio" className="text-[#F8F8F8]">Precio</Label>
-                <Input
+                <ControlledInput
                   id="edit-precio"
                   type="number"
                   step="0.01"
                   value={formData.precio}
                   onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
                   placeholder="0.00"
+                  maxLength={10}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-descripcion" className="text-[#F8F8F8]">Descripción</Label>
-              <Textarea
+              <ControlledTextarea
                 id="edit-descripcion"
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                 placeholder="Descripción del plan"
                 rows={3}
+                maxLength={500}
+                showCharCount={true}
+                showWarning={true}
                 className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
               />
             </div>
@@ -615,10 +639,13 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
               <Label className="text-[#F8F8F8]">Beneficios</Label>
               {formData.beneficios.map((beneficio, index) => (
                 <div key={index} className="flex gap-2">
-                  <Input
+                  <ControlledInput
                     value={beneficio}
                     onChange={(e) => updateBeneficio(index, e.target.value)}
                     placeholder="Beneficio"
+                    maxLength={200}
+                    showCharCount={true}
+                    showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                   <Button
@@ -663,12 +690,15 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-orden" className="text-[#F8F8F8]">Orden</Label>
-                <Input
+                <ControlledInput
                   id="edit-orden"
                   type="number"
                   value={formData.orden}
                   onChange={(e) => setFormData({ ...formData, orden: parseInt(e.target.value) })}
                   placeholder="Orden de visualización"
+                  maxLength={3}
+                  showCharCount={true}
+                  showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
