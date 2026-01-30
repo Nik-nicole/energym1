@@ -15,8 +15,8 @@ interface Sede {
   email: string | null;
   descripcion: string;
   imagen: string | null;
-  latitud: number;
-  longitud: number;
+  latitud: number | null;
+  longitud: number | null;
   horario: string;
   activo: boolean;
 }
