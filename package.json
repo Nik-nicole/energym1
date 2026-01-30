@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "preinstall": "npm config set legacy-peer-deps true",
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",     
     "start": "next start",
