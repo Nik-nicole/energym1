@@ -6,10 +6,10 @@ import { SedeDetailClient } from "./_components/sede-detail-client";
 
 export const dynamic = "force-dynamic";
 
-export async function generateStaticParams() {
-  const sedes = await prisma.sede.findMany({ select: { id: true } });
-  return sedes.map((sede: { id: string }) => ({ id: sede.id }));
-}
+// export async function generateStaticParams() {
+//   const sedes = await prisma.sede.findMany({ select: { id: true } });
+//   return sedes.map((sede: { id: string }) => ({ id: sede.id }));
+// }
 
 async function getSedeData(id: string) {
   try {
