@@ -45,18 +45,16 @@ interface Sede {
 }
 
 interface ContentBlock {
-  id: number;
+  id: string;
   type: 'titulo' | 'subtitulo' | 'parrafo' | 'imagen';
   content: string;
-  estilo: {
-    alineacion: 'left' | 'center' | 'right' | 'justify';
-    color: string;
-    tamaño: 'pequeño' | 'mediano' | 'grande';
-  };
-  imagenSettings?: {
+  alignment?: 'left' | 'center' | 'right' | 'justify';
+  color?: string;
+  fontSize?: 'small' | 'medium' | 'large';
+  imageSettings?: {
+    position: 'banner' | 'left' | 'right' | 'center';
     url: string;
     alt: string;
-    posicion: 'banner' | 'izquierda' | 'derecha' | 'centro' | 'sin';
   };
 }
 
