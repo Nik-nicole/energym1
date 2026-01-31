@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, ShoppingBag, MapPin, Star, Package, Plus, Minus, X, ChevronRight, ArrowLeft } from "lucide-react";
+import { Search, Filter, ShoppingBag, Star, Package, Plus, Minus, X, ChevronRight, ArrowLeft } from "lucide-react";
 import { useCart } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,26 +17,15 @@ interface Producto {
   categoria: string;
   stock: number;
   destacado: boolean;
-  sede: {
-    id: string;
-    nombre: string;
-  };
-}
-
-interface Sede {
-  id: string;
-  nombre: string;
 }
 
 interface MarketplaceClientProps {
   productos: Producto[];
-  sedes: Sede[];
 }
 
-export function MarketplaceSidebarFixed({ productos, sedes }: MarketplaceClientProps) {
+export function MarketplaceSidebarFixed({ productos }: MarketplaceClientProps) {
   const { addItem, items } = useCart();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSede, setSelectedSede] = useState<string>("all");
   const [selectedCategoria, setSelectedCategoria] = useState<string>("all");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
   const [sortBy, setSortBy] = useState<string>("destacado");
@@ -68,11 +57,6 @@ export function MarketplaceSidebarFixed({ productos, sedes }: MarketplaceClientP
       );
     }
 
-    // Filtrar por sede
-    if (selectedSede !== "all") {
-      filtered = filtered.filter(p => p.sede.id === selectedSede);
-    }
-
     // Filtrar por categoría
     if (selectedCategoria !== "all") {
       filtered = filtered.filter(p => p.categoria === selectedCategoria);
@@ -99,7 +83,7 @@ export function MarketplaceSidebarFixed({ productos, sedes }: MarketplaceClientP
     }
 
     return filtered;
-  }, [productos, searchTerm, selectedSede, selectedCategoria, priceRange, sortBy]);
+  }, [productos, searchTerm, selectedCategoria, priceRange, sortBy]);
 
   const handleAddToCart = (producto: Producto, e?: React.MouseEvent) => {
     if (e) {
@@ -124,13 +108,12 @@ export function MarketplaceSidebarFixed({ productos, sedes }: MarketplaceClientP
 
   const clearFilters = () => {
     setSearchTerm("");
-    setSelectedSede("all");
     setSelectedCategoria("all");
     setPriceRange([priceRangeLimits.min, priceRangeLimits.max]);
     setSortBy("destacado");
   };
 
-  const hasActiveFilters = searchTerm || selectedSede !== "all" || selectedCategoria !== "all" || 
+  const hasActiveFilters = searchTerm || selectedCategoria !== "all" || 
     priceRange[0] !== priceRangeLimits.min || priceRange[1] !== priceRangeLimits.max;
 
   return (
@@ -221,21 +204,6 @@ export function MarketplaceSidebarFixed({ productos, sedes }: MarketplaceClientP
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Sede */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Sede</label>
-                  <select
-                    value={selectedSede}
-                    onChange={(e) => setSelectedSede(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#040AE0]"
-                  >
-                    <option value="all">Todas las sedes</option>
-                    {sedes.map(sede => (
-                      <option key={sede.id} value={sede.id}>{sede.nombre}</option>
-                    ))}
-                  </select>
                 </div>
 
                 {/* Rango de precio */}
@@ -355,10 +323,6 @@ export function MarketplaceSidebarFixed({ productos, sedes }: MarketplaceClientP
                             <span className="px-2 py-1 bg-[#040AE0]/20 rounded-full text-[#040AE0] text-xs font-medium">
                               {producto.categoria}
                             </span>
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-gray-400" />
-                              <span className="text-xs text-gray-400">{producto.sede.nombre}</span>
-                            </div>
                           </div>
 
                           {/* Nombre y descripción */}

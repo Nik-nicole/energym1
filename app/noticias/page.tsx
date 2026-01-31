@@ -3,6 +3,8 @@ import { Suspense } from "react"
 import { getNoticias } from "@/lib/noticias"
 import { NoticiasGrid } from "./_components/noticias-grid"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Noticias - FitZone",
@@ -15,6 +17,14 @@ export default async function NoticiasPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
       <div className="container mx-auto px-4 py-24">
+        <Link 
+          href="/" 
+          className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors group"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" />
+          Volver a la página principal
+        </Link>
+        
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Todas las <span className="gradient-text">Noticias</span>

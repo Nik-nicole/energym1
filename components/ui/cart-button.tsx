@@ -13,7 +13,7 @@ export function CartButton() {
         onClick={() => setIsOpen(true)}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="relative p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+        className="relative p-3 hover:bg-white/10 rounded-lg transition-colors"
       >
         <ShoppingBag className="w-6 h-6 text-white" />
         
@@ -34,7 +34,7 @@ export function CartButton() {
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="relative p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+        className="relative p-3 hover:bg-white/10 rounded-lg transition-colors"
         onClick={() => window.location.href = '/marketplace'}
       >
         <ShoppingBag className="w-6 h-6 text-white" />

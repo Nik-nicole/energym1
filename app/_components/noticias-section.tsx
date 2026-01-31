@@ -49,7 +49,7 @@ export function NoticiasSection({ noticias, showViewAll = true, customTitle, cus
             Noticias y <span className="gradient-text">Promociones</span>
           </h2>}
           <p className="text-gray-400 max-w-2xl mx-auto">
-            {customSubtitle || "Manténte informado sobre las últimas novedades, eventos y ofertas especiales de FitZone."}
+            {customSubtitle || "Manténte informado sobre las últimas novedades, eventos y ofertas especiales de Energym."}
           </p>
         </motion.div>
 

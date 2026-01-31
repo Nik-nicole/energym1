@@ -74,6 +74,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const body = await request.json();
+    console.log("Datos recibidos:", body);
+
     const {
       nombre,
       descripcion,
@@ -82,26 +85,13 @@ export async function POST(request: NextRequest) {
       categoria,
       stock,
       activo,
-      destacado,
-      sedeId
-    } = await request.json();
+      destacado
+    } = body;
 
     // Validaciones básicas
-    if (!nombre || !descripcion || !precio || !sedeId) {
+    if (!nombre || !descripcion || !precio) {
       return NextResponse.json(
         { error: "Faltan campos obligatorios" },
-        { status: 400 }
-      );
-    }
-
-    // Verificar que la sede existe
-    const sede = await prisma.sede.findUnique({
-      where: { id: sedeId }
-    });
-
-    if (!sede) {
-      return NextResponse.json(
-        { error: "La sede especificada no existe" },
         { status: 400 }
       );
     }
@@ -116,12 +106,6 @@ export async function POST(request: NextRequest) {
         stock: parseInt(stock) || 0,
         activo: activo !== false,
         destacado: destacado === true,
-        sedeId
-      },
-      include: {
-        sede: {
-          select: { id: true, nombre: true }
-        }
       }
     });
 

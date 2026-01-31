@@ -6,14 +6,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL || "http://localhost:3000"),
-  title: "FitZone | Gimnasios en Bogotá",
+  title: "Energym | Gimnasios en Bogotá",
   description: "La cadena de gimnasios líder en Bogotá. 3 sedes con equipamiento premium, entrenadores certificados y programas personalizados.",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/logo.png",
+    shortcut: "/logo.png",
   },
   openGraph: {
-    title: "FitZone | Gimnasios en Bogotá",
+    title: "Energym | Gimnasios en Bogotá",
     description: "La cadena de gimnasios líder en Bogotá. 3 sedes con equipamiento premium.",
     images: ["/og-image.png"],
   },

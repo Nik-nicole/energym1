@@ -178,23 +178,6 @@ export function HomeStoreSection({ productos }: HomeStoreSectionProps) {
             </motion.div>
           ))}
         </div>
-
-        {/* Botón para ver todos los productos */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          viewport={{ once: true }}
-          className="text-center mt-12"
-        >
-          <Link
-            href="/marketplace"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-[#040AE0] hover:bg-[#040AE0]/80 rounded-lg font-medium text-white transition-all"
-          >
-            Explorar Tienda Completa
-            <ChevronRight className="w-5 h-5" />
-          </Link>
-        </motion.div>
       </div>
     </section>
   );

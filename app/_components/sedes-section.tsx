@@ -85,7 +85,7 @@ export function SedesSection({ sedes }: { sedes: Sede[] }) {
           </h2>
           <p className="text-gray-400 max-w-2xl mx-auto">
             {(sedes?.length || 0)} ubicaciones estratégicas disponibles para que siempre tengas un
-            FitZone cerca. Cada sede con carácter único pero la misma calidad
+            Energym cerca. Cada sede con carácter único pero la misma calidad
             premium.
           </p>
         </motion.div>

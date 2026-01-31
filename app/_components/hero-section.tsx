@@ -11,7 +11,7 @@ export function HeroSection() {
       <div className="absolute inset-0">
         <Image
           src="https://cdn.abacus.ai/images/d9570e29-20cc-4090-b76d-62f460a6b818.png"
-          alt="FitZone Gym"
+          alt="Energym Gym"
           fill
           className="object-cover"
           priority
