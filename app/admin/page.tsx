@@ -36,8 +36,8 @@ async function getDashboardData() {
           createdAt: true,
         },
       }),
-      prisma.user.count({ where: { /* Asumiendo que hay un campo isActive */ } }),
-      prisma.user.count({ where: { /* Asumiendo que hay un campo isActive = false */ } }),
+      prisma.user.count({ where: { isActive: true } }),
+      prisma.user.count({ where: { isActive: false } }),
     ]);
 
     return {
@@ -59,16 +59,23 @@ async function getDashboardData() {
   }
 }
 
+const defaultStats = {
+  usersCount: 0,
+  plansCount: 0,
+  sedesCount: 0,
+  productosCount: 0,
+  noticiasCount: 0,
+  ordersCount: 0,
+  activeUsers: 0,
+  inactiveUsers: 0,
+};
+
 export default async function AdminPage() {
   const data = await getDashboardData();
 
-  if (!data) {
-    notFound();
-  }
-
   return (
     <AdminLayout>
-      <AdminDashboard stats={data.stats} recentUsers={data.recentUsers} />
+      <AdminDashboard stats={data?.stats || defaultStats} recentUsers={data?.recentUsers || []} />
     </AdminLayout>
   );
 }
