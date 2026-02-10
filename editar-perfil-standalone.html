@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Perfil - FitZone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background: #0A0A0A;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #040AE0 0%, #D604E0 100%);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #040AE0 0%, #D604E0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="min-h-screen bg-zinc-950 pt-24 pb-16">
+        <div class="max-w-4xl mx-auto px-4">
+            <!-- Header -->
+            <div class="mb-8">
+                <div class="flex items-center gap-4 mb-4">
+                    <a href="/perfil" class="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors">
+                        <i data-lucide="arrow-left" class="w-5 h-5 text-white"></i>
+                    </a>
+                    <div>
+                        <h1 class="text-3xl font-light text-white mb-1">Editar Perfil</h1>
+                        <p class="text-gray-400 text-sm">Actualiza tu información personal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario -->
+            <div class="bg-white/[0.02] backdrop-blur-xl border border-white/[0.05] rounded-3xl p-8">
+                <form id="profileForm" class="space-y-6">
+                    <!-- Avatar -->
+                    <div class="flex flex-col items-center mb-8">
+                        <div class="w-24 h-24 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center">
+                            <i data-lucide="user" class="w-12 h-12 text-white/60"></i>
+                        </div>
+                        <p class="text-gray-400 text-sm mt-3">Foto de perfil</p>
+                    </div>
+
+                    <!-- Campos del formulario -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Nombre
+                            </label>
+                            <input
+                                type="text"
+                                name="firstName"
+                                id="firstName"
+                                class="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
+                                placeholder="Tu nombre"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Apellido
+                            </label>
+                            <input
+                                type="text"
+                                name="lastName"
+                                id="lastName"
+                                class="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
+                                placeholder="Tu apellido"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            Email
+                        </label>
+                        <div class="relative">
+                            <i data-lucide="mail" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                            <input
+                                type="email"
+                                name="email"
+                                id="email"
+                                class="w-full pl-12 pr-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
+                                placeholder="tu@email.com"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            Sede Preferida
+                        </label>
+                        <div class="relative">
+                            <i data-lucide="map-pin" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                            <select
+                                name="sedeId"
+                                id="sedeId"
+                                class="w-full pl-12 pr-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl text-white focus:outline-none focus:border-white/20 transition-all appearance-none"
+                            >
+                                <option value="">Seleccionar sede</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Mensajes -->
+                    <div id="message" class="hidden p-4 rounded-2xl flex items-center gap-3">
+                        <i id="messageIcon" class="w-5 h-5"></i>
+                        <p id="messageText" class=""></p>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="flex gap-4 pt-4">
+                        <a
+                            href="/perfil"
+                            class="px-6 py-3 bg-white/[0.05] hover:bg-white/[0.1] rounded-2xl font-medium text-white transition-colors"
+                        >
+                            Cancelar
+                        </a>
+                        <button
+                            type="submit"
+                            id="submitBtn"
+                            class="flex-1 py-3 gradient-bg rounded-2xl font-medium text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                        >
+                            <i data-lucide="save" class="w-5 h-5"></i>
+                            <span id="submitText">Guardar Cambios</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar Lucide icons
+        lucide.createIcons();
+
+        // Estado del formulario
+        let formData = {
+            firstName: "",
+            lastName: "",
+            email: "",
+            sedeId: ""
+        };
+
+        let sedes = [];
+
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadSedes();
+            await loadUserData();
+        });
+
+        // Cargar sedes
+        async function loadSedes() {
+            try {
+                const response = await fetch('/api/sedes');
+                if (response.ok) {
+                    sedes = await response.json();
+                    const select = document.getElementById('sedeId');
+                    sedes.forEach(sede => {
+                        const option = document.createElement('option');
+                        option.value = sede.id;
+                        option.textContent = sede.nombre;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading sedes:', error);
+            }
+        }
+
+        // Cargar datos del usuario
+        async function loadUserData() {
+            try {
+                const response = await fetch('/api/user/profile');
+                if (response.ok) {
+                    const data = await response.json();
+                    formData = {
+                        firstName: data.user.firstName,
+                        lastName: data.user.lastName || "",
+                        email: data.user.email,
+                        sedeId: data.user.sedeId || ""
+                    };
+                    
+                    // Llenar el formulario
+                    document.getElementById('firstName').value = formData.firstName;
+                    document.getElementById('lastName').value = formData.lastName;
+                    document.getElementById('email').value = formData.email;
+                    document.getElementById('sedeId').value = formData.sedeId;
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                showMessage('Error al cargar datos del usuario', 'error');
+            }
+        }
+
+        // Manejar envío del formulario
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            
+            // Deshabilitar botón
+            submitBtn.disabled = true;
+            submitText.textContent = 'Guardando...';
+            
+            // Obtener datos del formulario
+            const newFormData = {
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                email: document.getElementById('email').value,
+                sedeId: document.getElementById('sedeId').value
+            };
+            
+            try {
+                const response = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newFormData),
+                });
+                
+                if (response.ok) {
+                    showMessage('Perfil actualizado exitosamente', 'success');
+                    formData = newFormData;
+                    
+                    // Redirigir después de 2 segundos
+                    setTimeout(() => {
+                        window.location.href = '/perfil';
+                    }, 2000);
+                } else {
+                    const error = await response.json();
+                    showMessage(error.error || 'Error al actualizar el perfil', 'error');
+                }
+            } catch (error) {
+                showMessage('Error al actualizar el perfil', 'error');
+            } finally {
+                // Rehabilitar botón
+                submitBtn.disabled = false;
+                submitText.textContent = 'Guardar Cambios';
+            }
+        });
+
+        // Mostrar mensajes
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            const messageIcon = document.getElementById('messageIcon');
+            const messageText = document.getElementById('messageText');
+            
+            messageDiv.classList.remove('hidden', 'bg-green-500/10', 'bg-red-500/10', 'border-green-500/20', 'border-red-500/20');
+            
+            if (type === 'success') {
+                messageDiv.classList.add('bg-green-500/10', 'border-green-500/20');
+                messageIcon.setAttribute('data-lucide', 'check');
+                messageIcon.classList.add('text-green-500');
+                messageIcon.classList.remove('text-red-500');
+                messageText.classList.add('text-green-500');
+                messageText.classList.remove('text-red-500');
+            } else {
+                messageDiv.classList.add('bg-red-500/10', 'border-red-500/20');
+                messageIcon.setAttribute('data-lucide', 'x');
+                messageIcon.classList.add('text-red-500');
+                messageIcon.classList.remove('text-green-500');
+                messageText.classList.add('text-red-500');
+                messageText.classList.remove('text-green-500');
+            }
+            
+            messageText.textContent = text;
+            lucide.createIcons();
+            
+            // Ocultar mensaje después de 5 segundos
+            setTimeout(() => {
+                messageDiv.classList.add('hidden');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

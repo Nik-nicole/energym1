@@ -1,9 +1,54 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { ControlledInput } from "@/components/ui/controlled-input";
+import { ControlledTextarea } from "@/components/ui/controlled-textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Package, Edit, Trash2, Plus, Star, Clock, DollarSign, MapPin, Check, Crown } from "lucide-react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plus, Edit2, Trash2, Crown, Check, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+interface Sede {
+  id: string;
+  nombre: string;
+}
+
+interface PlanSede {
+  id: string;
+  sedeId: string;
+  planId: string;
+  sede: Sede;
+}
 
 interface Plan {
   id: string;
@@ -17,26 +62,32 @@ interface Plan {
   activo: boolean;
   destacado: boolean;
   orden: number;
-  sedes: { sede: { id: string; nombre: string } }[];
+  createdAt: Date;
+  updatedAt: Date;
+  sedes: PlanSede[];
+  _count: {
+    sedes: number;
+  };
 }
 
 interface PlanesAdminProps {
-  initialPlanes: Plan[];
-  sedes: { id: string; nombre: string }[];
+  planes: Plan[];
+  sedes: Sede[];
 }
 
-export function PlanesAdmin({ initialPlanes, sedes }: PlanesAdminProps) {
-  const [planes, setPlanes] = useState<Plan[]>(initialPlanes ?? []);
-  const [showForm, setShowForm] = useState(false);
+export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
+  const [planesList, setPlanesList] = useState<Plan[]>(planes);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     nombre: "",
     precio: 0,
     descripcion: "",
-    beneficios: "",
-    duracion: "Mensual",
+    beneficios: [""],
+    duracion: "",
     tipo: "STANDARD",
     esVip: false,
     activo: true,
@@ -50,8 +101,8 @@ export function PlanesAdmin({ initialPlanes, sedes }: PlanesAdminProps) {
       nombre: "",
       precio: 0,
       descripcion: "",
-      beneficios: "",
-      duracion: "Mensual",
+      beneficios: [""],
+      duracion: "",
       tipo: "STANDARD",
       esVip: false,
       activo: true,
@@ -59,269 +110,706 @@ export function PlanesAdmin({ initialPlanes, sedes }: PlanesAdminProps) {
       orden: 0,
       sedeIds: [],
     });
-    setEditingPlan(null);
-    setShowForm(false);
   };
 
-  const openEdit = (plan: Plan) => {
-    setFormData({
-      nombre: plan?.nombre ?? "",
-      precio: plan?.precio ?? 0,
-      descripcion: plan?.descripcion ?? "",
-      beneficios: (plan?.beneficios ?? []).join("\n"),
-      duracion: plan?.duracion ?? "Mensual",
-      tipo: plan?.tipo ?? "STANDARD",
-      esVip: plan?.esVip ?? false,
-      activo: plan?.activo ?? true,
-      destacado: plan?.destacado ?? false,
-      orden: plan?.orden ?? 0,
-      sedeIds: (plan?.sedes ?? []).map((s) => s?.sede?.id ?? ""),
-    });
-    setEditingPlan(plan);
-    setShowForm(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
+  const handleCreate = async () => {
+    setIsLoading(true);
     try {
-      const payload = {
-        ...formData,
-        beneficios: formData.beneficios.split("\n").filter((b) => b.trim()),
-      };
-
-      const url = editingPlan ? `/api/planes/${editingPlan.id}` : "/api/planes";
-      const method = editingPlan ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const response = await fetch("/api/admin/planes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
       });
 
-      if (res.ok) {
-        const updatedPlan = await res.json();
-        if (editingPlan) {
-          setPlanes((prev) => prev.map((p) => (p.id === editingPlan.id ? updatedPlan : p)));
-        } else {
-          setPlanes((prev) => [...prev, updatedPlan]);
-        }
-        resetForm();
-      }
+      if (!response.ok) throw new Error("Error al crear plan");
+
+      const newPlan = await response.json();
+      setPlanesList([...planesList, newPlan]);
+      setIsCreateDialogOpen(false);
+      resetForm();
+      toast.success("Plan creado exitosamente");
     } catch (error) {
-      console.error("Error saving plan:", error);
+      toast.error("Error al crear plan");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleEdit = (plan: Plan) => {
+    setEditingPlan(plan);
+    setFormData({
+      nombre: plan.nombre,
+      precio: plan.precio,
+      descripcion: plan.descripcion,
+      beneficios: plan.beneficios.length > 0 ? plan.beneficios : [""],
+      duracion: plan.duracion,
+      tipo: plan.tipo,
+      esVip: plan.esVip,
+      activo: plan.activo,
+      destacado: plan.destacado,
+      orden: plan.orden,
+      sedeIds: plan.sedes.map((ps) => ps.sedeId),
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingPlan) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/planes/${editingPlan.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error("Error al actualizar plan");
+
+      const updatedPlan = await response.json();
+      setPlanesList(planesList.map((p) => (p.id === updatedPlan.id ? updatedPlan : p)));
+      setIsEditDialogOpen(false);
+      setEditingPlan(null);
+      resetForm();
+      toast.success("Plan actualizado exitosamente");
+    } catch (error) {
+      toast.error("Error al actualizar plan");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Estás seguro de eliminar este plan?")) return;
-
+    setIsLoading(true);
     try {
-      const res = await fetch(`/api/planes/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setPlanes((prev) => prev.filter((p) => p.id !== id));
-      }
+      const response = await fetch(`/api/admin/planes/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Error al eliminar plan");
+
+      setPlanesList(planesList.filter((p) => p.id !== id));
+      toast.success("Plan eliminado exitosamente");
     } catch (error) {
-      console.error("Error deleting plan:", error);
+      toast.error("Error al eliminar plan");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-      minimumFractionDigits: 0,
-    }).format(price ?? 0);
+  const addBeneficio = () => {
+    setFormData({
+      ...formData,
+      beneficios: [...formData.beneficios, ""],
+    });
+  };
+
+  const updateBeneficio = (index: number, value: string) => {
+    const newBeneficios = [...formData.beneficios];
+    newBeneficios[index] = value;
+    setFormData({
+      ...formData,
+      beneficios: newBeneficios,
+    });
+  };
+
+  const removeBeneficio = (index: number) => {
+    if (formData.beneficios.length > 1) {
+      setFormData({
+        ...formData,
+        beneficios: formData.beneficios.filter((_, i) => i !== index),
+      });
+    }
   };
 
   return (
-    <div className="pt-24 pb-16">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Link href="/admin" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-4">
-            <ArrowLeft className="w-4 h-4" /> Volver al panel
-          </Link>
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">Gestionar Planes</h1>
-            <button
-              onClick={() => setShowForm(true)}
-              className="px-4 py-2 gradient-bg rounded-lg font-medium flex items-center gap-2 hover:opacity-90"
-            >
-              <Plus className="w-5 h-5" /> Nuevo Plan
-            </button>
-          </div>
-        </motion.div>
-
-        {showForm && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-[#141414] rounded-xl p-6 border border-white/10 mb-8"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">{editingPlan ? "Editar Plan" : "Nuevo Plan"}</h2>
-              <button onClick={resetForm} className="text-gray-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Nombre</label>
-                  <input
-                    type="text"
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Planes</h1>
+          <p className="text-muted-foreground">
+            Gestiona los planes de membresía
+          </p>
+        </div>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={resetForm} className="gradient-bg hover:opacity-90">
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo Plan
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
+            <DialogHeader>
+              <DialogTitle className="gradient-text">Crear Nuevo Plan</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nombre" className="text-[#F8F8F8]">Nombre</Label>
+                  <ControlledInput
+                    id="nombre"
                     value={formData.nombre}
-                    onChange={(e) => setFormData((p) => ({ ...p, nombre: e.target.value }))}
-                    required
-                    className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
+                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    placeholder="Nombre del plan"
+                    maxLength={100}
+                    showCharCount={true}
+                    showWarning={true}
+                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Precio (COP)</label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="precio" className="text-[#F8F8F8]">Precio</Label>
+                  <ControlledInput
+                    id="precio"
                     type="number"
+                    step="0.01"
                     value={formData.precio}
-                    onChange={(e) => setFormData((p) => ({ ...p, precio: Number(e.target.value) }))}
-                    required
-                    className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
+                    onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
+                    placeholder="0.00"
+                    maxLength={10}
+                    showCharCount={true}
+                    showWarning={true}
+                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Descripción</label>
-                <textarea
+              <div className="space-y-2">
+                <Label htmlFor="descripcion" className="text-[#F8F8F8]">Descripción</Label>
+                <ControlledTextarea
+                  id="descripcion"
                   value={formData.descripcion}
-                  onChange={(e) => setFormData((p) => ({ ...p, descripcion: e.target.value }))}
-                  rows={2}
-                  className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
+                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                  placeholder="Descripción del plan"
+                  rows={3}
+                  maxLength={500}
+                  showCharCount={true}
+                  showWarning={true}
+                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Beneficios (uno por línea)</label>
-                <textarea
-                  value={formData.beneficios}
-                  onChange={(e) => setFormData((p) => ({ ...p, beneficios: e.target.value }))}
-                  rows={4}
-                  className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
-                />
+              <div className="space-y-2">
+                <Label className="text-[#F8F8F8]">Beneficios</Label>
+                {formData.beneficios.map((beneficio, index) => (
+                  <div key={index} className="flex gap-2">
+                    <ControlledInput
+                      value={beneficio}
+                      onChange={(e) => updateBeneficio(index, e.target.value)}
+                      placeholder="Beneficio"
+                      maxLength={200}
+                      showCharCount={true}
+                      showWarning={true}
+                      className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeBeneficio(index)}
+                      disabled={formData.beneficios.length === 1}
+                      className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white"
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={addBeneficio} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Agregar Beneficio
+                </Button>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Duración</label>
-                  <select
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="duracion" className="text-[#F8F8F8]">Duración</Label>
+                  <Select
                     value={formData.duracion}
-                    onChange={(e) => setFormData((p) => ({ ...p, duracion: e.target.value }))}
-                    className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
+                    onValueChange={(value) => setFormData({ ...formData, duracion: value })}
                   >
-                    <option value="Mensual">Mensual</option>
-                    <option value="Trimestral">Trimestral</option>
-                    <option value="Semestral">Semestral</option>
-                    <option value="Anual">Anual</option>
-                  </select>
+                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
+                      <SelectValue placeholder="Seleccionar duración" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#141414] border-[#1E1E1E]">
+                      <SelectItem value="1 mes">1 mes</SelectItem>
+                      <SelectItem value="3 meses">3 meses</SelectItem>
+                      <SelectItem value="6 meses">6 meses</SelectItem>
+                      <SelectItem value="1 año">1 año</SelectItem>
+                      <SelectItem value="2 años">2 años</SelectItem>
+                      <SelectItem value="3 meses">Trimestral</SelectItem>
+                      <SelectItem value="6 meses">Semestral</SelectItem>
+                      <SelectItem value="1 año">Anual</SelectItem>
+                      <SelectItem value="ilimitado">Ilimitado</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Orden</label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="orden" className="text-[#F8F8F8]">Orden</Label>
+                  <ControlledInput
+                    id="orden"
                     type="number"
                     value={formData.orden}
-                    onChange={(e) => setFormData((p) => ({ ...p, orden: Number(e.target.value) }))}
-                    className="w-full px-4 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white"
+                    onChange={(e) => setFormData({ ...formData, orden: parseInt(e.target.value) })}
+                    placeholder="Orden de visualización"
+                    maxLength={3}
+                    showCharCount={true}
+                    showWarning={true}
+                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
-                <div className="flex items-center gap-4 pt-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.esVip}
-                      onChange={(e) => setFormData((p) => ({ ...p, esVip: e.target.checked }))}
-                      className="rounded"
-                    />
-                    <span className="text-sm">VIP</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.activo}
-                      onChange={(e) => setFormData((p) => ({ ...p, activo: e.target.checked }))}
-                      className="rounded"
-                    />
-                    <span className="text-sm">Activo</span>
-                  </label>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tipo" className="text-[#F8F8F8]">Tipo</Label>
+                  <Select
+                    value={formData.tipo}
+                    onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+                  >
+                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#141414] border-[#1E1E1E]">
+                      <SelectItem value="STANDARD">Standard</SelectItem>
+                      <SelectItem value="PREMIUM">Premium</SelectItem>
+                      <SelectItem value="BASIC">Basic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[#F8F8F8]">Sedes</Label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {sedes.map((sede) => (
+                      <div key={sede.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`sede-${sede.id}`}
+                          checked={formData.sedeIds.includes(sede.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({
+                                ...formData,
+                                sedeIds: [...formData.sedeIds, sede.id],
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                sedeIds: formData.sedeIds.filter((id) => id !== sede.id),
+                              });
+                            }
+                          }}
+                          className="data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-[#1E1E1E]"
+                        />
+                        <Label htmlFor={`sede-${sede.id}`} className="text-[#F8F8F8]">{sede.nombre}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Sedes disponibles</label>
-                <div className="flex flex-wrap gap-2">
-                  {(sedes ?? []).map((sede) => (
-                    <label key={sede?.id ?? ""} className="flex items-center gap-2 px-3 py-1 bg-[#0A0A0A] rounded-lg cursor-pointer border border-white/10">
-                      <input
-                        type="checkbox"
-                        checked={formData.sedeIds.includes(sede?.id ?? "")}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData((p) => ({ ...p, sedeIds: [...p.sedeIds, sede?.id ?? ""] }));
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <Switch
+                      id="esVip"
+                      checked={formData.esVip}
+                      onCheckedChange={(checked) => setFormData({ ...formData, esVip: checked })}
+                      className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
+                    />
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
+                      <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
+                        formData.esVip ? 'translate-x-5' : 'translate-x-0.5'
+                      }`} />
+                    </div>
+                  </div>
+                  <Label htmlFor="esVip" className="text-[#F8F8F8]">Plan VIP</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <Switch
+                      id="destacado"
+                      checked={formData.destacado}
+                      onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
+                      className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
+                    />
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
+                      <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
+                        formData.destacado ? 'translate-x-5' : 'translate-x-0.5'
+                      }`} />
+                    </div>
+                  </div>
+                  <Label htmlFor="destacado" className="text-[#F8F8F8]">Destacado</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <Switch
+                      id="activo"
+                      checked={formData.activo}
+                      onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                      className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
+                    />
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
+                      <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
+                        formData.activo ? 'translate-x-5' : 'translate-x-0.5'
+                      }`} />
+                    </div>
+                  </div>
+                  <Label htmlFor="activo" className="text-[#F8F8F8]">Activo</Label>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
+                Cancelar
+              </Button>
+              <Button onClick={handleCreate} disabled={isLoading} className="gradient-bg hover:opacity-90">
+                {isLoading ? "Creando..." : "Crear Plan"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {planesList.map((plan, index) => (
+          <motion.div
+            key={plan.id}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.1 }}
+            className={`relative rounded-2xl p-6 transition-all duration-300 ${
+              plan.esVip
+                ? "bg-gradient-to-br from-[#D604E0]/20 to-[#040AE0]/20 border-2 border-[#D604E0]/50 card-glow"
+                : "bg-[#141414] border border-white/10 hover:border-white/20"
+            } card-glow-hover`}
+          >
+            {plan.esVip && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 gradient-bg rounded-full text-sm font-medium flex items-center gap-1">
+                <Crown className="w-4 h-4" />
+                VIP
+              </div>
+            )}
+            {plan.destacado && !plan.esVip && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#040AE0] rounded-full text-sm font-medium flex items-center gap-1">
+                <Star className="w-4 h-4" />
+                Popular
+              </div>
+            )}
+
+            <div className="text-center mb-6 pt-2">
+              <h3 className={`text-xl font-bold mb-2 ${plan.esVip ? "gradient-text" : "text-white"}`}>
+                {plan.nombre}
+              </h3>
+              <p className="text-gray-400 text-sm mb-4">{plan.descripcion}</p>
+              <div className="flex items-end justify-center gap-1">
+                <span className={`text-4xl font-bold ${plan.esVip ? "gradient-text" : "text-white"}`}>
+                  ${plan.precio.toFixed(2)}
+                </span>
+                <span className="text-gray-400 mb-1">/{plan.duracion}</span>
+              </div>
+            </div>
+
+            <ul className="space-y-3 mb-6">
+              {plan.beneficios.slice(0, 3).map((beneficio, i) => (
+                <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
+                  <Check className={`w-5 h-5 flex-shrink-0 ${plan.esVip ? "text-[#D604E0]" : "text-[#040AE0]"}`} />
+                  <span>{beneficio}</span>
+                </li>
+              ))}
+              {plan.beneficios.length > 3 && (
+                <li className="text-gray-400 text-sm text-center">
+                  +{plan.beneficios.length - 3} beneficios más...
+                </li>
+              )}
+            </ul>
+
+            <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
+              <div className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                <span>{plan._count.sedes} sedes</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>{new Date(plan.createdAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEdit(plan)}
+                className={`flex-1 ${
+                  plan.esVip
+                    ? "border-[#D604E0]/50 text-[#D604E0] hover:bg-[#D604E0]/10"
+                    : "border-white/20 text-white hover:bg-white/10"
+                }`}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className={`flex-1 ${
+                      plan.esVip
+                        ? "border-red-500/50 text-red-400 hover:bg-red-500/10"
+                        : "border-red-500/50 text-red-400 hover:bg-red-500/10"
+                    }`}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-[#141414] border-[#1E1E1E]">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-white">¿Eliminar plan?</AlertDialogTitle>
+                    <AlertDialogDescription className="text-[#A0A0A0]">
+                      Esta acción no se puede deshacer. Se eliminará permanentemente el plan "{plan.nombre}".
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="bg-[#1E1E1E] text-[#F8F8F8] hover:bg-[#2A2A2A]">Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDelete(plan.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      Eliminar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
+          <DialogHeader>
+            <DialogTitle className="gradient-text">Editar Plan</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre</Label>
+                <ControlledInput
+                  id="edit-nombre"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  placeholder="Nombre del plan"
+                  maxLength={100}
+                  showCharCount={true}
+                  showWarning={true}
+                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-precio" className="text-[#F8F8F8]">Precio</Label>
+                <ControlledInput
+                  id="edit-precio"
+                  type="number"
+                  step="0.01"
+                  value={formData.precio}
+                  onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
+                  placeholder="0.00"
+                  maxLength={10}
+                  showCharCount={true}
+                  showWarning={true}
+                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-descripcion" className="text-[#F8F8F8]">Descripción</Label>
+              <ControlledTextarea
+                id="edit-descripcion"
+                value={formData.descripcion}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                placeholder="Descripción del plan"
+                rows={3}
+                maxLength={500}
+                showCharCount={true}
+                showWarning={true}
+                className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[#F8F8F8]">Beneficios</Label>
+              {formData.beneficios.map((beneficio, index) => (
+                <div key={index} className="flex gap-2">
+                  <ControlledInput
+                    value={beneficio}
+                    onChange={(e) => updateBeneficio(index, e.target.value)}
+                    placeholder="Beneficio"
+                    maxLength={200}
+                    showCharCount={true}
+                    showWarning={true}
+                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeBeneficio(index)}
+                    disabled={formData.beneficios.length === 1}
+                    className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white"
+                  >
+                    Eliminar
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" onClick={addBeneficio} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
+                <Plus className="mr-2 h-4 w-4" />
+                Agregar Beneficio
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-duracion" className="text-[#F8F8F8]">Duración</Label>
+                <Select
+                  value={formData.duracion}
+                  onValueChange={(value) => setFormData({ ...formData, duracion: value })}
+                >
+                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
+                    <SelectValue placeholder="Seleccionar duración" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#141414] border-[#1E1E1E]">
+                    <SelectItem value="1 mes">1 mes</SelectItem>
+                    <SelectItem value="3 meses">3 meses</SelectItem>
+                    <SelectItem value="6 meses">6 meses</SelectItem>
+                    <SelectItem value="1 año">1 año</SelectItem>
+                    <SelectItem value="2 años">2 años</SelectItem>
+                    <SelectItem value="3 meses">Trimestral</SelectItem>
+                    <SelectItem value="6 meses">Semestral</SelectItem>
+                    <SelectItem value="1 año">Anual</SelectItem>
+                    <SelectItem value="ilimitado">Ilimitado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-orden" className="text-[#F8F8F8]">Orden</Label>
+                <ControlledInput
+                  id="edit-orden"
+                  type="number"
+                  value={formData.orden}
+                  onChange={(e) => setFormData({ ...formData, orden: parseInt(e.target.value) })}
+                  placeholder="Orden de visualización"
+                  maxLength={3}
+                  showCharCount={true}
+                  showWarning={true}
+                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-tipo" className="text-[#F8F8F8]">Tipo</Label>
+                <Select
+                  value={formData.tipo}
+                  onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+                >
+                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#141414] border-[#1E1E1E]">
+                    <SelectItem value="STANDARD">Standard</SelectItem>
+                    <SelectItem value="PREMIUM">Premium</SelectItem>
+                    <SelectItem value="BASIC">Basic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[#F8F8F8]">Sedes</Label>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {sedes.map((sede) => (
+                    <div key={sede.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-sede-${sede.id}`}
+                        checked={formData.sedeIds.includes(sede.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData({
+                              ...formData,
+                              sedeIds: [...formData.sedeIds, sede.id],
+                            });
                           } else {
-                            setFormData((p) => ({ ...p, sedeIds: p.sedeIds.filter((id) => id !== sede?.id) }));
+                            setFormData({
+                              ...formData,
+                              sedeIds: formData.sedeIds.filter((id) => id !== sede.id),
+                            });
                           }
                         }}
-                        className="rounded"
+                        className="data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-[#1E1E1E]"
                       />
-                      <span className="text-sm">{sede?.nombre ?? ""}</span>
-                    </label>
+                      <Label htmlFor={`edit-sede-${sede.id}`} className="text-[#F8F8F8]">{sede.nombre}</Label>
+                    </div>
                   ))}
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={resetForm} className="px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20">
-                  Cancelar
-                </button>
-                <button type="submit" disabled={loading} className="px-4 py-2 gradient-bg rounded-lg font-medium flex items-center gap-2">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  {editingPlan ? "Actualizar" : "Crear"}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        )}
-
-        <div className="grid gap-4">
-          {(planes ?? []).map((plan, index) => (
-            <motion.div
-              key={plan?.id ?? index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={`bg-[#141414] rounded-xl p-4 border ${
-                plan?.esVip ? "border-[#D604E0]/50" : "border-white/10"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {plan?.esVip && <Crown className="w-5 h-5 text-[#D604E0]" />}
-                  <div>
-                    <h3 className="font-semibold">{plan?.nombre ?? ""}</h3>
-                    <p className="text-gray-400 text-sm">{formatPrice(plan?.precio ?? 0)} / {plan?.duracion ?? ""}</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Switch
+                    id="edit-esVip"
+                    checked={formData.esVip}
+                    onCheckedChange={(checked) => setFormData({ ...formData, esVip: checked })}
+                    className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
+                  />
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
+                      formData.esVip ? 'translate-x-5' : 'translate-x-0.5'
+                    }`} />
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className={`px-2 py-1 text-xs rounded ${plan?.activo ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
-                    {plan?.activo ? "Activo" : "Inactivo"}
-                  </span>
-                  <button onClick={() => openEdit(plan)} className="p-2 text-gray-400 hover:text-white">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(plan?.id ?? "")} className="p-2 text-gray-400 hover:text-red-400">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                <Label htmlFor="edit-esVip" className="text-[#F8F8F8]">Plan VIP</Label>
               </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Switch
+                    id="edit-destacado"
+                    checked={formData.destacado}
+                    onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
+                    className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
+                  />
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
+                      formData.destacado ? 'translate-x-5' : 'translate-x-0.5'
+                    }`} />
+                  </div>
+                </div>
+                <Label htmlFor="edit-destacado" className="text-[#F8F8F8]">Destacado</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Switch
+                    id="edit-activo"
+                    checked={formData.activo}
+                    onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                    className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
+                  />
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
+                      formData.activo ? 'translate-x-5' : 'translate-x-0.5'
+                    }`} />
+                  </div>
+                </div>
+                <Label htmlFor="edit-activo" className="text-[#F8F8F8]">Activo</Label>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdate} disabled={isLoading} className="gradient-bg hover:opacity-90">
+              {isLoading ? "Actualizando..." : "Actualizar Plan"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

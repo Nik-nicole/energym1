@@ -1,30 +1,58 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/db";
-import { redirect } from "next/navigation";
-import { Header } from "@/components/ui/header";
+import { prisma } from "@/lib/db";
+import { AdminLayout } from "../_components/admin-layout";
 import { PlanesAdmin } from "./_components/planes-admin";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPlanesPage() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    redirect("/login");
+async function getPlanesData() {
+  try {
+    const planes = await prisma.plan.findMany({
+      include: {
+        sedes: {
+          include: {
+            sede: {
+              select: {
+                id: true,
+                nombre: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            sedes: true,
+          },
+        },
+      },
+      orderBy: { orden: "asc" },
+    });
+
+    const sedes = await prisma.sede.findMany({
+      select: {
+        id: true,
+        nombre: true,
+      },
+      orderBy: { nombre: "asc" },
+    });
+
+    return { planes, sedes };
+  } catch (error) {
+    console.error("Error fetching planes:", error);
+    return null;
+  }
+}
+
+export default async function PlanesPage() {
+  const data = await getPlanesData();
+
+  if (!data) {
+    notFound();
   }
 
-  const [planes, sedes] = await Promise.all([
-    prisma.plan.findMany({
-      orderBy: { orden: "asc" },
-      include: { sedes: { include: { sede: true } } },
-    }),
-    prisma.sede.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
-  ]);
-
   return (
-    <main className="min-h-screen bg-[#0A0A0A]">
-      <Header />
-      <PlanesAdmin initialPlanes={planes} sedes={sedes} />
-    </main>
+    <AdminLayout>
+      <PlanesAdmin planes={data.planes} sedes={data.sedes} />
+    </AdminLayout>
   );
 }

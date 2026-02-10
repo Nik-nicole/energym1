@@ -11,7 +11,7 @@ export function HeroSection() {
       <div className="absolute inset-0">
         <Image
           src="https://cdn.abacus.ai/images/d9570e29-20cc-4090-b76d-62f460a6b818.png"
-          alt="FitZone Gym"
+          alt="Energym Gym"
           fill
           className="object-cover"
           priority
@@ -19,19 +19,23 @@ export function HeroSection() {
         <div className="absolute inset-0 hero-gradient" />
       </div>
 
-      <div className="relative z-10 max-w-[1200px] mx-auto px-4 pt-24 pb-16 text-center">
+      <div className="relative z-10 max-w-[1200px] mx-auto px-4 pt-60 pb-24 justify-center text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <span className="inline-block px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm text-gray-300 mb-6 border border-white/20">
-            🏋️‍♂️ 3 Sedes en Bogotá
-          </span>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-            Transforma tu vida con{" "}
-            <span className="gradient-text">FitZone</span>
-          </h1>
+          
+          <div className="flex flex-col items-center justify-center mb-6">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight text-center">
+              Transforma tu vida con
+            </h1>
+            <img
+              src="/logo.png"
+              alt="Energym Logo"
+              className="w-64 h-32 object-contain mt-4"
+            />
+          </div>
           <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto mb-8">
             La cadena de gimnasios líder en Bogotá. Equipamiento premium,
             entrenadores certificados y programas personalizados para alcanzar
@@ -62,21 +66,7 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="grid grid-cols-3 gap-4 max-w-xl mx-auto"
         >
-          <div className="bg-black/40 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-            <Dumbbell className="w-8 h-8 text-[#D604E0] mx-auto mb-2" />
-            <div className="text-2xl font-bold">500+</div>
-            <div className="text-gray-400 text-sm">Equipos</div>
-          </div>
-          <div className="bg-black/40 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-            <Users className="w-8 h-8 text-[#040AE0] mx-auto mb-2" />
-            <div className="text-2xl font-bold">10K+</div>
-            <div className="text-gray-400 text-sm">Miembros</div>
-          </div>
-          <div className="bg-black/40 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-            <Award className="w-8 h-8 text-[#D604E0] mx-auto mb-2" />
-            <div className="text-2xl font-bold">50+</div>
-            <div className="text-gray-400 text-sm">Entrenadores</div>
-          </div>
+          
         </motion.div>
       </div>
 

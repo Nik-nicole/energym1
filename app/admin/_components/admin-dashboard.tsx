@@ -1,132 +1,234 @@
 "use client";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Users,
+  MapPin,
+  Package,
+  ShoppingBag,
+  Newspaper,
+  ShoppingCart,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Users, MapPin, CreditCard, Newspaper, ArrowRight, Settings } from "lucide-react";
 
-interface AdminDashboardProps {
-  stats: {
-    usersCount: number;
-    sedesCount: number;
-    planesCount: number;
-    noticiasCount: number;
-  };
-  recentUsers: {
-    id: string;
-    firstName: string;
-    email: string;
-    createdAt: Date;
-    role: string;
-  }[];
+interface DashboardStats {
+  usersCount: number;
+  plansCount: number;
+  sedesCount: number;
+  productosCount: number;
+  noticiasCount: number;
+  ordersCount: number;
+  activeUsers: number;
+  inactiveUsers: number;
 }
 
+interface RecentUser {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  email: string;
+  role: string;
+  createdAt: Date;
+}
+
+interface AdminDashboardProps {
+  stats: DashboardStats;
+  recentUsers: RecentUser[];
+}
+
+const statCards = [
+  {
+    title: "Usuarios",
+    value: "usersCount",
+    icon: Users,
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/20",
+    href: "/admin/usuarios",
+  },
+  {
+    title: "Sedes",
+    value: "sedesCount",
+    icon: MapPin,
+    color: "text-green-400",
+    bgColor: "bg-green-500/20",
+    href: "/admin/sedes",
+  },
+  {
+    title: "Planes",
+    value: "plansCount",
+    icon: Package,
+    color: "text-[#D604E0]",
+    bgColor: "bg-[#D604E0]/20",
+    href: "/admin/planes",
+  },
+  {
+    title: "Productos",
+    value: "productosCount",
+    icon: ShoppingBag,
+    color: "text-orange-400",
+    bgColor: "bg-orange-500/20",
+    href: "/admin/tienda",
+  },
+  {
+    title: "Noticias",
+    value: "noticiasCount",
+    icon: Newspaper,
+    color: "text-pink-400",
+    bgColor: "bg-pink-500/20",
+    href: "/admin/noticias",
+  },
+  {
+    title: "Órdenes",
+    value: "ordersCount",
+    icon: ShoppingCart,
+    color: "text-[#040AE0]",
+    bgColor: "bg-[#040AE0]/20",
+    href: "/admin/ordenes",
+  },
+];
+
 export function AdminDashboard({ stats, recentUsers }: AdminDashboardProps) {
-  const statCards = [
-    { label: "Usuarios", value: stats?.usersCount ?? 0, icon: Users, color: "#D604E0" },
-    { label: "Sedes", value: stats?.sedesCount ?? 0, icon: MapPin, color: "#040AE0" },
-    { label: "Planes", value: stats?.planesCount ?? 0, icon: CreditCard, color: "#D604E0" },
-    { label: "Noticias", value: stats?.noticiasCount ?? 0, icon: Newspaper, color: "#040AE0" },
-  ];
-
-  const adminSections = [
-    { title: "Gestionar Planes", description: "Crear, editar y eliminar planes", href: "/admin/planes", icon: CreditCard },
-    { title: "Gestionar Noticias", description: "Publicar y administrar noticias", href: "/admin/noticias", icon: Newspaper },
-    { title: "Gestionar Sedes", description: "Administrar información de sedes", href: "/admin/sedes", icon: MapPin },
-  ];
-
   return (
-    <div className="pt-24 pb-16">
-      <div className="max-w-[1200px] mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <Settings className="w-8 h-8 text-[#D604E0]" />
-            <h1 className="text-3xl font-bold">Panel de Administración</h1>
-          </div>
-          <p className="text-gray-400">Gestiona tu gimnasio desde aquí</p>
-        </motion.div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {statCards.map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-              className="bg-[#141414] rounded-xl p-6 border border-white/10"
-            >
-              <stat.icon className="w-8 h-8 mb-3" style={{ color: stat.color }} />
-              <p className="text-3xl font-bold mb-1">{stat.value}</p>
-              <p className="text-gray-400 text-sm">{stat.label}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Secciones de admin */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="lg:col-span-2 space-y-4"
-          >
-            <h2 className="text-xl font-bold mb-4">Acciones Rápidas</h2>
-            {adminSections.map((section, index) => (
-              <Link
-                key={section.href}
-                href={section.href}
-                className="block bg-[#141414] rounded-xl p-6 border border-white/10 hover:border-[#D604E0]/50 transition-colors group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-[#D604E0]/10 flex items-center justify-center">
-                      <section.icon className="w-6 h-6 text-[#D604E0]" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white group-hover:text-[#D604E0] transition-colors">
-                        {section.title}
-                      </h3>
-                      <p className="text-gray-400 text-sm">{section.description}</p>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-gray-500 group-hover:text-[#D604E0] group-hover:translate-x-1 transition-all" />
-                </div>
-              </Link>
-            ))}
-          </motion.div>
-
-          {/* Usuarios recientes */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="bg-[#141414] rounded-xl p-6 border border-white/10"
-          >
-            <h2 className="text-xl font-bold mb-4">Usuarios Recientes</h2>
-            <div className="space-y-4">
-              {(recentUsers ?? []).map((user) => (
-                <div key={user?.id ?? ""} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#040AE0]/20 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-[#040AE0]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{user?.firstName ?? ""}</p>
-                    <p className="text-gray-500 text-xs truncate">{user?.email ?? ""}</p>
-                  </div>
-                  {user?.role === "ADMIN" && (
-                    <span className="px-2 py-0.5 bg-[#D604E0]/20 text-[#D604E0] rounded text-xs">Admin</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight gradient-text">Dashboard</h1>
+        <p className="text-[#A0A0A0]">
+          Resumen general del sistema
+        </p>
       </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          const value = stats[stat.value as keyof DashboardStats] as number;
+          
+          return (
+            <Link key={stat.title} href={stat.href}>
+              <Card className="bg-[#141414] border-[#1E1E1E] hover:bg-[#1E1E1E] hover:card-glow-hover transition-all cursor-pointer card-glow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-[#F8F8F8]">
+                    {stat.title}
+                  </CardTitle>
+                  <div className={`p-2 rounded-md ${stat.bgColor}`}>
+                    <Icon className={`h-4 w-4 ${stat.color}`} />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{value}</div>
+                  <p className="text-xs text-[#A0A0A0]">
+                    Total registrados
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* User Activity */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-[#141414] border-[#1E1E1E]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-[#F8F8F8]">Usuarios Activos</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-500">
+              {stats.activeUsers}
+            </div>
+            <p className="text-xs text-[#A0A0A0]">
+              +20% desde el mes pasado
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#141414] border-[#1E1E1E]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-[#F8F8F8]">Usuarios Inactivos</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-500">
+              {stats.inactiveUsers}
+            </div>
+            <p className="text-xs text-[#A0A0A0]">
+              -5% desde el mes pasado
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#141414] border-[#1E1E1E]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-[#F8F8F8]">Total Sedes</CardTitle>
+            <MapPin className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{stats.sedesCount}</div>
+            <p className="text-xs text-[#A0A0A0]">
+              Sedes activas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#141414] border-[#1E1E1E]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-[#F8F8F8]">Planes Activos</CardTitle>
+            <Package className="h-4 w-4 text-[#D604E0]" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{stats.plansCount}</div>
+            <p className="text-xs text-[#A0A0A0]">
+              Planes disponibles
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Users */}
+      <Card className="bg-[#141414] border-[#1E1E1E]">
+        <CardHeader>
+          <CardTitle className="text-[#F8F8F8]">Usuarios Recientes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {recentUsers.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center justify-between p-3 border border-[#1E1E1E] rounded-lg bg-[#0A0A0A]"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="w-10 h-10 bg-[#1E1E1E] rounded-full flex items-center justify-center">
+                    <Users className="h-5 w-5 text-[#A0A0A0]" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <p className="text-sm text-[#A0A0A0]">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge
+                    variant={user.role === "ADMIN" ? "default" : "secondary"}
+                    className={user.role === "ADMIN" ? "gradient-bg text-white" : "bg-[#1E1E1E] text-[#A0A0A0]"}
+                  >
+                    {user.role}
+                  </Badge>
+                  <span className="text-sm text-[#A0A0A0]">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

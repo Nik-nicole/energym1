@@ -7,17 +7,25 @@ import prisma from "@/lib/db";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const { id } = params;
+
+    if (!id) {
+      return NextResponse.json({ error: "ID del plan es requerido" }, { status: 400 });
+    }
+
     const plan = await prisma.plan.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: { sedes: { include: { sede: true } } },
     });
+
     if (!plan) {
       return NextResponse.json({ error: "Plan no encontrado" }, { status: 404 });
     }
+
     return NextResponse.json(plan);
   } catch (error) {
-    console.error("Error fetching plan:", error);
-    return NextResponse.json({ error: "Error al obtener plan" }, { status: 500 });
+    console.error("Error obteniendo plan:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
 

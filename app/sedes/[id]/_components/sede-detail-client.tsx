@@ -42,7 +42,12 @@ interface SedeDetailProps {
 }
 
 export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
-  const mapUrl = `https://i.ytimg.com/vi/5dRG80KTIzI/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLBLAvkok-0p_jRIxeJhhmFQ1WRqVw ?? -74.0628}!3d${sede?.latitud ?? 4.6486}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2z${sede?.latitud ?? 0}°${Math.abs((sede?.latitud ?? 0) % 1 * 60).toFixed(0)}'N%20${Math.abs(sede?.longitud ?? 0)}°${Math.abs((sede?.longitud ?? 0) % 1 * 60).toFixed(0)}'W!5e0!3m2!1ses!2sco!4v1&markers=color:red%7C${sede?.latitud ?? 0},${sede?.longitud ?? 0}`;
+  // Usar coordenadas si existen, si no usar la dirección
+  const mapSrc = sede?.latitud && sede?.longitud 
+    ? `https://www.google.com/maps?q=${sede.latitud},${sede.longitud}&z=15&output=embed`
+    : `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(sede?.direccion + ', ' + sede?.ciudad)}`;
+  
+  const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sede?.direccion + ', ' + sede?.ciudad)}`;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -149,10 +154,10 @@ export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
-              className="rounded-2xl overflow-hidden border border-white/10 h-[400px]"
+              className="rounded-2xl overflow-hidden border border-white/10 h-[400px] relative"
             >
               <iframe
-                src={`https://www.google.com/maps?q=${sede?.latitud ?? 0},${sede?.longitud ?? 0}&z=15&output=embed`}
+                src={mapSrc}
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
@@ -160,7 +165,17 @@ export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 title={`Mapa de ${sede?.nombre ?? "sede"}`}
+                className="w-full h-full"
               />
+              <a
+                href={directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute bottom-4 right-4 bg-[#141414]/90 backdrop-blur-sm border border-white/20 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-[#D604E0]/20 transition-colors flex items-center gap-2"
+              >
+                <MapPin className="w-4 h-4" />
+                Cómo llegar
+              </a>
             </motion.div>
           </div>
         </div>

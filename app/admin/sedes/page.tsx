@@ -1,26 +1,42 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/db";
-import { redirect } from "next/navigation";
-import { Header } from "@/components/ui/header";
+import { prisma } from "@/lib/db";
+import { AdminLayout } from "../_components/admin-layout";
 import { SedesAdmin } from "./_components/sedes-admin";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminSedesPage() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    redirect("/login");
+async function getSedesData() {
+  try {
+    const sedes = await prisma.sede.findMany({
+      include: {
+        _count: {
+          select: {
+            usuarios: true,
+            productos: true,
+            noticias: true,
+          },
+        },
+      },
+      orderBy: { nombre: "asc" },
+    });
+
+    return { sedes };
+  } catch (error) {
+    console.error("Error fetching sedes:", error);
+    return null;
+  }
+}
+
+export default async function SedesPage() {
+  const data = await getSedesData();
+
+  if (!data) {
+    notFound();
   }
 
-  const sedes = await prisma.sede.findMany({
-    orderBy: { nombre: "asc" },
-  });
-
   return (
-    <main className="min-h-screen bg-[#0A0A0A]">
-      <Header />
-      <SedesAdmin initialSedes={sedes} />
-    </main>
+    <AdminLayout>
+      <SedesAdmin sedes={data.sedes} />
+    </AdminLayout>
   );
 }

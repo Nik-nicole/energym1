@@ -25,7 +25,7 @@ export function CTASection() {
             </h2>
             <p className="text-gray-400 max-w-xl mx-auto mb-8">
               Únete a más de 10,000 miembros que ya están alcanzando sus metas
-              con FitZone. Tu primera sesión de prueba es gratis.
+              con Energym. Tu primera sesión de prueba es gratis.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

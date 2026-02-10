@@ -3,6 +3,7 @@
 import { Check, Crown, Zap, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 interface PlanCardProps {
   plan: {
@@ -19,6 +20,7 @@ interface PlanCardProps {
 }
 
 export function PlanCard({ plan, index }: PlanCardProps) {
+  const { data: session } = useSession();
   const isVip = plan?.esVip ?? false;
   const isDestacado = plan?.destacado ?? false;
 
@@ -28,6 +30,17 @@ export function PlanCard({ plan, index }: PlanCardProps) {
       currency: "COP",
       minimumFractionDigits: 0,
     }).format(price ?? 0);
+  };
+
+  const handleSelectPlan = () => {
+    if (!session) {
+      // Si no está logueado, redirigir a login
+      window.location.href = `/login?redirect=/planes&id=${plan.id}`;
+      return;
+    }
+
+    // Si está logueado, redirigir a pago con PSG
+    window.location.href = `/pago/${plan.id}`;
   };
 
   return (
@@ -77,8 +90,8 @@ export function PlanCard({ plan, index }: PlanCardProps) {
         ))}
       </ul>
 
-      <Link
-        href="/registro"
+      <button
+        onClick={handleSelectPlan}
         className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
           isVip
             ? "gradient-bg hover:opacity-90"
@@ -86,8 +99,8 @@ export function PlanCard({ plan, index }: PlanCardProps) {
         }`}
       >
         <Zap className="w-4 h-4" />
-        Empezar Ahora
-      </Link>
+        {session ? "Seleccionar Plan" : "Empezar Ahora"}
+      </button>
     </motion.div>
   );
 }
