@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 import { AdminLayout } from "../_components/admin-layout";
 import { TiendaAdmin } from "./_components/tienda-admin";
 import { notFound } from "next/navigation";
