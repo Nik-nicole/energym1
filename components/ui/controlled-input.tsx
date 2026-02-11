@@ -9,13 +9,15 @@ interface ControlledInputProps extends React.InputHTMLAttributes<HTMLInputElemen
   showCharCount?: boolean
   format?: 'currency' | 'phone' | 'uppercase' | 'lowercase'
   showWarning?: boolean
+  required?: boolean
 }
 
 const ControlledInput = React.forwardRef<HTMLInputElement, ControlledInputProps>(
-  ({ className, maxLength, type, showCharCount, format, showWarning, onChange, value, ...props }, ref) => {
+  ({ className, maxLength, type, showCharCount, format, showWarning, onChange, value, required, ...props }, ref) => {
     const [internalValue, setInternalValue] = React.useState(value || "")
     const [isExceeded, setIsExceeded] = React.useState(false)
     const [showWarnings, setShowWarnings] = React.useState(false)
+    const [isEmpty, setIsEmpty] = React.useState(false)
 
     // Formatear el valor según el tipo
     const formatValue = (inputValue: string): string => {
@@ -104,6 +106,13 @@ const ControlledInput = React.forwardRef<HTMLInputElement, ControlledInputProps>
 
       setInternalValue(newValue)
       
+      // Validar campo requerido
+      if (required && !newValue.trim()) {
+        setIsEmpty(true)
+      } else {
+        setIsEmpty(false)
+      }
+      
       // Llamar al onChange original con el valor formateado
       if (onChange) {
         const syntheticEvent = {
@@ -163,6 +172,13 @@ const ControlledInput = React.forwardRef<HTMLInputElement, ControlledInputProps>
                 ⚠️ Has excedido el límite de {maxLength} caracteres
               </p>
             )}
+          </div>
+        )}
+        {required && showWarnings && isEmpty && (
+          <div className="mt-1 pointer-events-none">
+            <p className="text-xs text-red-400 font-medium">
+              ⚠️ Este campo es obligatorio
+            </p>
           </div>
         )}
       </div>

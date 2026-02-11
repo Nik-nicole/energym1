@@ -273,6 +273,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     maxLength={10}
                     showCharCount={true}
                     showWarning={true}
+                    required={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
@@ -292,7 +293,51 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[#F8F8F8]">Beneficios</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-[#F8F8F8]">Beneficios</Label>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white text-xs"
+                      >
+                        Copiar de otro plan
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-[#141414] border-[#1E1E1E] text-white max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Seleccionar plan para copiar beneficios</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-3 max-h-60 overflow-y-auto">
+                        {planes.filter((p: Plan) => p.id !== (formData as any).id).map((plan: Plan) => (
+                          <div
+                            key={plan.id}
+                            className="p-3 border border-[#1E1E1E] rounded-lg cursor-pointer hover:bg-[#1E1E1E] transition-colors"
+                            onClick={() => {
+                              if (plan.beneficios.length > 0) {
+                                setFormData({
+                                  ...formData,
+                                  beneficios: [...plan.beneficios]
+                                });
+                                toast.success("Beneficios copiados del plan: " + plan.nombre);
+                              } else {
+                                toast.error("El plan seleccionado no tiene beneficios");
+                              }
+                            }}
+                          >
+                            <div className="font-medium">{plan.nombre}</div>
+                            <div className="text-sm text-gray-400">{plan.duracion} - ${plan.precio}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {plan.beneficios.length} beneficios disponibles
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 {formData.beneficios.map((beneficio, index) => (
                   <div key={index} className="flex gap-2">
                     <ControlledInput
@@ -332,15 +377,18 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                       <SelectValue placeholder="Seleccionar duración" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#141414] border-[#1E1E1E]">
+                      <SelectItem value="1 día">1 día</SelectItem>
+                      <SelectItem value="15 días">15 días</SelectItem>
+                      <SelectItem value="2 meses">2 meses</SelectItem>
                       <SelectItem value="1 mes">1 mes</SelectItem>
                       <SelectItem value="3 meses">3 meses</SelectItem>
                       <SelectItem value="6 meses">6 meses</SelectItem>
                       <SelectItem value="1 año">1 año</SelectItem>
                       <SelectItem value="2 años">2 años</SelectItem>
-                      <SelectItem value="3 meses">Trimestral</SelectItem>
-                      <SelectItem value="6 meses">Semestral</SelectItem>
-                      <SelectItem value="1 año">Anual</SelectItem>
-                      <SelectItem value="ilimitado">Ilimitado</SelectItem>
+                      <SelectItem value="Trimestral">Trimestral</SelectItem>
+                      <SelectItem value="Semestral">Semestral</SelectItem>
+                      <SelectItem value="Anual">Anual</SelectItem>
+                      <SelectItem value="Ilimitado">Ilimitado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -501,7 +549,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
               <p className="text-gray-400 text-sm mb-4">{plan.descripcion}</p>
               <div className="flex items-end justify-center gap-1">
                 <span className={`text-4xl font-bold ${plan.esVip ? "gradient-text" : "text-white"}`}>
-                  ${plan.precio.toFixed(2)}
+                  ${plan.precio.toFixed(2)} COP
                 </span>
                 <span className="text-gray-400 mb-1">/{plan.duracion}</span>
               </div>
@@ -595,13 +643,14 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
               <div className="space-y-2">
                 <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre</Label>
                 <ControlledInput
-                  id="edit-nombre"
+                  id="nombre"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   placeholder="Nombre del plan"
                   maxLength={100}
                   showCharCount={true}
                   showWarning={true}
+                  required={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
@@ -617,6 +666,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   maxLength={10}
                   showCharCount={true}
                   showWarning={true}
+                  required={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
@@ -636,7 +686,51 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[#F8F8F8]">Beneficios</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-[#F8F8F8]">Beneficios</Label>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white text-xs"
+                    >
+                      Copiar de otro plan
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-[#141414] border-[#1E1E1E] text-white max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Seleccionar plan para copiar beneficios</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {planes.filter((p: Plan) => p.id !== (formData as any).id).map((plan: Plan) => (
+                        <div
+                          key={plan.id}
+                          className="p-3 border border-[#1E1E1E] rounded-lg cursor-pointer hover:bg-[#1E1E1E] transition-colors"
+                          onClick={() => {
+                            if (plan.beneficios.length > 0) {
+                              setFormData({
+                                ...formData,
+                                beneficios: [...plan.beneficios]
+                              });
+                              toast.success("Beneficios copiados del plan: " + plan.nombre);
+                            } else {
+                              toast.error("El plan seleccionado no tiene beneficios");
+                            }
+                          }}
+                        >
+                          <div className="font-medium">{plan.nombre}</div>
+                          <div className="text-sm text-gray-400">{plan.duracion} - ${plan.precio}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {plan.beneficios.length} beneficios disponibles
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
               {formData.beneficios.map((beneficio, index) => (
                 <div key={index} className="flex gap-2">
                   <ControlledInput
@@ -676,15 +770,18 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     <SelectValue placeholder="Seleccionar duración" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#141414] border-[#1E1E1E]">
+                    <SelectItem value="1 día">1 día</SelectItem>
+                    <SelectItem value="15 días">15 días</SelectItem>
+                    <SelectItem value="2 meses">2 meses</SelectItem>
                     <SelectItem value="1 mes">1 mes</SelectItem>
                     <SelectItem value="3 meses">3 meses</SelectItem>
                     <SelectItem value="6 meses">6 meses</SelectItem>
                     <SelectItem value="1 año">1 año</SelectItem>
                     <SelectItem value="2 años">2 años</SelectItem>
-                    <SelectItem value="3 meses">Trimestral</SelectItem>
-                    <SelectItem value="6 meses">Semestral</SelectItem>
-                    <SelectItem value="1 año">Anual</SelectItem>
-                    <SelectItem value="ilimitado">Ilimitado</SelectItem>
+                    <SelectItem value="Trimestral">Trimestral</SelectItem>
+                    <SelectItem value="Semestral">Semestral</SelectItem>
+                    <SelectItem value="Anual">Anual</SelectItem>
+                    <SelectItem value="Ilimitado">Ilimitado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
