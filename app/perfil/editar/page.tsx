@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 import { Header } from "@/components/ui/header";
 import { Footer } from "@/components/ui/footer";
 import { EditarPerfilClient } from "./_components/editar-perfil-client";

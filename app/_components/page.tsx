@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Calendar, MapPin, ArrowLeft, Share2 } from "lucide-react";
 import Link from "next/link";
