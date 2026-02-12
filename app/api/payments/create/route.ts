@@ -46,9 +46,10 @@ export async function POST(request: NextRequest) {
         paymentMethod: paymentMethod,
         paymentStatus: "PENDING",
         orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        planId: planId, // Referencia directa al plan
         items: {
           create: {
-            productId: planId, // Temporalmente usando planId como productId
+            planId: planId, // Usar planId en lugar de productId
             quantity: 1,
             unitPrice: amount,
             totalPrice: amount,
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      orderId: order.id,
+      paymentId: order.id,
       order: order,
     });
   } catch (error) {

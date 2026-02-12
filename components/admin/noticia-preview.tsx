@@ -54,7 +54,7 @@ export function NoticiaPreview({ titulo, resumen, imagen, contenido }: NoticiaPr
         )
 
       case 'image':
-        if (!block.imageSettings?.url) return null
+        if (!block.imageSettings?.url || block.imageSettings.url.trim() === '') return null
         
         const imagePosition = block.imageSettings.position
         
@@ -145,7 +145,7 @@ export function NoticiaPreview({ titulo, resumen, imagen, contenido }: NoticiaPr
         </div>
 
         {/* Banner Image */}
-        {imagen && (
+        {imagen && imagen.trim() !== '' && (
           <div className="w-full h-64 md:h-80 relative rounded-xl overflow-hidden mb-8">
             <Image
               src={imagen}

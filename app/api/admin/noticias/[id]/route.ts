@@ -77,16 +77,38 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     
     if (!session?.user || session.user.role !== "ADMIN") {
+      console.error("DELETE noticia: No autorizado - User:", session?.user);
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
+
+    // Verificar si la noticia existe antes de eliminar
+    const noticiaExistente = await prisma.noticia.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!noticiaExistente) {
+      console.error("DELETE noticia: Noticia no encontrada - ID:", params.id);
+      return NextResponse.json({ error: "Noticia no encontrada" }, { status: 404 });
+    }
+
+    console.log("DELETE noticia: Eliminando noticia", {
+      id: params.id,
+      titulo: noticiaExistente.titulo,
+      user: session.user.email
+    });
 
     await prisma.noticia.delete({
       where: { id: params.id },
     });
 
+    console.log("DELETE noticia: Noticia eliminada exitosamente", { id: params.id });
     return NextResponse.json({ message: "Noticia eliminada exitosamente" });
   } catch (error) {
-    console.error("Error deleting noticia:", error);
+    console.error("DELETE noticia: Error al eliminar noticia:", {
+      error: error instanceof Error ? error.message : String(error),
+      id: params.id,
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
       { error: "Error al eliminar noticia" },
       { status: 500 }

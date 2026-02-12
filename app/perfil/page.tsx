@@ -15,6 +15,11 @@ export default async function PerfilPage() {
     redirect("/login");
   }
 
+  // Verificar si el usuario es ADMIN y redirigir al panel administrativo
+  if (session.user.role === "ADMIN") {
+    redirect("/admin");
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: { sede: true },
@@ -25,31 +30,25 @@ export default async function PerfilPage() {
     orderBy: { orden: "asc" },
   });
 
-  // Intentar obtener pedidos, pero manejar el error si el modelo no existe
-  let orders: any[] = [];
-  try {
-    orders = await prisma.order.findMany({
-      where: { userId: user?.id },
-      orderBy: { createdAt: "desc" },
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                nombre: true,
-                imagen: true,
-              },
+  const orders = await prisma.order.findMany({
+    where: { userId: user?.id },
+    orderBy: { createdAt: "desc" },
+    include: {
+      items: {
+        include: {
+          plan: true,
+          product: {
+            select: {
+              id: true,
+              nombre: true,
+              imagen: true,
             },
           },
         },
       },
-      take: 10,
-    });
-  } catch (error) {
-    console.log("Model Order not available yet, using empty array");
-    orders = [];
-  }
+    },
+    take: 10,
+  });
 
   return (
     <main className="min-h-screen flex flex-col">

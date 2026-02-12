@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { 
   Check, 
   Calendar, 
@@ -49,6 +50,40 @@ interface ConfirmacionPagoClientProps {
 
 export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps) {
   const router = useRouter();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Procesar el pago automáticamente cuando se carga la página
+  useEffect(() => {
+    const processPayment = async () => {
+      // Solo procesar si el pago está pendiente
+      if (payment.paymentStatus === 'PENDING') {
+        setIsProcessing(true);
+        try {
+          const response = await fetch('/api/payments/process', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ paymentId: payment.id }),
+          });
+
+          if (response.ok) {
+            console.log('✅ Pago procesado exitosamente');
+            // Recargar la página para mostrar el estado actualizado
+            window.location.reload();
+          } else {
+            console.error('❌ Error al procesar el pago');
+          }
+        } catch (error) {
+          console.error('❌ Error en el procesamiento del pago:', error);
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    };
+
+    processPayment();
+  }, [payment.id, payment.paymentStatus]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -114,15 +149,31 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="w-10 h-10 text-green-500" />
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-4">
-            ¡Pago Confirmado!
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Tu plan ha sido activado exitosamente
-          </p>
+          {isProcessing ? (
+            <>
+              <div className="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+              <h1 className="text-4xl font-bold text-white mb-4">
+                Procesando Pago...
+              </h1>
+              <p className="text-gray-400 text-lg">
+                Estamos confirmando tu pago, un momento por favor...
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Check className="w-10 h-10 text-green-500" />
+              </div>
+              <h1 className="text-4xl font-bold text-white mb-4">
+                ¡Pago Confirmado!
+              </h1>
+              <p className="text-gray-400 text-lg">
+                Tu plan ha sido activado exitosamente
+              </p>
+            </>
+          )}
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

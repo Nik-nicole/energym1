@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, X, Save } from "lucide-react";
+import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, X, Save, Palette } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -39,11 +39,22 @@ interface PerfilClientProps {
       quantity: number;
       unitPrice: number;
       totalPrice: number;
-      product: {
+      planId?: string | null;
+      productId?: string | null;
+      plan?: {
         id: string;
         nombre: string;
-        imagen?: string;
-      };
+        precio: number;
+        descripcion: string;
+        beneficios: string[];
+        duracion: string;
+        esVip: boolean;
+      } | null;
+      product?: {
+        id: string;
+        nombre: string;
+        imagen?: string | null;
+      } | null;
     }[];
   }[];
 }
@@ -76,34 +87,37 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
     email: user?.email || "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [bannerGradient, setBannerGradient] = useState("from-[#040AE0] via-[#D604E0] to-[#040AE0]");
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
-  // Simular plan activo (en una implementación real, esto vendría de la base de datos)
-  const activePlan = orders.length > 0 ? {
-    nombre: "VIP Elite",
-    precio: 149900,
-    duracion: "mes",
-    fechaInicio: orders[0].createdAt,
-    fechaFin: new Date(orders[0].createdAt.getTime() + 30 * 24 * 60 * 60 * 1000),
-    beneficios: [
-      "Acceso ilimitado a todas las sedes",
-      "Clases personalizadas con entrenador",
-      "Acceso a área VIP y spa",
-      "Evaluación física mensual",
-      "Nutricionista incluido",
-      "Descuentos en tienda y productos"
-    ]
-  } : {
-    nombre: "Básico",
-    precio: 0,
-    duracion: "mes",
-    fechaInicio: new Date(),
-    fechaFin: new Date(),
-    beneficios: [
-      "Acceso a una sede",
-      "Uso de equipos básicos",
-      "Horarios restringidos"
-    ]
-  };
+  // Opciones de gradientes para el banner
+  const gradientOptions = [
+    { name: "Azul a Rosa", value: "from-[#040AE0] via-[#D604E0] to-[#040AE0]" },
+    { name: "Morado a Azul", value: "from-[#8B5CF6] via-[#3B82F6] to-[#8B5CF6]" },
+    { name: "Verde a Azul", value: "from-[#10B981] via-[#3B82F6] to-[#10B981]" },
+    { name: "Naranja a Rosa", value: "from-[#F97316] via-[#EC4899] to-[#F97316]" },
+    { name: "Rojo a Amarillo", value: "from-[#EF4444] via-[#F59E0B] to-[#EF4444]" },
+    { name: "Cian a Verde", value: "from-[#06B6D4] via-[#10B981] to-[#06B6D4]" },
+  ];
+
+  // Verificar si el usuario tiene un plan activo (basado en órdenes con pago completado)
+  const hasActivePlan = orders.some(order => 
+    order.paymentStatus === "PAID" && 
+    order.status === "CONFIRMED" &&
+    order.items.some(item => item.plan !== null)
+  );
+  
+  const paidOrder = orders.find(order => 
+    order.paymentStatus === "PAID" && 
+    order.status === "CONFIRMED" &&
+    order.items.some(item => item.plan !== null)
+  );
+  
+  const activePlan = hasActivePlan && paidOrder ? {
+    ...paidOrder.items.find(item => item.plan !== null)?.plan,
+    fechaInicio: paidOrder.createdAt,
+    fechaFin: new Date(paidOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000),
+  } : null;
 
   const handleProfileUpdate = async () => {
     setIsLoading(true);
@@ -182,10 +196,20 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
     }
   };
 
+  const handlePlanSelection = (planId: string) => {
+    // Redirigir a la página de pago con el plan seleccionado
+    window.location.href = `/pago/${planId}`;
+  };
+
+  const scrollToPlans = () => {
+    const planesSection = document.getElementById('planes-disponibles');
+    planesSection?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <div className="flex-1 min-h-screen bg-zinc-950 pb-8">
       {/* BANNER SUPERIOR - LLEGA DE LADO A LADO */}
-      <div className="relative h-[210px] bg-gradient-to-br from-[#040AE0] via-[#D604E0] to-[#040AE0] w-full">
+      <div className={`relative h-[210px] bg-gradient-to-br ${bannerGradient} w-full`}>
         {/* Botón de editar perfil */}
         <button 
           onClick={() => setIsEditingProfile(true)}
@@ -193,6 +217,36 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
         >
           <Edit className="w-5 h-5 text-white" />
         </button>
+        
+        {/* Botón de cambiar color del banner */}
+        <button 
+          onClick={() => setShowColorPicker(!showColorPicker)}
+          className="absolute top-4 right-16 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-all"
+        >
+          <Palette className="w-5 h-5 text-white" />
+        </button>
+
+        {/* Selector de colores */}
+        {showColorPicker && (
+          <div className="absolute top-16 right-4 bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-xl z-10">
+            <p className="text-white text-sm font-medium mb-3">Color del Banner</p>
+            <div className="grid grid-cols-2 gap-2">
+              {gradientOptions.map((gradient) => (
+                <button
+                  key={gradient.value}
+                  onClick={() => {
+                    setBannerGradient(gradient.value);
+                    setShowColorPicker(false);
+                  }}
+                  className={`h-12 rounded-lg bg-gradient-to-br ${gradient.value} border-2 ${
+                    bannerGradient === gradient.value ? 'border-white' : 'border-transparent'
+                  } transition-all`}
+                  title={gradient.name}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="max-w-5xl mx-auto px-4">
@@ -251,18 +305,35 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
               </div>
             </div>
 
-            {/* Columna Derecha - Plan Activo */}
+            {/* Columna Derecha - Estado del Plan */}
             <div className="text-center md:text-right">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-full">
-                <Crown className={`w-4 h-4 ${activePlan.nombre === "VIP Elite" ? "text-[#EC4899]" : "text-gray-400"}`} />
-                <span className="text-white">Plan Actual</span>
-              </div>
-              <p className={`font-bold mt-2 ${activePlan.nombre === "VIP Elite" ? "text-[#EC4899]" : "text-gray-400"}`}>
-                {activePlan.nombre}
-              </p>
-              <p className="text-sm text-gray-400 mt-1">
-                {formatPrice(activePlan.precio)}/{activePlan.duracion}
-              </p>
+              {hasActivePlan ? (
+                <>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-full">
+                    <Crown className="w-4 h-4 text-[#EC4899]" />
+                    <span className="text-white">Plan Activo</span>
+                  </div>
+                  <p className="font-bold mt-2 text-[#EC4899]">
+                    {activePlan?.nombre}
+                  </p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {formatPrice(activePlan?.precio || 0)}/{activePlan?.duracion}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-full">
+                    <Dumbbell className="w-4 h-4 text-gray-400" />
+                    <span className="text-white">Sin Plan</span>
+                  </div>
+                  <p className="font-bold mt-2 text-gray-400">
+                    Plan Básico
+                  </p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Gratis
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -283,75 +354,76 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
           </button>
         </div>
 
-        {/* TARJETA DEL PLAN ACTUAL */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Dumbbell className="w-5 h-5 text-white" />
-                <span className="text-lg font-bold text-white">Tu Plan Actual</span>
-              </div>
-              <h2 className={`text-2xl font-bold ${activePlan.nombre === "VIP Elite" ? "bg-gradient-to-r from-[#0047AB] to-[#EC4899] bg-clip-text text-transparent" : "text-gray-400"}`}>
-                {activePlan.nombre}
-              </h2>
-              <p className="text-sm text-gray-400 mt-1">
-                {formatPrice(activePlan.precio)}/{activePlan.duracion}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${activePlan.nombre === "VIP Elite" ? "bg-green-500" : "bg-yellow-500"}`}></div>
-              <span className="text-gray-400 text-sm">
-                {activePlan.nombre === "VIP Elite" ? "Activo" : "Básico"}
-              </span>
-            </div>
-          </div>
-
-          {/* Fechas */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Inicio</p>
-              <p className="text-sm font-semibold text-gray-200">
-                {formatDate(activePlan.fechaInicio)}
-              </p>
-            </div>
-            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Finaliza</p>
-              <p className="text-sm font-semibold text-gray-200">
-                {formatDate(activePlan.fechaFin)}
-              </p>
-            </div>
-          </div>
-
-          {/* Beneficios del plan */}
-          <div className="mb-6">
-            <p className="text-sm font-medium text-gray-400 mb-3">Beneficios incluidos:</p>
-            <div className="space-y-2">
-              {activePlan.beneficios.slice(0, 3).map((beneficio, index) => (
-                <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
-                  <Check className={`w-4 h-4 ${activePlan.nombre === "VIP Elite" ? "text-[#EC4899]" : "text-gray-500"}`} />
-                  <span>{beneficio}</span>
+        {/* TARJETA DEL PLAN ACTIVO O SELECCIÓN DE PLAN */}
+        {hasActivePlan ? (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Dumbbell className="w-5 h-5 text-white" />
+                  <span className="text-lg font-bold text-white">Tu Plan Actual</span>
                 </div>
-              ))}
-              {activePlan.beneficios.length > 3 && (
-                <p className="text-xs text-gray-500">+{activePlan.beneficios.length - 3} beneficios más...</p>
-              )}
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-[#0047AB] to-[#EC4899] bg-clip-text text-transparent">
+                  {activePlan?.nombre}
+                </h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  {formatPrice(activePlan?.precio || 0)}/{activePlan?.duracion}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span className="text-gray-400 text-sm">Activo</span>
+              </div>
+            </div>
+
+            {/* Fechas */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Inicio</p>
+                <p className="text-sm font-semibold text-gray-200">
+                  {formatDate(activePlan?.fechaInicio || new Date())}
+                </p>
+              </div>
+              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Finaliza</p>
+                <p className="text-sm font-semibold text-gray-200">
+                  {formatDate(activePlan?.fechaFin || new Date())}
+                </p>
+              </div>
+            </div>
+
+            {/* Beneficios del plan */}
+            <div className="mb-6">
+              <p className="text-sm font-medium text-gray-400 mb-3">Beneficios incluidos:</p>
+              <div className="space-y-2">
+                {activePlan?.beneficios?.slice(0, 3).map((beneficio, index) => (
+                  <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
+                    <Check className="w-4 h-4 text-[#EC4899]" />
+                    <span>{beneficio}</span>
+                  </div>
+                ))}
+                {activePlan?.beneficios && activePlan.beneficios.length > 3 && (
+                  <p className="text-xs text-gray-500">+{activePlan.beneficios.length - 3} beneficios más...</p>
+                )}
+              </div>
             </div>
           </div>
-
-          {/* Botón de Actualizar Plan */}
-          {activePlan.nombre === "Básico" && (
+        ) : (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 mb-8 text-center">
+            <Dumbbell className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Escoge tu Plan</h3>
+            <p className="text-gray-400 mb-6">
+              Actualmente no tienes un plan activo. Selecciona uno de nuestros planes para comenzar tu transformación.
+            </p>
             <button
-              onClick={() => {
-                const planesSection = document.getElementById('planes-disponibles');
-                planesSection?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-fuchsia-600 text-white font-medium rounded-xl hover:from-blue-500 hover:to-fuchsia-500 transition-all flex items-center justify-center gap-2"
+              onClick={scrollToPlans}
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-fuchsia-600 text-white font-medium rounded-xl hover:from-blue-500 hover:to-fuchsia-500 transition-all flex items-center justify-center gap-2 mx-auto"
             >
               <Sparkles className="w-4 h-4" />
-              Actualizar Plan
+              Ver Planes Disponibles
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* SECCIÓN DE PLANES DISPONIBLES */}
         <div id="planes-disponibles">
@@ -411,7 +483,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
                   </ul>
 
                   <button
-                    onClick={() => window.location.href = `/pago/${plan?.id}`}
+                    onClick={() => handlePlanSelection(plan?.id)}
                     className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                       plan?.esVip
                         ? "gradient-bg hover:opacity-90"
@@ -419,7 +491,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
                     }`}
                   >
                     <Zap className="w-4 h-4" />
-                    Seleccionar Plan
+                    Comprar Plan
                   </button>
 
                   {/* Flecha desplegable */}

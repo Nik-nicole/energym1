@@ -93,6 +93,7 @@ interface User {
     fechaInicio: string;
     fechaFin: string;
     isActive?: boolean;
+    isDeactivated?: boolean;
   } | null;
 }
 
@@ -130,7 +131,67 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
     password: "",
     confirmPassword: "",
     role: "",
+    sedeId: "",
   });
+
+  const validateForm = () => {
+    const errors = {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      role: "",
+      sedeId: "",
+    };
+
+    // Validación de nombre
+    if (!formData.firstName.trim()) {
+      errors.firstName = "El nombre es obligatorio";
+    }
+
+    // Validación de apellido
+    if (!formData.lastName.trim()) {
+      errors.lastName = "El apellido es obligatorio";
+    }
+
+    // Validación de email
+    if (!formData.email.trim()) {
+      errors.email = "El email es obligatorio";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        errors.email = "El email no es válido";
+      }
+    }
+
+    // Validación de contraseña (solo para nuevos usuarios)
+    if (!editingUser && !formData.password) {
+      errors.password = "La contraseña es obligatoria para nuevos usuarios";
+    } else if (formData.password && formData.password.length < 6) {
+      errors.password = "La contraseña debe tener al menos 6 caracteres";
+    }
+
+    // Validación de confirmación de contraseña
+    if (formData.password && formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = "Las contraseñas no coinciden";
+    }
+
+    // Validación de rol
+    if (!formData.role) {
+      errors.role = "El rol es obligatorio";
+    }
+
+    // Validación de sede
+    if (!formData.sedeId) {
+      errors.sedeId = "La sede es obligatoria";
+    }
+
+    setFormErrors(errors);
+    
+    // Retornar true si no hay errores
+    return Object.values(errors).every(error => error === "");
+  };
 
   const [showPlanDialog, setShowPlanDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -165,6 +226,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       password: "",
       confirmPassword: "",
       role: "",
+      sedeId: "",
     });
   };
 
@@ -186,66 +248,9 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
     return matchesSearch && matchesRole;
   });
 
-  const validateForm = () => {
-    const errors = {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      role: "",
-    };
-
-    // Validación de nombre
-    if (!formData.firstName.trim()) {
-      errors.firstName = "El nombre es requerido";
-    } else if (formData.firstName.trim().length < 2) {
-      errors.firstName = "El nombre debe tener al menos 2 caracteres";
-    }
-
-    // Validación de apellido
-    if (formData.lastName && formData.lastName.trim().length < 2) {
-      errors.lastName = "El apellido debe tener al menos 2 caracteres";
-    }
-
-    // Validación de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email.trim()) {
-      errors.email = "El email es requerido";
-    } else if (!emailRegex.test(formData.email)) {
-      errors.email = "El email no es válido";
-    }
-
-    // Validación de contraseña
-    if (!formData.password) {
-      errors.password = "La contraseña es requerida";
-    } else if (formData.password.length < 6) {
-      errors.password = "La contraseña debe tener al menos 6 caracteres";
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      errors.password = "La contraseña debe contener mayúsculas, minúsculas y números";
-    }
-
-    // Validación de confirmación de contraseña
-    if (!formData.confirmPassword) {
-      errors.confirmPassword = "La confirmación de contraseña es requerida";
-    } else if (formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = "Las contraseñas no coinciden";
-    }
-
-    // Validación de rol
-    if (!formData.role) {
-      errors.role = "El rol es requerido";
-    }
-
-    setFormErrors(errors);
-    
-    // Verificar si hay errores
-    return Object.values(errors).some(error => error !== "");
-  };
-
   const handleCreate = async () => {
     // Validar formulario
-    if (validateForm()) {
+    if (!validateForm()) {
       return;
     }
 
@@ -255,7 +260,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
     );
     
     if (emailExists) {
-      setFormErrors(prev => ({ ...prev, email: "El email ya está registrado" }));
+      setFormErrors(prev => ({ ...prev, email: "El email ya está registrado", sedeId: "" }));
       return;
     }
 
@@ -303,7 +308,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       if (error instanceof Error) {
         if (error.message.includes("ya existe")) {
           errorMessage = "El email ya está registrado. Por favor usa otro email.";
-          setFormErrors(prev => ({ ...prev, email: "El email ya está registrado" }));
+          setFormErrors(prev => ({ ...prev, email: "El email ya está registrado", sedeId: "" }));
         } else {
           errorMessage = error.message;
         }
@@ -333,6 +338,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       password: "",
       confirmPassword: "",
       role: "",
+      sedeId: "",
     });
     setIsEditDialogOpen(true);
   };
@@ -549,9 +555,9 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
           nombre: currentPlan.nombre,
           precio: 0,
           duracion: '',
-          isActive: currentPlan.isActive !== false 
+          isActive: currentPlan.isActive !== false && !currentPlan.isDeactivated
         },
-        isActive: currentPlan.isActive !== false 
+        isActive: currentPlan.isActive !== false && !currentPlan.isDeactivated
       });
       setShowConfirmDialog(true);
     } else {
@@ -611,6 +617,9 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                   {formErrors.lastName && (
                     <p className="text-xs text-red-400">{formErrors.lastName}</p>
                   )}
+                  {formErrors.lastName === undefined && (
+                    <p className="text-xs text-red-400">Este campo es obligatorio</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
@@ -629,6 +638,9 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                 {formErrors.email && (
                   <p className="text-xs text-red-400">{formErrors.email}</p>
                 )}
+                {formErrors.email === undefined && (
+                  <p className="text-xs text-red-400">Este campo es obligatorio</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-[#F8F8F8]">Contraseña</Label>
@@ -646,6 +658,9 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                 {formErrors.password && (
                   <p className="text-xs text-red-400">{formErrors.password}</p>
                 )}
+                {formErrors.password === undefined && (
+                  <p className="text-xs text-red-400">Este campo es obligatorio</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="text-[#F8F8F8]">Confirmar Contraseña</Label>
@@ -654,7 +669,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                   type="password"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  placeholder="Confirmar contraseña"
+                  placeholder="Confirmar Contraseña"
                   maxLength={50}
                   showCharCount={true}
                   showWarning={true}
@@ -662,6 +677,9 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                 />
                 {formErrors.confirmPassword && (
                   <p className="text-xs text-red-400">{formErrors.confirmPassword}</p>
+                )}
+                {formErrors.confirmPassword === undefined && (
+                  <p className="text-xs text-red-400">Este campo es obligatorio</p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -777,12 +795,22 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                 </TableCell>
                 <TableCell className="text-[#A0A0A0]">
                   {user.planActivo ? (
-                    <div className="flex items-center gap-1">
-                      <Crown className="h-3 w-3 text-[#D604E0]" />
-                      <span className="text-xs">{user.planActivo.nombre}</span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <Crown className={`h-4 w-4 ${user.planActivo.isDeactivated ? 'text-orange-500' : 'text-emerald-400'}`} />
+                        <span className={`text-sm font-medium ${user.planActivo.isDeactivated ? 'text-orange-500' : 'text-emerald-400'}`}>
+                          {user.planActivo.nombre}
+                        </span>
+                      </div>
+                      <span className={`text-xs ${user.planActivo.isDeactivated ? 'text-orange-400' : 'text-emerald-400'}`}>
+                        {user.planActivo.isDeactivated ? 'Desactivado' : 'Activo'}
+                      </span>
                     </div>
                   ) : (
-                    <span className="text-xs text-[#A0A0A0]">Sin plan</span>
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-400">Sin plan</span>
+                    </div>
                   )}
                 </TableCell>
                 <TableCell>
@@ -797,41 +825,15 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                       Editar
                     </Button>
                     {user.role !== "ADMIN" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openPlanDialog(user)}
-                          className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white px-3 py-1"
-                        >
-                          <Crown className="h-4 w-4 mr-1" />
-                          Ver Plan
-                        </Button>
-                        {user.planActivo && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openTogglePlanDialog(user)}
-                            className={`${
-                              user.planActivo.isActive !== false 
-                                ? "border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-orange-400" 
-                                : "border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
-                            } px-3 py-1`}
-                          >
-                            {user.planActivo.isActive !== false ? (
-                              <>
-                                <PowerOff className="h-4 w-4 mr-1" />
-                                Desactivar Plan
-                              </>
-                            ) : (
-                              <>
-                                <Power className="h-4 w-4 mr-1" />
-                                Activar Plan
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openPlanDialog(user)}
+                        className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white px-3 py-1"
+                      >
+                        <Crown className="h-4 w-4 mr-1" />
+                        Ver Plan
+                      </Button>
                     )}
                     <Button
                       variant={user.isActive !== false ? "outline" : "outline"}
@@ -1006,29 +1008,111 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-between">
                   <Button
                     variant="outline"
                     onClick={() => setShowPlanDialog(false)}
                     className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white"
                   >
                     Cerrar
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      openTogglePlanDialog(selectedUser);
+                      setShowPlanDialog(false);
+                    }}
+                    className={`${
+                      selectedUser.planActivo.isActive !== false 
+                        ? "border-red-500/50 text-red-400 hover:bg-red-500/10" 
+                        : "gradient-bg hover:opacity-90"
+                    }`}
+                  >
+                    {selectedUser.planActivo.isActive !== false ? (
+                      <>
+                        <PowerOff className="h-4 w-4 mr-2" />
+                        Desactivar Plan
+                      </>
+                    ) : (
+                      <>
+                        <Power className="h-4 w-4 mr-2" />
+                        Activar Plan
+                      </>
+                    )}
                   </Button>
                 </div>
               </>
             ) : (
               <div className="text-center py-8">
-                <Crown className="h-12 w-12 text-[#A0A0A0] mx-auto mb-3" />
-                <p className="text-[#A0A0A0]">Este usuario no tiene un plan asignado</p>
-                <div className="mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowPlanDialog(false)}
-                    className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white"
-                  >
-                    Cerrar
-                  </Button>
-                </div>
+                {selectedUser?.planActivo?.isDeactivated ? (
+                  <>
+                    <div className="mb-4">
+                      <Crown className="h-12 w-12 text-red-400 mx-auto mb-3" />
+                      <p className="text-red-400 font-medium mb-2">Plan Desactivado</p>
+                    </div>
+                    <div className="space-y-2 mb-4">
+                      <div className="p-3 bg-red-500/10 rounded border border-red-500/30">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Crown className="h-4 w-4 text-red-400" />
+                          <span className="font-medium text-white">{selectedUser.planActivo.nombre}</span>
+                        </div>
+                        <div className="space-y-1 text-sm text-[#A0A0A0]">
+                          <p><span className="text-[#A0A0A0]">Fecha de inicio:</span> {new Date(selectedUser.planActivo.fechaInicio).toLocaleDateString()}</p>
+                          <p><span className="text-[#A0A0A0]">Fecha de fin:</span> {new Date(selectedUser.planActivo.fechaFin).toLocaleDateString()}</p>
+                          <p><span className="text-[#A0A0A0]">Estado:</span> 
+                            <span className="ml-1 text-red-400">
+                              Desactivado
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Button
+                        onClick={() => {
+                          openTogglePlanDialog(selectedUser);
+                          setShowPlanDialog(false);
+                        }}
+                        className="gradient-bg hover:opacity-90 w-full"
+                      >
+                        <Power className="h-4 w-4 mr-2" />
+                        Reactivar Plan
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowPlanDialog(false)}
+                        className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white w-full"
+                      >
+                        Cerrar
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Crown className="h-12 w-12 text-[#A0A0A0] mx-auto mb-3" />
+                    <p className="text-[#A0A0A0] mb-4">Este usuario no tiene un plan asignado</p>
+                    <div className="space-y-2">
+                      <Button
+                        onClick={() => {
+                          // Abrir diálogo para asignar un nuevo plan
+                          setSelectedUser(selectedUser);
+                          setIsPlanDialogOpen(true);
+                          setShowPlanDialog(false);
+                        }}
+                        className="gradient-bg hover:opacity-90 w-full"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Asignar Plan
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowPlanDialog(false)}
+                        className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white w-full"
+                      >
+                        Cerrar
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1057,6 +1141,27 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                 </div>
                 <p className="text-[#A0A0A0] text-sm">
                   ¿Estás seguro de que deseas crear este usuario? Esta acción no se puede deshacer.
+                </p>
+              </>
+            ) : confirmAction.type === 'plan' ? (
+              <>
+                <div className="bg-[#0A0A0A] p-4 rounded-lg border border-[#1E1E1E]">
+                  <h4 className="font-medium text-white mb-2">Información del Plan:</h4>
+                  <div className="space-y-1 text-sm">
+                    <p><span className="text-[#A0A0A0]">Usuario:</span> <span className="text-white">{confirmAction.user?.firstName} {confirmAction.user?.lastName}</span></p>
+                    <p><span className="text-[#A0A0A0]">Plan:</span> <span className="text-white">{confirmAction.plan?.nombre}</span></p>
+                    <p><span className="text-[#A0A0A0]">Estado actual:</span> <span className={`text-white ${confirmAction.isActive ? 'text-green-400' : 'text-red-400'}`}>
+                      {confirmAction.isActive ? 'Activo' : 'Desactivado'}
+                    </span></p>
+                  </div>
+                </div>
+                <p className="text-[#A0A0A0] text-sm">
+                  ¿Estás seguro de que deseas {confirmAction.isActive ? 'desactivar' : 'activar'} este plan? 
+                  {confirmAction.isActive ? (
+                    <span className="text-red-400"> El usuario perderá acceso a los beneficios del plan, pero podrá seguir usando la aplicación.</span>
+                  ) : (
+                    <span className="text-green-400"> El usuario volverá a tener acceso a todos los beneficios del plan.</span>
+                  )}
                 </p>
               </>
             ) : (
@@ -1091,7 +1196,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
               Cancelar
             </Button>
             <Button 
-              onClick={confirmAction.type === 'create' ? confirmCreate : confirmToggleActive} 
+              onClick={confirmAction.type === 'create' ? confirmCreate : (confirmAction.type === 'plan' ? confirmTogglePlan : confirmToggleActive)} 
               disabled={isLoading}
               className={`${
                 confirmAction.type === 'toggle' && confirmAction.isActive 
@@ -1104,9 +1209,13 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
               ) : (
                 confirmAction.type === 'create' 
                   ? "Confirmar Creación" 
-                  : confirmAction.isActive 
-                    ? "Confirmar Desactivación" 
-                    : "Confirmar Activación"
+                  : confirmAction.type === 'plan'
+                    ? confirmAction.isActive 
+                      ? "Confirmar Desactivación" 
+                      : "Confirmar Activación"
+                    : confirmAction.isActive 
+                      ? "Confirmar Desactivación" 
+                      : "Confirmar Activación"
               )}
             </Button>
           </div>

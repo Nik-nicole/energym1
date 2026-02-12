@@ -17,42 +17,44 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Primero, vamos a buscar si hay pagos confirmados que podrían representar planes
-    const payments = await prisma.$queryRaw`
-      SELECT 
-        p.*,
-        pl.nombre as plan_nombre,
-        pl.descripcion as plan_descripcion,
-        pl.precio as plan_precio,
-        pl.duracion as plan_duracion,
-        pl.esVip as plan_esVip
-      FROM "Payment" p
-      LEFT JOIN "Plan" pl ON CAST(p.planId AS VARCHAR) = pl.id
-      WHERE p.userId = ${session.user.id}
-      AND p.status = 'CONFIRMED'
-      ORDER BY p.createdAt DESC
-      LIMIT 10
-    ` as any[];
+    // Buscar órdenes confirmadas del usuario
+    const orders = await prisma.order.findMany({
+      where: { 
+        userId: session.user.id,
+        status: "CONFIRMED",
+        paymentStatus: "PAID"
+      },
+      include: {
+        items: {
+          include: {
+            plan: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
 
     // Transformar los datos al formato esperado
-    const plans = payments.map((payment: any) => ({
-      id: payment.id,
-      userId: payment.userId,
-      planId: payment.planId,
-      status: 'ACTIVE', // Consideramos los pagos confirmados como planes activos
-      startDate: payment.createdAt,
-      endDate: null, // Podríamos calcular esto basado en la duración del plan
-      paymentMethod: payment.paymentMethod || 'WOMPI',
-      createdAt: payment.createdAt,
-      plan: {
-        id: payment.planId,
-        nombre: payment.plan_nombre || 'Plan Personalizado',
-        descripcion: payment.plan_descripcion || 'Plan adquirido',
-        precio: payment.plan_precio || 0,
-        duracion: payment.plan_duracion || 'mensual',
-        esVip: payment.plan_esVip || false
-      }
-    }));
+    const plans: any[] = [];
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        if (item.plan) {
+          plans.push({
+            id: order.id,
+            userId: order.userId,
+            planId: item.plan.id,
+            status: 'ACTIVE',
+            startDate: order.createdAt,
+            endDate: null,
+            paymentMethod: order.paymentMethod || 'CREDIT_CARD',
+            createdAt: order.createdAt,
+            plan: item.plan
+          });
+        }
+      });
+    });
 
     return NextResponse.json({ plans });
   } catch (error) {

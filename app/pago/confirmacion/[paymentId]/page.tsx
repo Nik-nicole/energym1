@@ -7,10 +7,23 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 async function getData(paymentId: string) {
+  console.log("Buscando orden con ID:", paymentId);
   try {
     const order = await prisma.order.findUnique({
       where: { id: paymentId },
-      include: {
+      select: {
+        id: true,
+        orderNumber: true,
+        userId: true,
+        totalAmount: true,
+        status: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        shippingAddress: true,
+        notes: true,
+        planId: true,
+        createdAt: true,
+        updatedAt: true,
         user: {
           select: {
             id: true,
@@ -20,22 +33,77 @@ async function getData(paymentId: string) {
           },
         },
         items: {
-          include: {
+          select: {
+            id: true,
+            productId: true,
+            planId: true,
+            quantity: true,
+            unitPrice: true,
+            totalPrice: true,
             product: true,
           },
         },
       },
     });
 
+    console.log("Orden encontrada:", order ? "SÍ" : "NO");
+
     if (!order) {
       return null;
     }
 
+    // Obtener información del plan desde el orderItem o desde la relación directa
+    const orderItem = order.items[0];
+    let planInfo = null;
+
+    if (orderItem?.planId) {
+      // Buscar el plan por planId si existe en el orderItem
+      planInfo = await prisma.plan.findUnique({
+        where: { id: orderItem.planId },
+      });
+    } else if (order.planId) {
+      // Buscar el plan por planId si existe en la orden
+      planInfo = await prisma.plan.findUnique({
+        where: { id: order.planId },
+      });
+    } else if (orderItem?.productId) {
+      // Fallback: buscar el plan por productId si existe
+      planInfo = await prisma.plan.findUnique({
+        where: { id: orderItem.productId },
+      });
+    }
+
     // Convertir orden a formato de payment para compatibilidad
-    const payment = {
+    const payment: {
+      id: string;
+      userId: string;
+      planId: string;
+      amount: number;
+      paymentMethod: string;
+      status: string;
+      paymentStatus: string;
+      cardName: string | null;
+      email: string;
+      transactionId: string;
+      createdAt: Date;
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string | null;
+        email: string;
+      };
+      plan: {
+        id: string;
+        nombre: string;
+        precio: number;
+        descripcion: string;
+        duracion: string;
+        esVip: boolean;
+      };
+    } = {
       id: order.id,
       userId: order.userId,
-      planId: order.items[0]?.productId || "",
+      planId: order.planId || orderItem?.planId || orderItem?.productId || "",
       amount: order.totalAmount,
       paymentMethod: order.paymentMethod || "",
       status: order.status,
@@ -45,8 +113,15 @@ async function getData(paymentId: string) {
       transactionId: order.orderNumber,
       createdAt: order.createdAt,
       user: order.user,
-      plan: {
-        id: order.items[0]?.productId || "",
+      plan: planInfo ? {
+        id: planInfo.id,
+        nombre: planInfo.nombre,
+        precio: planInfo.precio,
+        descripcion: planInfo.descripcion,
+        duracion: planInfo.duracion,
+        esVip: planInfo.esVip,
+      } : {
+        id: orderItem?.productId || "",
         nombre: "Plan Adquirido",
         precio: order.totalAmount,
         descripcion: "Descripción del plan",

@@ -64,6 +64,8 @@ export function EnhancedNoticiaForm({
   isLoading = false 
 }: EnhancedNoticiaFormProps) {
   const [activeTab, setActiveTab] = useState('edit')
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const [formData, setFormData] = useState<NoticiaFormData>({
     titulo: noticia?.titulo || '',
     resumen: noticia?.resumen || '',
@@ -155,8 +157,40 @@ export function EnhancedNoticiaForm({
     }).join('\n')
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleMainImageUpload = async (file: File) => {
+    if (!file) return
+    
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'energym/noticias')
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) throw new Error('Error al subir imagen')
+      
+      const result = await response.json()
+      setFormData(prev => ({ ...prev, imagen: result.url }))
+      toast.success('Imagen subida exitosamente')
+    } catch (error) {
+      toast.error('Error al subir la imagen')
+      console.error('Upload error:', error)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Subir imagen principal si hay un archivo nuevo
+    if (mainImageFile && !formData.imagen.includes('cloudinary')) {
+      await handleMainImageUpload(mainImageFile)
+    }
     
     // Create submit data with HTML content
     const submitData = {
@@ -235,12 +269,59 @@ export function EnhancedNoticiaForm({
 
                   <div>
                     <Label className="text-white">Imagen Principal</Label>
-                    <ControlledInput
-                      value={formData.imagen}
-                      onChange={(e) => setFormData(prev => ({ ...prev, imagen: e.target.value }))}
-                      placeholder="URL de la imagen principal..."
-                      className="bg-[#0A0A0A] border-white/10"
-                    />
+                    <div className="mt-2">
+                      <input
+                        type="file"
+                        id="main-image"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setMainImageFile(file)
+                            handleMainImageUpload(file)
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="main-image"
+                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-colors"
+                      >
+                        {formData.imagen ? (
+                          <div className="relative w-full h-full">
+                            <img
+                              src={formData.imagen}
+                              alt="Preview"
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setFormData(prev => ({ ...prev, imagen: '' }))
+                                setMainImageFile(null)
+                              }}
+                              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition-colors"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center">
+                            {isUploading ? (
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
+                            ) : (
+                              <Upload className="h-8 w-8 text-white/60 mb-2" />
+                            )}
+                            <p className="text-sm text-white/60">
+                              {isUploading ? 'Subiendo...' : 'Click para agregar imagen'}
+                            </p>
+                            <p className="text-xs text-white/40">PNG, JPG hasta 5MB</p>
+                          </div>
+                        )}
+                      </label>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -379,7 +460,7 @@ export function EnhancedNoticiaForm({
                         <SelectValue placeholder="Seleccionar sede" />
                       </SelectTrigger>
                       <SelectContent className="bg-[#0A0A0A] border-white/10">
-                        <SelectItem value="">Todas las sedes</SelectItem>
+                        <SelectItem value="general">Todas las sedes</SelectItem>
                         {sedes.map((sede) => (
                           <SelectItem key={sede.id} value={sede.id}>
                             {sede.nombre}

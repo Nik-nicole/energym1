@@ -37,25 +37,11 @@ import { Edit, Trash2, Plus, Upload, Image as ImageIcon, X, Heart, MessageCircle
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { EnhancedNoticiaForm } from "@/components/admin/enhanced-noticia-form";
-import { NoticiaFormData } from "@/types/noticia-editor";
+import { NoticiaFormData, ContentBlock } from "@/types/noticia-editor";
 
 interface Sede {
   id: string;
   nombre: string;
-}
-
-interface ContentBlock {
-  id: string;
-  type: 'titulo' | 'subtitulo' | 'parrafo' | 'imagen';
-  content: string;
-  alignment?: 'left' | 'center' | 'right' | 'justify';
-  color?: string;
-  fontSize?: 'small' | 'medium' | 'large';
-  imageSettings?: {
-    position: 'banner' | 'left' | 'right' | 'center';
-    url: string;
-    alt: string;
-  };
 }
 
 interface Noticia {
@@ -87,111 +73,85 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingNoticia, setEditingNoticia] = useState<Noticia | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
   const [imagenFile, setImagenFile] = useState<File | null>(null);
 
-  const [formData, setFormData] = useState({
+  // Form data state
+  const [formData, setFormData] = useState<NoticiaFormData>({
     titulo: "",
-    contenido: "",
     resumen: "",
+    contenido: [],
     imagen: "",
-    imagenPosicion: "banner", // banner, izquierda, derecha, centro, sin
-    sedeId: "",
     esPromocion: false,
     fechaInicio: "",
     fechaFin: "",
+    sedeId: "",
     activo: true,
     destacado: false,
+    imagenPosicion: "banner"
   });
 
-  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([
-    { id: 1, type: 'titulo', content: '', estilo: { alineacion: 'left', color: '#ffffff', tamaño: 'grande' } }
-  ]);
+  // Content blocks state
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
 
+  // Reset form function
   const resetForm = () => {
     setFormData({
       titulo: "",
-      contenido: "",
       resumen: "",
+      contenido: [],
       imagen: "",
-      imagenPosicion: "banner",
-      sedeId: "",
       esPromocion: false,
       fechaInicio: "",
       fechaFin: "",
+      sedeId: "",
       activo: true,
       destacado: false,
+      imagenPosicion: "banner"
     });
-    setContentBlocks([
-      { id: 1, type: 'titulo', content: '', estilo: { alineacion: 'left', color: '#ffffff', tamaño: 'grande' } }
-    ]);
+    setContentBlocks([]);
     setImagenFile(null);
   };
 
-  const addContentBlock = (type: 'titulo' | 'subtitulo' | 'parrafo' | 'imagen') => {
-    const newBlock = {
-      id: Date.now(),
+  // Content block functions
+  const addContentBlock = (type: ContentBlock['type']) => {
+    const newBlock: ContentBlock = {
+      id: Date.now().toString(),
       type,
-      content: '',
+      content: "",
       estilo: {
         alineacion: 'left',
-        color: '#ffffff',
-        tamaño: type === 'titulo' ? 'grande' : 'mediano'
+        color: '#000000',
+        tamaño: 'mediano'
       },
-      imagenSettings: type === 'imagen' ? {
-        url: '',
-        alt: '',
-        posicion: 'izquierda'
-      } : undefined
+      ...(type === 'imagen' && {
+        imageSettings: {
+          position: 'izquierda',
+          url: "",
+          alt: "",
+          posicion: 'izquierda'
+        }
+      })
     };
     setContentBlocks([...contentBlocks, newBlock]);
   };
 
-  const updateContentBlock = (id: number, field: string, value: any) => {
-    setContentBlocks(blocks => blocks.map(block => 
+  const removeContentBlock = (id: string) => {
+    setContentBlocks(contentBlocks.filter(block => block.id !== id));
+  };
+
+  const updateContentBlock = (id: string, field: string, value: any) => {
+    setContentBlocks(contentBlocks.map(block => 
       block.id === id ? { ...block, [field]: value } : block
     ));
   };
 
-  const removeContentBlock = (id: number) => {
-    setContentBlocks(blocks => blocks.filter(block => block.id !== id));
-  };
-
-  const generateHTMLContent = () => {
-    return contentBlocks.map(block => {
-      switch (block.type) {
-        case 'titulo':
-          return `<h1 style="text-align: ${block.estilo.alineacion}; color: ${block.estilo.color}; font-size: ${block.estilo.tamaño === 'grande' ? '2rem' : block.estilo.tamaño === 'pequeño' ? '1rem' : '1.5rem'}; font-weight: bold; margin-bottom: 1rem;">${block.content}</h1>`;
-        case 'subtitulo':
-          return `<h2 style="text-align: ${block.estilo.alineacion}; color: ${block.estilo.color}; font-size: ${block.estilo.tamaño === 'grande' ? '1.5rem' : block.estilo.tamaño === 'pequeño' ? '1rem' : '1.25rem'}; margin-bottom: 0.5rem;">${block.content}</h2>`;
-        case 'parrafo':
-          return `<p style="text-align: ${block.estilo.alineacion}; color: ${block.estilo.color}; font-size: ${block.estilo.tamaño === 'grande' ? '1.1rem' : block.estilo.tamaño === 'pequeño' ? '0.9rem' : '1rem'}; line-height: 1.6;">${block.content}</p>`;
-        case 'imagen':
-          const imageStyles: Record<string, string> = {
-            banner: 'width: 100%; height: 300px; object-fit: cover; margin-bottom: 1rem;',
-            izquierda: 'float: left; width: 300px; height: 200px; object-fit: cover; margin-right: 1rem; margin-bottom: 1rem;',
-            derecha: 'float: right; width: 300px; height: 200px; object-fit: cover; margin-left: 1rem; margin-bottom: 1rem;',
-            centro: 'display: block; margin: 0 auto 1rem; max-width: 400px;',
-            sin: 'display: none;'
-          };
-          const imagenSettings = block.imagenSettings;
-          return `<img src="${imagenSettings?.url || ''}" alt="${imagenSettings?.alt || ''}" style="${imageStyles[imagenSettings?.posicion || 'izquierda']}">`;
-        default:
-          return ''
-      }
-    }).join('\n');
-  };
-
+  // Create noticia function
   const handleCreate = async () => {
-    if (!formData.titulo || contentBlocks.length === 0) {
-      toast.error("Por favor completa los campos requeridos");
-      return;
-    }
-
     setIsLoading(true);
     try {
       let imageUrl = formData.imagen;
 
+      // Upload image if exists
       if (imagenFile) {
         const formDataUpload = new FormData();
         formDataUpload.append("file", imagenFile);
@@ -215,15 +175,14 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
         body: JSON.stringify({ 
           ...formData, 
           imagen: imageUrl,
-          contenido: generateHTMLContent(),
-          imagenPosicion: formData.imagenPosicion
+          contenido: contentBlocks 
         }),
       });
 
       if (!response.ok) throw new Error("Error al crear noticia");
 
       const newNoticia = await response.json();
-      setNoticiasList([...noticiasList, newNoticia]);
+      setNoticiasList([newNoticia, ...noticiasList]);
       setIsCreateDialogOpen(false);
       resetForm();
       toast.success("Noticia creada exitosamente");
@@ -236,29 +195,17 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
 
   const handleEdit = (noticia: Noticia) => {
     setEditingNoticia(noticia);
-    setFormData({
-      titulo: noticia.titulo,
-      contenido: noticia.contenido,
-      resumen: noticia.resumen || "",
-      imagen: noticia.imagen || "",
-      imagenPosicion: "banner",
-      sedeId: noticia.sedeId || "general",
-      esPromocion: noticia.esPromocion,
-      fechaInicio: noticia.fechaInicio ? noticia.fechaInicio.toISOString().split('T')[0] : "",
-      fechaFin: noticia.fechaFin ? noticia.fechaFin.toISOString().split('T')[0] : "",
-      activo: noticia.activo,
-      destacado: noticia.destacado,
-    });
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (data: NoticiaFormData) => {
     if (!editingNoticia) return;
 
     setIsLoading(true);
     try {
-      let imageUrl = formData.imagen;
+      let imageUrl = data.imagen;
 
+      // Si hay un archivo de imagen, subirlo
       if (imagenFile) {
         const formDataUpload = new FormData();
         formDataUpload.append("file", imagenFile);
@@ -279,7 +226,7 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ...formData, imagen: imageUrl }),
+        body: JSON.stringify({ ...data, imagen: imageUrl }),
       });
 
       if (!response.ok) throw new Error("Error al actualizar noticia");
@@ -304,118 +251,23 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error("Error al eliminar noticia");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Error desconocido" }));
+        throw new Error(errorData.error || "Error al eliminar noticia");
+      }
 
       setNoticiasList(noticiasList.filter((n) => n.id !== id));
       toast.success("Noticia eliminada exitosamente");
     } catch (error) {
-      toast.error("Error al eliminar noticia");
+      console.error("Error al eliminar noticia:", error);
+      const errorMessage = error instanceof Error ? error.message : "Error al eliminar noticia";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderForm = (isEdit: boolean) => (
-    <div className="grid gap-4 py-4">
-      <div className="space-y-2">
-        <Label htmlFor="titulo" className="text-[#F8F8F8]">Título</Label>
-        <ControlledInput
-          id="titulo"
-          value={formData.titulo}
-          onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-          placeholder="Título de la noticia"
-          maxLength={100}
-          showCharCount={true}
-          showWarning={true}
-          className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="resumen" className="text-[#F8F8F8]">Resumen</Label>
-        <ControlledTextarea
-          id="resumen"
-          value={formData.resumen}
-          onChange={(e) => setFormData({ ...formData, resumen: e.target.value })}
-          placeholder="Breve resumen (opcional)"
-          rows={2}
-          maxLength={200}
-          showCharCount={true}
-          showWarning={true}
-          className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="contenido" className="text-[#F8F8F8]">Contenido</Label>
-        <ControlledTextarea
-          id="contenido"
-          value={formData.contenido}
-          onChange={(e) => setFormData({ ...formData, contenido: e.target.value })}
-          placeholder="Escribe el contenido completo de la noticia aquí (formato blog)..."
-          rows={15}
-          maxLength={50000}
-          showCharCount={true}
-          showWarning={true}
-          className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label className="text-[#F8F8F8]">Imagen de Portada</Label>
-        <div className="border-2 border-dashed border-[#1E1E1E] rounded-lg p-4">
-          <input
-            type="file"
-            id={isEdit ? "edit-imagen" : "create-imagen"}
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setImagenFile(file);
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  setFormData({ ...formData, imagen: reader.result as string });
-                };
-                reader.readAsDataURL(file);
-              }
-            }}
-            className="hidden"
-          />
-          <label
-            htmlFor={isEdit ? "edit-imagen" : "create-imagen"}
-            className="flex flex-col items-center justify-center cursor-pointer"
-          >
-            {formData.imagen || imagenFile ? (
-              <div className="relative w-full h-48">
-                <img
-                  src={formData.imagen || (imagenFile ? URL.createObjectURL(imagenFile) : "")}
-                  alt="Preview"
-                  className="w-full h-full object-cover rounded-lg"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setImagenFile(null);
-                    setFormData({ ...formData, imagen: "" });
-                  }}
-                  className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <Upload className="h-12 w-12 text-[#A0A0A0] mb-2" />
-                <p className="text-sm text-[#A0A0A0]">Click para subir imagen</p>
-                <p className="text-xs text-[#A0A0A0]">PNG, JPG hasta 10MB</p>
-              </>
-            )}
-          </label>
-        </div>
-      </div>
-      {/* ... Resto de campos (Sede, Promoción, Fechas) se mantienen similares pero usando CustomSwitch y ControlledInput donde aplique ... */}
-      {/* Por brevedad, asumo que la estructura de los switches y selects se mantiene pero con los estilos actualizados */}
-    </div>
-  );
-
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -442,13 +294,26 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
             
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="titulo" className="text-[#F8F8F8]">Título Principal</Label>
-                <ControlledInput
-                  id="titulo"
-                  value={formData.titulo}
-                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                  placeholder="Título principal de la noticia"
-                  maxLength={100}
+                <Label htmlFor="contenido" className="text-[#F8F8F8]">Contenido</Label>
+                <ControlledTextarea
+                  id="contenido"
+                  value={formData.contenido.map(block => block.content).join('\n\n')}
+                  onChange={(e) => {
+                    const contentArray = e.target.value.split('\n\n').map(content => ({
+                      id: Date.now().toString() + Math.random(),
+                      type: 'text' as const,
+                      content,
+                      estilo: {
+                        alineacion: 'left' as const,
+                        color: '#000000',
+                        tamaño: 'mediano' as const
+                      }
+                    }));
+                    setFormData({ ...formData, contenido: contentArray });
+                  }}
+                  placeholder="Escribe el contenido completo de la noticia aquí (formato blog)..."
+                  rows={15}
+                  maxLength={50000}
                   showCharCount={true}
                   showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
@@ -528,8 +393,8 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
                             <div className="space-y-2">
                               <Label className="text-[#F8F8F8]">URL de la imagen</Label>
                               <ControlledInput
-                                value={block.imagenSettings?.url || ''}
-                                onChange={(e) => updateContentBlock(block.id, 'imagenSettings', { ...block.imagenSettings, url: e.target.value })}
+                                value={block.imageSettings?.url || ''}
+                                onChange={(e) => updateContentBlock(block.id, 'imageSettings', { ...block.imageSettings, position: block.imageSettings?.position || 'izquierda', url: e.target.value })}
                                 placeholder="https://ejemplo.com/imagen.jpg"
                                 className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                               />
@@ -537,8 +402,8 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
                             <div className="space-y-2">
                               <Label className="text-[#F8F8F8]">Texto alternativo</Label>
                               <ControlledInput
-                                value={block.imagenSettings?.alt || ''}
-                                onChange={(e) => updateContentBlock(block.id, 'imagenSettings', { ...block.imagenSettings, alt: e.target.value })}
+                                value={block.imageSettings?.alt || ''}
+                                onChange={(e) => updateContentBlock(block.id, 'imageSettings', { ...block.imageSettings, position: block.imageSettings?.position || 'izquierda', alt: e.target.value })}
                                 placeholder="Descripción de la imagen"
                                 className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                               />
@@ -547,8 +412,8 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
                           <div className="space-y-2">
                             <Label className="text-[#F8F8F8]">Posición de la imagen</Label>
                             <Select
-                              value={block.imagenSettings?.posicion || 'izquierda'}
-                              onValueChange={(value) => updateContentBlock(block.id, 'imagenSettings', { ...block.imagenSettings, posicion: value as any })}
+                              value={block.imageSettings?.posicion || 'izquierda'}
+                              onValueChange={(value) => updateContentBlock(block.id, 'imageSettings', { ...block.imageSettings, position: block.imageSettings?.position || 'izquierda', posicion: value as any })}
                             >
                               <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
                                 <SelectValue placeholder="Seleccionar posición" />
@@ -579,7 +444,7 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
                             <div className="space-y-2">
                               <Label className="text-[#F8F8F8]">Alineación</Label>
                               <Select
-                                value={block.estilo.alineacion}
+                                value={block.estilo?.alineacion || 'left'}
                                 onValueChange={(value) => updateContentBlock(block.id, 'estilo', { ...block.estilo, alineacion: value as any })}
                               >
                                 <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white text-sm">
@@ -597,7 +462,7 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
                               <Label className="text-[#F8F8F8]">Color</Label>
                               <input
                                 type="color"
-                                value={block.estilo.color}
+                                value={block.estilo?.color || '#000000'}
                                 onChange={(e) => updateContentBlock(block.id, 'estilo', { ...block.estilo, color: e.target.value })}
                                 className="w-full h-8 rounded cursor-pointer"
                               />
@@ -605,7 +470,7 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
                             <div className="space-y-2">
                               <Label className="text-[#F8F8F8]">Tamaño</Label>
                               <Select
-                                value={block.estilo.tamaño}
+                                value={block.estilo?.tamaño || 'mediano'}
                                 onValueChange={(value) => updateContentBlock(block.id, 'estilo', { ...block.estilo, tamaño: value as any })}
                               >
                                 <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white text-sm">
@@ -650,10 +515,10 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
                     htmlFor="create-imagen"
                     className="flex flex-col items-center justify-center cursor-pointer"
                   >
-                    {formData.imagen || imagenFile ? (
+                    {(formData.imagen || imagenFile) ? (
                       <div className="relative w-full h-48">
                         <img
-                          src={formData.imagen || (imagenFile ? URL.createObjectURL(imagenFile) : "")}
+                          src={formData.imagen || (imagenFile ? URL.createObjectURL(imagenFile) : '')}
                           alt="Preview"
                           className="w-full h-full object-cover rounded-lg"
                         />
@@ -839,15 +704,8 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
                 {noticia.resumen || noticia.contenido}
               </p>
 
-              {/* Iconos de Acción (Admin) */}
-              <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
-                <div className="flex gap-4 text-gray-500">
-                  <Heart className="w-5 h-5 hover:text-[#D604E0] cursor-pointer transition-colors" />
-                  <MessageCircle className="w-5 h-5 hover:text-[#040AE0] cursor-pointer transition-colors" />
-                  <Share2 className="w-5 h-5 hover:text-white cursor-pointer transition-colors" />
-                </div>
-                
-                <div className="flex gap-2">
+              {/* Espacio para acciones futuras si es necesario */}
+              <div className="flex gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -889,7 +747,6 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
-              </div>
             </div>
           </motion.div>
         ))}
@@ -897,22 +754,22 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
+        <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
           <DialogHeader>
             <DialogTitle className="gradient-text">Editar Noticia</DialogTitle>
           </DialogHeader>
           
-          {/* Reutilizamos la función renderForm pero pasando true para indicar modo edición */}
-          {renderForm(true)}
-
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
-              Cancelar
-            </Button>
-            <Button onClick={handleUpdate} disabled={isLoading} className="gradient-bg hover:opacity-90">
-              {isLoading ? "Actualizando..." : "Actualizar Noticia"}
-            </Button>
-          </div>
+          <EnhancedNoticiaForm
+            noticia={editingNoticia}
+            sedes={sedes}
+            onSubmit={handleUpdate}
+            onCancel={() => {
+              setIsEditDialogOpen(false);
+              setEditingNoticia(null);
+              resetForm();
+            }}
+            isLoading={isLoading}
+          />
         </DialogContent>
       </Dialog>
     </div>

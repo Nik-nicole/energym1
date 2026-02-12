@@ -37,9 +37,12 @@ export function HeroSection() {
             />
           </div>
           <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto mb-8">
-            La cadena de gimnasios líder en Bogotá. Equipamiento premium,
-            entrenadores certificados y programas personalizados para alcanzar
-            tus metas.
+            En ENERGYM Club creemos en el poder de romper límites.
+            En el fuego interno que te impulsa, incluso cuando nadie está mirando.
+            No somos un gimnasio. Somos un manifiesto de alto rendimiento, una comunidad que vive la disciplina como estilo de vida y el bienestar como lujo esencial.
+            Aquí cada detalle está diseñado para inspirarte, desafiarte y elevar tu nivel.
+            Este es el club donde la energía se vuelve identidad…
+            Y donde tu transformación se vuelve inevitable.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
