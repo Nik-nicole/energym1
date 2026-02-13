@@ -510,6 +510,13 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
     setShowConfirmDialog(false);
     
     try {
+      console.log('🔄 Enviando solicitud toggle plan:', {
+        userId: confirmAction.user.id,
+        planId: confirmAction.plan.id,
+        currentState: confirmAction.isActive,
+        newState: !confirmAction.isActive
+      });
+
       const response = await fetch(`/api/admin/usuarios/${confirmAction.user.id}/toggle-plan`, {
         method: "PATCH",
         headers: {
@@ -527,6 +534,8 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       }
 
       const updatedUser = await response.json();
+      console.log('✅ Respuesta del servidor:', updatedUser);
+      
       setUsersList(usersList.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
       toast.success(`Plan ${!confirmAction.isActive ? "activado" : "desactivado"} exitosamente`);
     } catch (error) {

@@ -19,14 +19,27 @@ async function getUsersData() {
           include: {
             items: {
               include: {
-                plan: true,
+                plan: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    precio: true,
+                    duracion: true,
+                  }
+                },
+                product: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    precio: true,
+                  }
+                }
               },
             },
           },
           orderBy: {
             createdAt: 'desc'
           },
-          take: 1, // Solo la orden más reciente por usuario
         },
         _count: {
           select: {
@@ -37,29 +50,66 @@ async function getUsersData() {
       orderBy: { createdAt: "desc" },
     });
 
+    // Obtener todos los UserPlans para verificar estados personalizados
+    const userPlans = await prisma.userPlan.findMany({
+      include: {
+        plan: {
+          select: {
+            id: true,
+            nombre: true,
+          }
+        }
+      }
+    });
+
     // Transformar los datos para incluir el plan activo o desactivado
     const usersWithPlans = users.map(user => {
-      const latestOrder = user.orders[0];
-      const activePlan = latestOrder?.items.find(item => item.plan)?.plan;
+      // Buscar TODAS las órdenes con planes (pagadas y no pagadas), ordenadas por fecha
+      const allPlanOrders = user.orders
+        .filter(order => order.items.some(item => item.plan))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      // Buscar específicamente órdenes con planes PAGADAS
+      const paidPlanOrders = allPlanOrders.filter(order => order.paymentStatus === "PAID");
+      
+      // Priorizar: 1) Plan pagado más reciente, 2) Plan más reciente (sin importar pago)
+      const latestPlanOrder = paidPlanOrders[0] || allPlanOrders[0];
+      
+      const activePlan = latestPlanOrder?.items.find(item => item.plan)?.plan;
       
       // Determinar si el plan está activo o desactivado
       let planStatus = null;
-      if (latestOrder && activePlan) {
-        if (latestOrder.status === "CONFIRMED" && latestOrder.paymentStatus === "PAID") {
+      if (latestPlanOrder && activePlan) {
+        const isPaid = latestPlanOrder.paymentStatus === "PAID";
+        
+        if (isPaid) {
+          // Plan pagado - siempre mostrar el plan, verificar estado en UserPlan
+          const userPlanState = userPlans.find((up: any) => up.plan.id === activePlan.id && up.userId === user.id);
+          
+          // Siempre mostrar el plan, con su estado correspondiente
+          const isActive = userPlanState ? userPlanState.isActive : true; // Por defecto activo si no hay registro
+          
           planStatus = {
             id: activePlan.id,
             nombre: activePlan.nombre,
-            fechaInicio: latestOrder.createdAt.toISOString().split('T')[0],
-            fechaFin: new Date(latestOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            isActive: true,
-            isDeactivated: false,
+            fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
+            fechaFin: new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            isActive: isActive,
+            isDeactivated: !isActive, // Simple: si no está activo, está desactivado
           };
+          
+          console.log(`📋 Plan ${activePlan.nombre} para ${user.firstName}:`, {
+            isActive,
+            isDeactivated: !isActive,
+            userPlanState: userPlanState ? 'exists' : 'not found'
+          });
         } else {
+          // Plan comprado pero no pagado aún
           planStatus = {
             id: activePlan.id,
             nombre: activePlan.nombre,
-            fechaInicio: latestOrder.createdAt.toISOString().split('T')[0],
-            fechaFin: new Date(latestOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
+            fechaFin: new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             isActive: false,
             isDeactivated: true,
           };

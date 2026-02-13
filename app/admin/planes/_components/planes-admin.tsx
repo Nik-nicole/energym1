@@ -81,6 +81,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showBenefits, setShowBenefits] = useState<{ [key: string]: boolean }>({});
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -199,6 +200,13 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleBenefits = (planId: string) => {
+    setShowBenefits(prev => ({
+      ...prev,
+      [planId]: !prev[planId]
+    }));
   };
 
   const addBeneficio = () => {
@@ -542,73 +550,68 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
               </div>
             )}
 
-            <div className="text-center mb-6 pt-2">
+            <div className="flex flex-col items-center gap-2">
               <h3 className={`text-xl font-bold mb-2 ${plan.esVip ? "gradient-text" : "text-white"}`}>
                 {plan.nombre}
               </h3>
               <p className="text-gray-400 text-sm mb-4">{plan.descripcion}</p>
               <div className="flex items-end justify-center gap-1">
                 <span className={`text-4xl font-bold ${plan.esVip ? "gradient-text" : "text-white"}`}>
-                  ${plan.precio.toFixed(2)} COP
+                  {new Intl.NumberFormat("es-CO", {
+                    style: "currency",
+                    currency: "COP",
+                    minimumFractionDigits: 0,
+                  }).format(plan.precio)}
                 </span>
                 <span className="text-gray-400 mb-1">/{plan.duracion}</span>
               </div>
             </div>
 
-            <ul className="space-y-3 mb-6">
-              {plan.beneficios.slice(0, 3).map((beneficio, i) => (
-                <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
-                  <Check className={`w-5 h-5 flex-shrink-0 ${plan.esVip ? "text-[#D604E0]" : "text-[#040AE0]"}`} />
-                  <span>{beneficio}</span>
-                </li>
-              ))}
-              {plan.beneficios.length > 3 && (
-                <li className="text-gray-400 text-sm text-center">
-                  +{plan.beneficios.length - 3} beneficios más...
-                </li>
-              )}
-            </ul>
-
-            <div className="flex items-center justify-between text-xs text-gray-400 mb-4">
-              <div className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                <span>{plan._count.sedes} sedes</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span>{new Date(plan.createdAt).toLocaleDateString()}</span>
-              </div>
-            </div>
-
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEdit(plan)}
-                className={`flex-1 ${
-                  plan.esVip
-                    ? "border-[#D604E0]/50 text-[#D604E0] hover:bg-[#D604E0]/10"
-                    : "border-white/20 text-white hover:bg-white/10"
-                }`}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleBenefits(plan.id)}
+                  className="border-white/20 text-white hover:bg-white/10"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </div>
+
+            {showBenefits[plan.id] && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                transition={{ duration: 0.3 }}
+                className="mt-4"
               >
-                <Edit className="h-4 w-4 mr-2" />
-                Editar
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className={`flex-1 ${
-                      plan.esVip
-                        ? "border-red-500/50 text-red-400 hover:bg-red-500/10"
-                        : "border-red-500/50 text-red-400 hover:bg-red-500/10"
-                    }`}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Eliminar
-                  </Button>
-                </AlertDialogTrigger>
+                <ul className="space-y-3 mb-6">
+                  {plan.beneficios.slice(0, 3).map((beneficio, i) => (
+                    <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
+                      <Check className={`w-5 h-5 flex-shrink-0 ${plan.esVip ? "text-[#D604E0]" : "text-[#040AE0]"}`} />
+                      <span>{beneficio}</span>
+                    </li>
+                  ))}
+                  {plan.beneficios.length > 3 && (
+                    <li className="text-gray-400 text-sm text-center">
+                      +{plan.beneficios.length - 3} beneficios más...
+                    </li>
+                  )}
+                </ul>
+              </motion.div>
+            )}
+
+            <button
+              onClick={handleSelectPlan}
+              className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+                isVip
+                  ? "gradient-bg hover:opacity-90"
+                  : "bg-white/10 hover:bg-white/20 text-white"
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              {session ? "Seleccionar Plan" : "Empezar Ahora"}
+            </button>
                 <AlertDialogContent className="bg-[#141414] border-[#1E1E1E]">
                   <AlertDialogHeader>
                     <AlertDialogTitle className="text-white">¿Eliminar plan?</AlertDialogTitle>

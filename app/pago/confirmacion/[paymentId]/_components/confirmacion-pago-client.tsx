@@ -117,11 +117,11 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
   const handleDownload = () => {
     const receiptData = {
       id: payment.id,
-      orderNumber: payment.order.orderNumber,
+      orderNumber: payment.order?.orderNumber || 'N/A',
       amount: payment.amount,
       date: payment.createdAt,
       status: payment.status,
-      items: payment.order.items,
+      items: payment.order?.items || [],
     };
     
     const blob = new Blob([JSON.stringify(receiptData, null, 2)], {
@@ -203,20 +203,22 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Número de Orden</span>
-                  <span className="text-white font-medium">{payment.order.orderNumber}</span>
+                  <span className="text-white font-medium">
+                    {payment.order?.orderNumber || 'N/A'}
+                  </span>
                 </div>
                 
                 <div className="flex justify-between">
                   <span className="text-gray-400">Estado del Pedido</span>
                   <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded-full text-sm font-medium">
-                    {payment.order.status === "CONFIRMED" ? "Confirmado" : payment.order.status}
+                    {payment.order?.status === "CONFIRMED" ? "Confirmado" : payment.order?.status || "N/A"}
                   </span>
                 </div>
                 
                 <div className="flex justify-between">
                   <span className="text-gray-400">Estado del Pago</span>
                   <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded-full text-sm font-medium">
-                    {payment.order.paymentStatus === "PAID" ? "Pagado" : payment.order.paymentStatus}
+                    {payment.order?.paymentStatus === "PAID" ? "Pagado" : payment.order?.paymentStatus || "N/A"}
                   </span>
                 </div>
                 
@@ -235,7 +237,7 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
                 <h3 className="text-lg font-semibold text-white mb-4">Productos Comprados</h3>
                 
                 <div className="space-y-3">
-                  {payment.order.items.map((item) => (
+                  {(payment.order?.items || []).map((item) => (
                     <div key={item.id} className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-gradient-to-br from-[#040AE0]/10 to-[#D604E0]/10 rounded-lg overflow-hidden flex-shrink-0">
                         {item.product?.imagen ? (
@@ -256,12 +258,12 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
                           {item.product?.nombre || "Producto"}
                         </h4>
                         <p className="text-gray-400 text-sm">
-                          Cantidad: {item.quantity} × {formatPrice(item.unitPrice)}
+                          Cantidad: {item.quantity} × {formatPrice(item.unitPrice || 0)}
                         </p>
                       </div>
                       
                       <span className="text-white font-bold">
-                        {formatPrice(item.totalPrice)}
+                        {formatPrice(item.totalPrice || 0)}
                       </span>
                     </div>
                   ))}
@@ -294,10 +296,16 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Dirección de Envío</span>
                   <span className="text-white text-sm text-right">
-                    {payment.shippingAddress.name}<br/>
-                    {payment.shippingAddress.address}<br/>
-                    {payment.shippingAddress.city}<br/>
-                    {payment.shippingAddress.phone}
+                    {payment.shippingAddress ? (
+                      <>
+                        {payment.shippingAddress.name}<br/>
+                        {payment.shippingAddress.address}<br/>
+                        {payment.shippingAddress.city}<br/>
+                        {payment.shippingAddress.phone}
+                      </>
+                    ) : (
+                      "No especificada"
+                    )}
                   </span>
                 </div>
               </div>

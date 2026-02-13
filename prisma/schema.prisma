@@ -67,6 +67,7 @@ model Plan {
   sedes         PlanSede[]
   orderItems    OrderItem[]
   orders        Order[]
+  userPlans     UserPlan[]
 }
 
 model PlanSede {
@@ -78,6 +79,23 @@ model PlanSede {
   createdAt DateTime @default(now())
   
   @@unique([planId, sedeId])
+}
+
+model UserPlan {
+  id          String    @id @default(cuid())
+  userId      String
+  planId      String
+  plan        Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+  paymentId   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([userId, planId])
+  @@index([userId])
+  @@index([planId])
 }
 
 model Noticia {

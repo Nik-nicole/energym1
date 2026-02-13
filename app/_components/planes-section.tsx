@@ -39,7 +39,7 @@ export function PlanesSection({ planes }: { planes: Plan[] }) {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {(planes ?? []).map((plan, index) => (
             <PlanCard key={plan?.id ?? index} plan={plan} index={index} />
           ))}
