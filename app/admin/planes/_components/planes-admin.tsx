@@ -33,21 +33,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Package, Edit, Trash2, Plus, Star, Clock, DollarSign, MapPin, Check, Crown } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Star,
+  TrendingUp,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 interface Sede {
   id: string;
   nombre: string;
-}
-
-interface PlanSede {
-  id: string;
-  sedeId: string;
-  planId: string;
-  sede: Sede;
 }
 
 interface Plan {
@@ -62,12 +60,7 @@ interface Plan {
   activo: boolean;
   destacado: boolean;
   orden: number;
-  createdAt: Date;
-  updatedAt: Date;
-  sedes: PlanSede[];
-  _count: {
-    sedes: number;
-  };
+  sedes: Sede[];
 }
 
 interface PlanesAdminProps {
@@ -75,41 +68,59 @@ interface PlanesAdminProps {
   sedes: Sede[];
 }
 
+const categorias = [
+  "GENERAL",
+  "SUPLEMENTOS",
+  "ROPA",
+  "ACCESORIOS",
+  "EQUIPO",
+  "NUTRICIÓN",
+  "OTROS",
+];
+
 export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
   const [planesList, setPlanesList] = useState<Plan[]>(planes);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showBenefits, setShowBenefits] = useState<{ [key: string]: boolean }>({});
 
   const [formData, setFormData] = useState({
     nombre: "",
-    precio: 0,
     descripcion: "",
+    precio: 0,
     beneficios: [""],
-    duracion: "",
+    duracion: "Mensual",
     tipo: "STANDARD",
     esVip: false,
     activo: true,
     destacado: false,
     orden: 0,
-    sedeIds: [] as string[],
+    sedes: [] as Sede[],
   });
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   const resetForm = () => {
     setFormData({
       nombre: "",
-      precio: 0,
       descripcion: "",
+      precio: 0,
       beneficios: [""],
-      duracion: "",
+      duracion: "Mensual",
       tipo: "STANDARD",
       esVip: false,
       activo: true,
       destacado: false,
       orden: 0,
-      sedeIds: [],
+      sedes: [] as Sede[],
     });
   };
 
@@ -142,16 +153,16 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
     setEditingPlan(plan);
     setFormData({
       nombre: plan.nombre,
-      precio: plan.precio,
       descripcion: plan.descripcion,
-      beneficios: plan.beneficios.length > 0 ? plan.beneficios : [""],
+      precio: plan.precio,
+      beneficios: plan.beneficios,
       duracion: plan.duracion,
       tipo: plan.tipo,
       esVip: plan.esVip,
       activo: plan.activo,
       destacado: plan.destacado,
       orden: plan.orden,
-      sedeIds: plan.sedes.map((ps) => ps.sedeId),
+      sedes: plan.sedes,
     });
     setIsEditDialogOpen(true);
   };
@@ -202,13 +213,6 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
     }
   };
 
-  const toggleBenefits = (planId: string) => {
-    setShowBenefits(prev => ({
-      ...prev,
-      [planId]: !prev[planId]
-    }));
-  };
-
   const addBeneficio = () => {
     setFormData({
       ...formData,
@@ -216,22 +220,18 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
     });
   };
 
-  const updateBeneficio = (index: number, value: string) => {
-    const newBeneficios = [...formData.beneficios];
-    newBeneficios[index] = value;
+  const removeBeneficio = (index: number) => {
     setFormData({
       ...formData,
-      beneficios: newBeneficios,
+      beneficios: formData.beneficios.filter((_, i) => i !== index),
     });
   };
 
-  const removeBeneficio = (index: number) => {
-    if (formData.beneficios.length > 1) {
-      setFormData({
-        ...formData,
-        beneficios: formData.beneficios.filter((_, i) => i !== index),
-      });
-    }
+  const updateBeneficio = (index: number, value: string) => {
+    setFormData({
+      ...formData,
+      beneficios: formData.beneficios.map((beneficio, i) => (i === index ? value : beneficio)),
+    });
   };
 
   return (
@@ -277,11 +277,10 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     step="0.01"
                     value={formData.precio}
                     onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
-                    placeholder="0.00"
+                    placeholder="0"
                     maxLength={10}
                     showCharCount={true}
                     showWarning={true}
-                    required={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
@@ -300,80 +299,6 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-[#F8F8F8]">Beneficios</Label>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white text-xs"
-                      >
-                        Copiar de otro plan
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-[#141414] border-[#1E1E1E] text-white max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Seleccionar plan para copiar beneficios</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-3 max-h-60 overflow-y-auto">
-                        {planes.filter((p: Plan) => p.id !== (formData as any).id).map((plan: Plan) => (
-                          <div
-                            key={plan.id}
-                            className="p-3 border border-[#1E1E1E] rounded-lg cursor-pointer hover:bg-[#1E1E1E] transition-colors"
-                            onClick={() => {
-                              if (plan.beneficios.length > 0) {
-                                setFormData({
-                                  ...formData,
-                                  beneficios: [...plan.beneficios]
-                                });
-                                toast.success("Beneficios copiados del plan: " + plan.nombre);
-                              } else {
-                                toast.error("El plan seleccionado no tiene beneficios");
-                              }
-                            }}
-                          >
-                            <div className="font-medium">{plan.nombre}</div>
-                            <div className="text-sm text-gray-400">{plan.duracion} - ${plan.precio}</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {plan.beneficios.length} beneficios disponibles
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                {formData.beneficios.map((beneficio, index) => (
-                  <div key={index} className="flex gap-2">
-                    <ControlledInput
-                      value={beneficio}
-                      onChange={(e) => updateBeneficio(index, e.target.value)}
-                      placeholder="Beneficio"
-                      maxLength={200}
-                      showCharCount={true}
-                      showWarning={true}
-                      className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeBeneficio(index)}
-                      disabled={formData.beneficios.length === 1}
-                      className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white"
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                ))}
-                <Button type="button" variant="outline" onClick={addBeneficio} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Agregar Beneficio
-                </Button>
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="duracion" className="text-[#F8F8F8]">Duración</Label>
@@ -381,25 +306,89 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     value={formData.duracion}
                     onValueChange={(value) => setFormData({ ...formData, duracion: value })}
                   >
-                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
+                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
                       <SelectValue placeholder="Seleccionar duración" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#141414] border-[#1E1E1E]">
-                      <SelectItem value="1 día">1 día</SelectItem>
-                      <SelectItem value="15 días">15 días</SelectItem>
-                      <SelectItem value="2 meses">2 meses</SelectItem>
-                      <SelectItem value="1 mes">1 mes</SelectItem>
-                      <SelectItem value="3 meses">3 meses</SelectItem>
-                      <SelectItem value="6 meses">6 meses</SelectItem>
-                      <SelectItem value="1 año">1 año</SelectItem>
-                      <SelectItem value="2 años">2 años</SelectItem>
+                    <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                      <SelectItem value="Mensual">Mensual</SelectItem>
                       <SelectItem value="Trimestral">Trimestral</SelectItem>
                       <SelectItem value="Semestral">Semestral</SelectItem>
                       <SelectItem value="Anual">Anual</SelectItem>
-                      <SelectItem value="Ilimitado">Ilimitado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tipo" className="text-[#F8F8F8]">Tipo</Label>
+                  <Select
+                    value={formData.tipo}
+                    onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+                  >
+                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                      <SelectItem value="STANDARD">Estándar</SelectItem>
+                      <SelectItem value="PREMIUM">Premium</SelectItem>
+                      <SelectItem value="VIP">VIP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Beneficios</Label>
+                <div className="space-y-2">
+                  {formData.beneficios.map((beneficio, index) => (
+                    <div key={index} className="flex gap-2">
+                      <ControlledInput
+                        value={beneficio}
+                        onChange={(e) => updateBeneficio(index, e.target.value)}
+                        placeholder="Beneficio del plan"
+                        maxLength={100}
+                        showCharCount={true}
+                        showWarning={true}
+                        className="flex-1 bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeBeneficio(index)}
+                        className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addBeneficio}
+                    className="w-full border-dashed border-[#1E1E1E] text-[#A0A0A0] hover:border-[#D604E0]/50 hover:text-[#D604E0]"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Agregar Beneficio
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="activo"
+                    checked={formData.activo}
+                    onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                  />
+                  <Label htmlFor="activo" className="text-[#F8F8F8]">Activo</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="destacado"
+                    checked={formData.destacado}
+                    onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
+                  />
+                  <Label htmlFor="destacado" className="text-[#F8F8F8]">Destacado</Label>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="orden" className="text-[#F8F8F8]">Orden</Label>
                   <ControlledInput
@@ -407,108 +396,35 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     type="number"
                     value={formData.orden}
                     onChange={(e) => setFormData({ ...formData, orden: parseInt(e.target.value) })}
-                    placeholder="Orden de visualización"
+                    placeholder="0"
                     maxLength={3}
                     showCharCount={true}
                     showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tipo" className="text-[#F8F8F8]">Tipo</Label>
-                  <Select
-                    value={formData.tipo}
-                    onValueChange={(value) => setFormData({ ...formData, tipo: value })}
-                  >
-                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
-                      <SelectValue placeholder="Seleccionar tipo" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#141414] border-[#1E1E1E]">
-                      <SelectItem value="STANDARD">Standard</SelectItem>
-                      <SelectItem value="PREMIUM">Premium</SelectItem>
-                      <SelectItem value="BASIC">Basic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#F8F8F8]">Sedes</Label>
+                  <Label>Sedes</Label>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
                     {sedes.map((sede) => (
                       <div key={sede.id} className="flex items-center space-x-2">
-                        <Checkbox
+                        <input
+                          type="checkbox"
                           id={`sede-${sede.id}`}
-                          checked={formData.sedeIds.includes(sede.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setFormData({
-                                ...formData,
-                                sedeIds: [...formData.sedeIds, sede.id],
-                              });
+                          checked={formData.sedes.some(s => s.id === sede.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({ ...formData, sedes: [...formData.sedes, sede] });
                             } else {
-                              setFormData({
-                                ...formData,
-                                sedeIds: formData.sedeIds.filter((id) => id !== sede.id),
-                              });
+                              setFormData({ ...formData, sedes: formData.sedes.filter(s => s.id !== sede.id) });
                             }
                           }}
-                          className="data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-[#1E1E1E]"
+                          className="rounded border-gray-300 bg-[#0A0A0A] text-[#D604E0] focus:ring-[#D604E0]"
                         />
-                        <Label htmlFor={`sede-${sede.id}`} className="text-[#F8F8F8]">{sede.nombre}</Label>
+                        <Label htmlFor={`sede-${sede.id}`} className="text-[#F8F8F8] text-sm">{sede.nombre}</Label>
                       </div>
                     ))}
                   </div>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <Switch
-                      id="esVip"
-                      checked={formData.esVip}
-                      onCheckedChange={(checked) => setFormData({ ...formData, esVip: checked })}
-                      className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
-                    />
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
-                      <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
-                        formData.esVip ? 'translate-x-5' : 'translate-x-0.5'
-                      }`} />
-                    </div>
-                  </div>
-                  <Label htmlFor="esVip" className="text-[#F8F8F8]">Plan VIP</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <Switch
-                      id="destacado"
-                      checked={formData.destacado}
-                      onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
-                      className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
-                    />
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
-                      <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
-                        formData.destacado ? 'translate-x-5' : 'translate-x-0.5'
-                      }`} />
-                    </div>
-                  </div>
-                  <Label htmlFor="destacado" className="text-[#F8F8F8]">Destacado</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <Switch
-                      id="activo"
-                      checked={formData.activo}
-                      onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
-                      className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
-                    />
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
-                      <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
-                        formData.activo ? 'translate-x-5' : 'translate-x-0.5'
-                      }`} />
-                    </div>
-                  </div>
-                  <Label htmlFor="activo" className="text-[#F8F8F8]">Activo</Label>
                 </div>
               </div>
             </div>
@@ -524,112 +440,116 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Lista de planes */}
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {planesList.map((plan, index) => (
           <motion.div
             key={plan.id}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
-            className={`relative rounded-2xl p-6 transition-all duration-300 ${
-              plan.esVip
-                ? "bg-gradient-to-br from-[#D604E0]/20 to-[#040AE0]/20 border-2 border-[#D604E0]/50 card-glow"
-                : "bg-[#141414] border border-white/10 hover:border-white/20"
-            } card-glow-hover`}
+            className={`relative rounded-xl overflow-hidden transition-all duration-300 bg-[#1A1A1A] border border-white/10 hover:border-white/20 card-glow-hover`}
           >
+            {/* Badge de VIP */}
             {plan.esVip && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 gradient-bg rounded-full text-sm font-medium flex items-center gap-1">
-                <Crown className="w-4 h-4" />
-                VIP
-              </div>
-            )}
-            {plan.destacado && !plan.esVip && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#040AE0] rounded-full text-sm font-medium flex items-center gap-1">
-                <Star className="w-4 h-4" />
-                Popular
+              <div className="absolute top-2 left-2 z-10">
+                <span className="px-2 py-1 gradient-bg rounded-full text-white text-xs font-bold flex items-center gap-1">
+                  <Star className="w-3 h-3" />
+                  VIP
+                </span>
               </div>
             )}
 
-            <div className="flex flex-col items-center gap-2">
-              <h3 className={`text-xl font-bold mb-2 ${plan.esVip ? "gradient-text" : "text-white"}`}>
-                {plan.nombre}
-              </h3>
-              <p className="text-gray-400 text-sm mb-4">{plan.descripcion}</p>
-              <div className="flex items-end justify-center gap-1">
-                <span className={`text-4xl font-bold ${plan.esVip ? "gradient-text" : "text-white"}`}>
-                  {new Intl.NumberFormat("es-CO", {
-                    style: "currency",
-                    currency: "COP",
-                    minimumFractionDigits: 0,
-                  }).format(plan.precio)}
+            {/* Badge de destacado */}
+            {plan.destacado && !plan.esVip && (
+              <div className="absolute top-2 right-2 z-10">
+                <span className="px-2 py-1 bg-[#040AE0] rounded-full text-white text-xs font-bold flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  Popular
                 </span>
-                <span className="text-gray-400 mb-1">/{plan.duracion}</span>
+              </div>
+            )}
+
+            {/* Contenido */}
+            <div className="p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-1">{plan.nombre}</h3>
+                  <p className="text-gray-400 text-sm line-clamp-2 mb-2">{plan.descripcion}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(plan)}
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    <Edit className="w-4 h-4 mr-1" />
+                    Editar
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Eliminar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-[#141414] border-[#1E1E1E]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white">¿Eliminar plan?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-[#A0A0A0]">
+                          Esta acción no se puede deshacer. Se eliminará permanentemente el plan "{plan.nombre}".
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-[#1E1E1E] text-[#F8F8F8] hover:bg-[#2A2A2A]">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(plan.id)}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => toggleBenefits(plan.id)}
-                  className="border-white/20 text-white hover:bg-white/10"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-white">{formatCurrency(plan.precio)}</span>
+                <span className="text-sm text-gray-400">/{plan.duracion}</span>
               </div>
 
-            {showBenefits[plan.id] && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                transition={{ duration: 0.3 }}
-                className="mt-4"
-              >
-                <ul className="space-y-3 mb-6">
-                  {plan.beneficios.slice(0, 3).map((beneficio, i) => (
-                    <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
-                      <Check className={`w-5 h-5 flex-shrink-0 ${plan.esVip ? "text-[#D604E0]" : "text-[#040AE0]"}`} />
+              <div className="flex flex-wrap gap-2">
+                <Badge className={plan.esVip ? "gradient-bg text-white" : "bg-[#1E1E1E] text-[#A0A0A0]"}>
+                  {plan.tipo}
+                </Badge>
+                <Badge className={plan.activo ? "bg-green-500/20 border-green-500/50 text-green-400" : "bg-red-500/20 border-red-500/50 text-red-400"}>
+                  {plan.activo ? "Activo" : "Inactivo"}
+                </Badge>
+                {plan.destacado && <Badge className="bg-[#040AE0]/20 border-[#040AE0]/50 text-[#040AE0]">Destacado</Badge>}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-300 mb-2">Beneficios:</p>
+                <ul className="space-y-1">
+                  {plan.beneficios.map((beneficio, i) => (
+                    <li key={i} className="text-sm text-gray-400 flex items-start gap-2">
                       <span>{beneficio}</span>
                     </li>
                   ))}
-                  {plan.beneficios.length > 3 && (
-                    <li className="text-gray-400 text-sm text-center">
-                      +{plan.beneficios.length - 3} beneficios más...
-                    </li>
-                  )}
                 </ul>
-              </motion.div>
-            )}
+              </div>
 
-            <button
-              onClick={handleSelectPlan}
-              className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                isVip
-                  ? "gradient-bg hover:opacity-90"
-                  : "bg-white/10 hover:bg-white/20 text-white"
-              }`}
-            >
-              <Zap className="w-4 h-4" />
-              {session ? "Seleccionar Plan" : "Empezar Ahora"}
-            </button>
-                <AlertDialogContent className="bg-[#141414] border-[#1E1E1E]">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="text-white">¿Eliminar plan?</AlertDialogTitle>
-                    <AlertDialogDescription className="text-[#A0A0A0]">
-                      Esta acción no se puede deshacer. Se eliminará permanentemente el plan "{plan.nombre}".
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="bg-[#1E1E1E] text-[#F8F8F8] hover:bg-[#2A2A2A]">Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => handleDelete(plan.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      Eliminar
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <div className="text-xs text-gray-500">
+                Sedes: {plan.sedes.map(s => s.nombre).join(", ")}
+              </div>
             </div>
           </motion.div>
         ))}
@@ -646,14 +566,13 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
               <div className="space-y-2">
                 <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre</Label>
                 <ControlledInput
-                  id="nombre"
+                  id="edit-nombre"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   placeholder="Nombre del plan"
                   maxLength={100}
                   showCharCount={true}
                   showWarning={true}
-                  required={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
@@ -665,11 +584,10 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   step="0.01"
                   value={formData.precio}
                   onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
-                  placeholder="0.00"
+                  placeholder="0"
                   maxLength={10}
                   showCharCount={true}
                   showWarning={true}
-                  required={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
@@ -688,80 +606,6 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                 className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
               />
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-[#F8F8F8]">Beneficios</Label>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white text-xs"
-                    >
-                      Copiar de otro plan
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-[#141414] border-[#1E1E1E] text-white max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Seleccionar plan para copiar beneficios</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3 max-h-60 overflow-y-auto">
-                      {planes.filter((p: Plan) => p.id !== (formData as any).id).map((plan: Plan) => (
-                        <div
-                          key={plan.id}
-                          className="p-3 border border-[#1E1E1E] rounded-lg cursor-pointer hover:bg-[#1E1E1E] transition-colors"
-                          onClick={() => {
-                            if (plan.beneficios.length > 0) {
-                              setFormData({
-                                ...formData,
-                                beneficios: [...plan.beneficios]
-                              });
-                              toast.success("Beneficios copiados del plan: " + plan.nombre);
-                            } else {
-                              toast.error("El plan seleccionado no tiene beneficios");
-                            }
-                          }}
-                        >
-                          <div className="font-medium">{plan.nombre}</div>
-                          <div className="text-sm text-gray-400">{plan.duracion} - ${plan.precio}</div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {plan.beneficios.length} beneficios disponibles
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              {formData.beneficios.map((beneficio, index) => (
-                <div key={index} className="flex gap-2">
-                  <ControlledInput
-                    value={beneficio}
-                    onChange={(e) => updateBeneficio(index, e.target.value)}
-                    placeholder="Beneficio"
-                    maxLength={200}
-                    showCharCount={true}
-                    showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeBeneficio(index)}
-                    disabled={formData.beneficios.length === 1}
-                    className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white"
-                  >
-                    Eliminar
-                  </Button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" onClick={addBeneficio} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                Agregar Beneficio
-              </Button>
-            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-duracion" className="text-[#F8F8F8]">Duración</Label>
@@ -769,25 +613,89 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   value={formData.duracion}
                   onValueChange={(value) => setFormData({ ...formData, duracion: value })}
                 >
-                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
+                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
                     <SelectValue placeholder="Seleccionar duración" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#141414] border-[#1E1E1E]">
-                    <SelectItem value="1 día">1 día</SelectItem>
-                    <SelectItem value="15 días">15 días</SelectItem>
-                    <SelectItem value="2 meses">2 meses</SelectItem>
-                    <SelectItem value="1 mes">1 mes</SelectItem>
-                    <SelectItem value="3 meses">3 meses</SelectItem>
-                    <SelectItem value="6 meses">6 meses</SelectItem>
-                    <SelectItem value="1 año">1 año</SelectItem>
-                    <SelectItem value="2 años">2 años</SelectItem>
+                  <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                    <SelectItem value="Mensual">Mensual</SelectItem>
                     <SelectItem value="Trimestral">Trimestral</SelectItem>
                     <SelectItem value="Semestral">Semestral</SelectItem>
                     <SelectItem value="Anual">Anual</SelectItem>
-                    <SelectItem value="Ilimitado">Ilimitado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-tipo" className="text-[#F8F8F8]">Tipo</Label>
+                <Select
+                  value={formData.tipo}
+                  onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+                >
+                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                      <SelectItem value="STANDARD">Estándar</SelectItem>
+                      <SelectItem value="PREMIUM">Premium</SelectItem>
+                      <SelectItem value="VIP">VIP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            <div className="space-y-2">
+              <Label>Beneficios</Label>
+              <div className="space-y-2">
+                {formData.beneficios.map((beneficio, index) => (
+                  <div key={index} className="flex gap-2">
+                    <ControlledInput
+                      value={beneficio}
+                      onChange={(e) => updateBeneficio(index, e.target.value)}
+                      placeholder="Beneficio del plan"
+                      maxLength={100}
+                      showCharCount={true}
+                      showWarning={true}
+                      className="flex-1 bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeBeneficio(index)}
+                      className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addBeneficio}
+                  className="w-full border-dashed border-[#1E1E1E] text-[#A0A0A0] hover:border-[#D604E0]/50 hover:text-[#D604E0]"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Agregar Beneficio
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-activo"
+                  checked={formData.activo}
+                  onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                />
+                <Label htmlFor="edit-activo" className="text-[#F8F8F8]">Activo</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="edit-destacado"
+                  checked={formData.destacado}
+                  onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
+                />
+                <Label htmlFor="edit-destacado" className="text-[#F8F8F8]">Destacado</Label>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-orden" className="text-[#F8F8F8]">Orden</Label>
                 <ControlledInput
@@ -795,118 +703,45 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   type="number"
                   value={formData.orden}
                   onChange={(e) => setFormData({ ...formData, orden: parseInt(e.target.value) })}
-                  placeholder="Orden de visualización"
+                  placeholder="0"
                   maxLength={3}
                   showCharCount={true}
                   showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-tipo" className="text-[#F8F8F8]">Tipo</Label>
-                <Select
-                  value={formData.tipo}
-                  onValueChange={(value) => setFormData({ ...formData, tipo: value })}
-                >
-                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
-                    <SelectValue placeholder="Seleccionar tipo" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#141414] border-[#1E1E1E]">
-                    <SelectItem value="STANDARD">Standard</SelectItem>
-                    <SelectItem value="PREMIUM">Premium</SelectItem>
-                    <SelectItem value="BASIC">Basic</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[#F8F8F8]">Sedes</Label>
+                <Label>Sedes</Label>
                 <div className="space-y-2 max-h-32 overflow-y-auto">
                   {sedes.map((sede) => (
                     <div key={sede.id} className="flex items-center space-x-2">
-                      <Checkbox
+                      <input
+                        type="checkbox"
                         id={`edit-sede-${sede.id}`}
-                        checked={formData.sedeIds.includes(sede.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setFormData({
-                              ...formData,
-                              sedeIds: [...formData.sedeIds, sede.id],
-                            });
+                        checked={formData.sedes.some(s => s.id === sede.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({ ...formData, sedes: [...formData.sedes, sede] });
                           } else {
-                            setFormData({
-                              ...formData,
-                              sedeIds: formData.sedeIds.filter((id) => id !== sede.id),
-                            });
+                            setFormData({ ...formData, sedes: formData.sedes.filter(s => s.id !== sede.id) });
                           }
                         }}
-                        className="data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-[#1E1E1E]"
+                        className="rounded border-gray-300 bg-[#0A0A0A] text-[#D604E0] focus:ring-[#D604E0]"
                       />
-                      <Label htmlFor={`edit-sede-${sede.id}`} className="text-[#F8F8F8]">{sede.nombre}</Label>
+                      <Label htmlFor={`edit-sede-${sede.id}`} className="text-[#F8F8F8] text-sm">{sede.nombre}</Label>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className="relative">
-                  <Switch
-                    id="edit-esVip"
-                    checked={formData.esVip}
-                    onCheckedChange={(checked) => setFormData({ ...formData, esVip: checked })}
-                    className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
-                  />
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
-                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
-                      formData.esVip ? 'translate-x-5' : 'translate-x-0.5'
-                    }`} />
-                  </div>
-                </div>
-                <Label htmlFor="edit-esVip" className="text-[#F8F8F8]">Plan VIP</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="relative">
-                  <Switch
-                    id="edit-destacado"
-                    checked={formData.destacado}
-                    onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
-                    className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
-                  />
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
-                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
-                      formData.destacado ? 'translate-x-5' : 'translate-x-0.5'
-                    }`} />
-                  </div>
-                </div>
-                <Label htmlFor="edit-destacado" className="text-[#F8F8F8]">Destacado</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="relative">
-                  <Switch
-                    id="edit-activo"
-                    checked={formData.activo}
-                    onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
-                    className="w-11 h-6 data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-[#2A2A2A] border-2 border-[#1E1E1E] transition-colors duration-200"
-                  />
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-between px-1">
-                    <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
-                      formData.activo ? 'translate-x-5' : 'translate-x-0.5'
-                    }`} />
-                  </div>
-                </div>
-                <Label htmlFor="edit-activo" className="text-[#F8F8F8]">Activo</Label>
-              </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdate} disabled={isLoading} className="gradient-bg hover:opacity-90">
+                {isLoading ? "Actualizando..." : "Actualizar Plan"}
+              </Button>
             </div>
-          </div>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
-              Cancelar
-            </Button>
-            <Button onClick={handleUpdate} disabled={isLoading} className="gradient-bg hover:opacity-90">
-              {isLoading ? "Actualizando..." : "Actualizar Plan"}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
