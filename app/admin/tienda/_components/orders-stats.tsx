@@ -260,7 +260,7 @@ export function OrdersStats({ orders }: OrdersStatsProps) {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <ShoppingBag className="w-4 h-4 text-[#040AE0]" />
-                          <span className="text-sm text-white">{item.product.nombre}</span>
+                          <span className="text-sm text-white">{item.product?.nombre || 'Producto eliminado'}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-sm text-gray-400">x{item.quantity}</span>

@@ -6,41 +6,52 @@ import {
   Check, 
   Calendar, 
   CreditCard, 
-  Crown, 
   Download,
   Share,
   ArrowLeft,
   User,
-  ShoppingBag
+  ShoppingBag,
+  Package,
+  Home,
+  FileText
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-interface Payment {
+interface OrderItem {
   id: string;
-  userId: string;
-  planId: string;
-  amount: number;
-  paymentMethod: string;
-  status: string;
-  paymentStatus: string;
-  cardName: string | null;
-  email: string;
-  transactionId: string;
-  createdAt: Date;
-  user: {
-    id: string;
-    firstName: string;
-    lastName: string | null;
-    email: string;
-  };
-  plan: {
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  product?: {
     id: string;
     nombre: string;
-    precio: number;
-    descripcion: string;
-    duracion: string;
-    esVip: boolean;
+    imagen?: string;
+  };
+}
+
+interface Order {
+  id: string;
+  orderNumber: string;
+  totalAmount: number;
+  status: string;
+  paymentStatus: string;
+  items: OrderItem[];
+}
+
+interface Payment {
+  id: string;
+  transactionId: string;
+  amount: number;
+  status: string;
+  paymentMethod: string;
+  createdAt: Date;
+  order: Order;
+  shippingAddress: {
+    name: string;
+    address: string;
+    city: string;
+    phone: string;
   };
 }
 
@@ -56,7 +67,7 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
   useEffect(() => {
     const processPayment = async () => {
       // Solo procesar si el pago está pendiente
-      if (payment.paymentStatus === 'PENDING') {
+      if (payment.status === 'PENDING') {
         setIsProcessing(true);
         try {
           const response = await fetch('/api/payments/process', {
@@ -83,7 +94,7 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
     };
 
     processPayment();
-  }, [payment.id, payment.paymentStatus]);
+  }, [payment.id, payment.status]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -106,10 +117,11 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
   const handleDownload = () => {
     const receiptData = {
       id: payment.id,
-      plan: payment.plan.nombre,
+      orderNumber: payment.order.orderNumber,
       amount: payment.amount,
       date: payment.createdAt,
       status: payment.status,
+      items: payment.order.items,
     };
     
     const blob = new Blob([JSON.stringify(receiptData, null, 2)], {
@@ -131,7 +143,7 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
       try {
         await navigator.share({
           title: "FitZone - Confirmación de Pago",
-          text: `He adquirido el plan ${payment.plan.nombre} en FitZone por ${formatPrice(payment.amount)}`,
+          text: `He realizado una compra en FitZone por ${formatPrice(payment.amount)}`,
           url: window.location.href,
         });
       } catch (error) {
@@ -170,56 +182,96 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
                 ¡Pago Confirmado!
               </h1>
               <p className="text-gray-400 text-lg">
-                Tu plan ha sido activado exitosamente
+                Tu pedido ha sido procesado exitosamente
               </p>
             </>
           )}
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Información del Pago */}
+          {/* Información del Pedido */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
             className="lg:col-span-2 space-y-6"
           >
-            {/* Detalles del Plan */}
+            {/* Detalles del Pedido */}
             <div className="bg-white/[0.02] backdrop-blur-xl border border-white/[0.05] rounded-3xl p-8">
-              <h2 className="text-2xl font-bold text-white mb-6">Detalles del Plan</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">Detalles del Pedido</h2>
               
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-2">
-                    {payment.plan.nombre}
-                  </h3>
-                  <p className="text-gray-400">{payment.plan.descripcion}</p>
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Número de Orden</span>
+                  <span className="text-white font-medium">{payment.order.orderNumber}</span>
                 </div>
-                {payment.plan.esVip && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full">
-                    <Crown className="w-4 h-4 text-purple-400" />
-                    <span className="text-purple-400 text-sm font-medium">VIP</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-white/[0.03] rounded-2xl p-4">
-                  <p className="text-gray-400 text-sm mb-1">Duración</p>
-                  <p className="text-white font-medium">{payment.plan.duracion}</p>
-                </div>
-                <div className="bg-white/[0.03] rounded-2xl p-4">
-                  <p className="text-gray-400 text-sm mb-1">Precio</p>
-                  <p className="text-white font-medium">{formatPrice(payment.plan.precio)}</p>
-                </div>
-              </div>
-
-              <div className="border-t border-white/[0.05] pt-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Total pagado</span>
-                  <span className="text-2xl font-bold text-white">
-                    {formatPrice(payment.amount)}
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Estado del Pedido</span>
+                  <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded-full text-sm font-medium">
+                    {payment.order.status === "CONFIRMED" ? "Confirmado" : payment.order.status}
                   </span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Estado del Pago</span>
+                  <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded-full text-sm font-medium">
+                    {payment.order.paymentStatus === "PAID" ? "Pagado" : payment.order.paymentStatus}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Método de Pago</span>
+                  <span className="text-white font-medium">
+                    {payment.paymentMethod === "CARD" ? "Tarjeta de Crédito" : 
+                     payment.paymentMethod === "NEQUI" ? "Nequi" : 
+                     payment.paymentMethod}
+                  </span>
+                </div>
+              </div>
+
+              {/* Productos */}
+              <div className="border-t border-white/[0.05] pt-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Productos Comprados</h3>
+                
+                <div className="space-y-3">
+                  {payment.order.items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-[#040AE0]/10 to-[#D604E0]/10 rounded-lg overflow-hidden flex-shrink-0">
+                        {item.product?.imagen ? (
+                          <img
+                            src={item.product.imagen}
+                            alt={item.product.nombre}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-8 h-8 text-[#040AE0]/30" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1">
+                        <h4 className="text-white font-medium">
+                          {item.product?.nombre || "Producto"}
+                        </h4>
+                        <p className="text-gray-400 text-sm">
+                          Cantidad: {item.quantity} × {formatPrice(item.unitPrice)}
+                        </p>
+                      </div>
+                      
+                      <span className="text-white font-bold">
+                        {formatPrice(item.totalPrice)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-white/[0.05] mt-6 pt-6">
+                <div className="flex justify-between text-xl font-bold text-white">
+                  <span>Total Pagado</span>
+                  <span className="gradient-text">{formatPrice(payment.amount)}</span>
                 </div>
               </div>
             </div>
@@ -235,19 +287,17 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Método de Pago</span>
-                  <span className="text-white capitalize">{payment.paymentMethod}</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
                   <span className="text-gray-400">Fecha</span>
                   <span className="text-white">{formatDate(payment.createdAt)}</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Estado</span>
-                  <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded-full text-sm font-medium">
-                    Confirmado
+                  <span className="text-gray-400">Dirección de Envío</span>
+                  <span className="text-white text-sm text-right">
+                    {payment.shippingAddress.name}<br/>
+                    {payment.shippingAddress.address}<br/>
+                    {payment.shippingAddress.city}<br/>
+                    {payment.shippingAddress.phone}
                   </span>
                 </div>
               </div>
@@ -261,23 +311,6 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
             transition={{ delay: 0.2 }}
             className="space-y-6"
           >
-            {/* Información del Usuario */}
-            <div className="bg-white/[0.02] backdrop-blur-xl border border-white/[0.05] rounded-3xl p-6">
-              <h3 className="text-lg font-bold text-white mb-4">Información del Cliente</h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-white font-medium">
-                      {payment.user.firstName} {payment.user.lastName}
-                    </p>
-                    <p className="text-gray-400 text-sm">{payment.user.email}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Acciones Rápidas */}
             <div className="bg-white/[0.02] backdrop-blur-xl border border-white/[0.05] rounded-3xl p-6">
               <h3 className="text-lg font-bold text-white mb-4">Acciones Rápidas</h3>
@@ -303,20 +336,27 @@ export function ConfirmacionPagoClient({ payment }: ConfirmacionPagoClientProps)
                   href="/perfil"
                   className="w-full py-3 gradient-bg rounded-2xl font-medium text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                 >
-                  Ver Mi Perfil
+                  <FileText className="w-5 h-5" />
+                  Ver Mis Pedidos
                 </Link>
                 
                 <Link
-                  href="/tienda"
+                  href="/marketplace"
                   className="flex items-center gap-3 p-3 bg-white/[0.05] hover:bg-white/10 rounded-2xl transition-colors"
                 >
                   <ShoppingBag className="w-5 h-5 text-white/60" />
                   <div className="flex-1">
-                    <p className="text-white font-medium">Visitar Tienda</p>
-                    <p className="text-gray-400 text-xs">Compra productos y suplementos</p>
+                    <p className="text-white font-medium">Seguir Comprando</p>
+                    <p className="text-gray-400 text-xs">Visita nuestro marketplace</p>
                   </div>
                 </Link>
               </div>
+            </div>
+
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-blue-400 text-sm text-center">
+                📧 Recibirás un correo con los detalles de tu pedido
+              </p>
             </div>
           </motion.div>
         </div>

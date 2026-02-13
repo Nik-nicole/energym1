@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, X, Save, Palette } from "lucide-react";
+import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, X, Save, Palette, FileText } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -505,6 +505,120 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
               );
             })}
           </div>
+        </div>
+
+        {/* SECCIÓN DE HISTORIAL DE COMPRAS */}
+        <div className="mt-12">
+          <h3 className="text-xl font-bold text-white mb-6">Historial de Compras</h3>
+          {orders.filter(order => order.items.some(item => item.product !== null)).length > 0 ? (
+            <div className="space-y-4">
+              {orders
+                .filter(order => order.items.some(item => item.product !== null))
+                .map((order) => (
+                  <motion.div
+                    key={order.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <ShoppingBag className="w-5 h-5 text-[#040AE0]" />
+                          <span className="text-white font-medium">{order.orderNumber}</span>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                          {formatDate(order.createdAt)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-white">
+                          {formatPrice(order.totalAmount)}
+                        </p>
+                        <div className="flex items-center gap-2 justify-end mt-1">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            order.paymentStatus === "PAID" 
+                              ? "bg-green-500/20 text-green-500" 
+                              : "bg-yellow-500/20 text-yellow-500"
+                          }`}>
+                            {order.paymentStatus === "PAID" ? "Pagado" : "Pendiente"}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            order.status === "CONFIRMED" 
+                              ? "bg-blue-500/20 text-blue-500" 
+                              : "bg-gray-500/20 text-gray-500"
+                          }`}>
+                            {order.status === "CONFIRMED" ? "Confirmado" : order.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {order.items
+                        .filter(item => item.product !== null)
+                        .map((item) => (
+                          <div key={item.id} className="flex items-center gap-4 p-3 bg-zinc-800 rounded-xl">
+                            <div className="w-12 h-12 bg-gradient-to-br from-[#040AE0]/10 to-[#D604E0]/10 rounded-lg overflow-hidden flex-shrink-0">
+                              {item.product?.imagen ? (
+                                <img
+                                  src={item.product.imagen}
+                                  alt={item.product.nombre}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Package className="w-6 h-6 text-[#040AE0]/30" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex-1">
+                              <h4 className="text-white font-medium">
+                                {item.product?.nombre || "Producto"}
+                              </h4>
+                              <p className="text-gray-400 text-sm">
+                                Cantidad: {item.quantity} × {formatPrice(item.unitPrice)}
+                              </p>
+                            </div>
+                            
+                            <span className="text-white font-bold">
+                              {formatPrice(item.totalPrice)}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+
+                    {order.paymentStatus === "PAID" && order.status === "CONFIRMED" && (
+                      <div className="mt-4 pt-4 border-t border-zinc-700">
+                        <Link
+                          href={`/pago/confirmacion/${order.id}`}
+                          className="inline-flex items-center gap-2 text-[#040AE0] hover:text-[#040AE0]/80 transition-colors text-sm font-medium"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Ver Comprobante
+                        </Link>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+            </div>
+          ) : (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center">
+              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-white mb-2">No tienes compras aún</h3>
+              <p className="text-gray-400 mb-6">
+                Visita nuestro marketplace para encontrar los mejores productos y suplementos.
+              </p>
+              <Link
+                href="/marketplace"
+                className="inline-flex items-center gap-2 px-6 py-3 gradient-bg rounded-lg font-medium text-white hover:opacity-90 transition-opacity"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                Ir al Marketplace
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

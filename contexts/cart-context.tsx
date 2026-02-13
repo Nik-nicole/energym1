@@ -138,10 +138,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       imagen: product.imagen,
       categoria: product.categoria,
       stock: product.stock,
-      sede: product.sede,
+      sede: product.sede || { id: 'default', nombre: 'Sede por defecto' },
       quantity: 1
     };
     dispatch({ type: "ADD_ITEM", payload: cartItem });
+    // Abrir el carrito automáticamente al agregar un producto
+    setIsOpen(true);
   };
 
   const removeItem = (productId: string) => {

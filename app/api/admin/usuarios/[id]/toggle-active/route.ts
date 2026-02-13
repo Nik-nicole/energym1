@@ -17,11 +17,42 @@ export async function PATCH(
     const body = await request.json();
     const { isActive } = body;
 
-    // Por ahora, como no tenemos el campo isActive en la base de datos,
-    // simulamos el cambio de estado. En una implementación real,
-    // necesitaríamos agregar el campo isActive al modelo User.
+    console.log("Toggle active request:", { userId: params.id, isActive });
 
-    const user = await prisma.user.findUnique({
+    // Primero verificar el estado actual del usuario
+    const currentUser = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: { isActive: true }
+    });
+
+    console.log("Current user state:", currentUser);
+
+    const user = await prisma.user.update({
+      where: { id: params.id },
+      data: {
+        isActive,
+      },
+    });
+
+    console.log("Updated user from DB:", { id: user.id, isActive: user.isActive });
+
+    // Verificar que el cambio se guardó correctamente
+    const verification = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: { isActive: true }
+    });
+
+    console.log("Verification after update:", verification);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    // Obtener el usuario actualizado con toda la información necesaria
+    const updatedUser = await prisma.user.findUnique({
       where: { id: params.id },
       include: {
         sede: {
@@ -29,6 +60,19 @@ export async function PATCH(
             id: true,
             nombre: true,
           },
+        },
+        orders: {
+          include: {
+            items: {
+              include: {
+                plan: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1, // Solo la orden más reciente por usuario
         },
         _count: {
           select: {
@@ -38,21 +82,53 @@ export async function PATCH(
       },
     });
 
-    if (!user) {
+    if (!updatedUser) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
         { status: 404 }
       );
     }
 
-    // Transform response with simulated isActive
+    // Obtener el plan activo usando la misma lógica que en la página principal
+    const latestOrder = updatedUser.orders[0];
+    const activePlan = latestOrder?.items.find((item: any) => item.plan)?.plan;
+    
+    let planStatus = null;
+    if (latestOrder && activePlan) {
+      if (latestOrder.status === "CONFIRMED" && latestOrder.paymentStatus === "PAID") {
+        planStatus = {
+          id: activePlan.id,
+          nombre: activePlan.nombre,
+          fechaInicio: latestOrder.createdAt.toISOString().split('T')[0],
+          fechaFin: new Date(latestOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          isActive: true,
+          isDeactivated: false,
+        };
+      } else {
+        planStatus = {
+          id: activePlan.id,
+          nombre: activePlan.nombre,
+          fechaInicio: latestOrder.createdAt.toISOString().split('T')[0],
+          fechaFin: new Date(latestOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          isActive: false,
+          isDeactivated: true,
+        };
+      }
+    }
+
+    // Transform response for frontend compatibility
     const transformedUser = {
-      ...user,
-      isActive,
-      planActivo: null,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
+      ...updatedUser,
+      planActivo: planStatus,
+      createdAt: updatedUser.createdAt.toISOString(),
+      updatedAt: updatedUser.updatedAt.toISOString(),
     };
+
+    console.log("Final transformed user:", { 
+      id: transformedUser.id, 
+      isActive: transformedUser.isActive,
+      planActivo: transformedUser.planActivo 
+    });
 
     return NextResponse.json(transformedUser);
   } catch (error) {

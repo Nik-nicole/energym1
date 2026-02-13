@@ -121,6 +121,7 @@ model Order {
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   items         OrderItem[]
+  payments      Payment[]
   totalAmount   Float
   status        String    @default("PENDING") // PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
   paymentMethod String?   // WOMPI, TRANSFER, CASH
@@ -131,6 +132,19 @@ model Order {
   plan          Plan?     @relation(fields: [planId], references: [id], onDelete: Cascade)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  orderId         String
+  order           Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount          Float
+  paymentMethod   String    // WOMPI, NEQUI, CARD, TRANSFER
+  status          String    @default("PENDING") // PENDING, COMPLETED, FAILED
+  transactionId   String    @unique
+  gatewayResponse Json?     // Respuesta del gateway de pago
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model OrderItem {

@@ -774,7 +774,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                     <div className="w-8 h-8 bg-[#1E1E1E] rounded-full flex items-center justify-center">
                       <Users className="h-4 w-4 text-[#A0A0A0]" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <div className="font-medium text-white">
                         {user.firstName} {user.lastName}
                       </div>
@@ -836,24 +836,24 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                       </Button>
                     )}
                     <Button
-                      variant={user.isActive !== false ? "outline" : "outline"}
+                      variant="outline"
                       size="sm"
                       onClick={() => handleToggleActive(user.id)}
                       className={`${
-                        user.isActive !== false 
-                          ? "border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-red-400" 
-                          : "border-red-500/50 text-red-400 hover:bg-red-500/10"
+                        user.isActive === false 
+                          ? "border-red-500/50 text-red-400 hover:bg-red-500/10" 
+                          : "border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-red-400"
                       } px-3 py-1`}
                     >
-                      {user.isActive !== false ? (
-                        <>
-                          <PowerOff className="h-4 w-4 mr-1" />
-                          Desactivar
-                        </>
-                      ) : (
+                      {user.isActive === false ? (
                         <>
                           <Power className="h-4 w-4 mr-1" />
                           Activar
+                        </>
+                      ) : (
+                        <>
+                          <PowerOff className="h-4 w-4 mr-1" />
+                          Desactivar
                         </>
                       )}
                     </Button>
