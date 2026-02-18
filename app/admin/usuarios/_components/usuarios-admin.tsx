@@ -195,6 +195,8 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
 
   const [showPlanDialog, setShowPlanDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationMessage, setValidationMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState<{
     type: 'create' | 'toggle' | 'plan';
     user?: User;
@@ -505,6 +507,30 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
 
   const confirmTogglePlan = async () => {
     if (!confirmAction.user || !confirmAction.plan) return;
+    
+    // Si intenta activar el plan, verificar que esté verificado
+    if (!confirmAction.isActive && confirmAction.plan) {
+      try {
+        // Obtener la orden del plan para verificar su estado
+        const planOrderResponse = await fetch(`/api/admin/users/${confirmAction.user.id}/plan-orders?planId=${confirmAction.plan.id}`);
+        
+        if (planOrderResponse.ok) {
+          const planOrders = await planOrderResponse.json();
+          const latestPlanOrder = planOrders.find((order: any) => order.planId === confirmAction.plan?.id);
+          
+          if (latestPlanOrder && latestPlanOrder.status !== "VERIFIED") {
+            setValidationMessage("No se puede activar porque aún no se ha verificado si está pago");
+            setShowValidationModal(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error verificando estado del plan:', error);
+        setValidationMessage("Error al verificar el estado del plan");
+        setShowValidationModal(true);
+        return;
+      }
+    }
     
     setIsLoading(true);
     setShowConfirmDialog(false);
@@ -1226,6 +1252,33 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                       ? "Confirmar Desactivación" 
                       : "Confirmar Activación"
               )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Validación de Plan */}
+      <Dialog open={showValidationModal} onOpenChange={setShowValidationModal}>
+        <DialogContent className="max-w-md bg-[#141414] border-[#1E1E1E]">
+          <DialogHeader>
+            <DialogTitle className="text-white">⚠️ Validación de Plan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+              <p className="text-red-400 text-center">
+                {validationMessage}
+              </p>
+            </div>
+            <div className="text-sm text-[#A0A0A0] text-center">
+              <p>Para poder activar el plan, primero debe verificar el estado del pago en la sección de órdenes de planes.</p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button 
+              onClick={() => setShowValidationModal(false)}
+              className="bg-[#040AE0] hover:bg-[#0308CC] text-white"
+            >
+              Entendido
             </Button>
           </div>
         </DialogContent>

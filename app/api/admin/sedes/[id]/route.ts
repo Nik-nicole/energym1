@@ -25,6 +25,7 @@ export async function PUT(
       imagen,
       horario,
       activo,
+      paymentGatewayId,
     } = body;
 
     if (!nombre || !direccion || !ciudad || !telefono || !horario) {
@@ -46,8 +47,10 @@ export async function PUT(
         imagen,
         horario,
         activo,
+        paymentGatewayId: paymentGatewayId || null,
       },
       include: {
+        paymentGateway: true,
         _count: {
           select: {
             usuarios: true,

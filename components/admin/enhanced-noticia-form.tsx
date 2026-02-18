@@ -1,59 +1,79 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { CustomSwitch } from "@/components/ui/custom-switch"
-import { ControlledInput } from "@/components/ui/controlled-input"
-import { ControlledTextarea } from "@/components/ui/controlled-textarea"
-import { Label } from "@/components/ui/label"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import {
-  Plus,
-  Eye,
-  Edit3,
+} from "@/components/ui/dialog";
+import { 
+  Bold, 
+  Italic, 
+  Underline, 
+  Strikethrough,
   Type,
-  Image as ImageIcon,
-  Upload,
-  X
-} from "lucide-react"
-import { toast } from "sonner"
-import { motion, AnimatePresence } from "framer-motion"
-
-import { ContentBlockEditor } from "@/components/admin/content-block-editor"
-import { NoticiaPreview } from "@/components/admin/noticia-preview"
-import { ContentBlock, NoticiaFormData } from "@/types/noticia-editor"
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Image,
+  Eye,
+  Save,
+  Send,
+  Plus,
+  Trash2,
+  Palette,
+  Upload
+} from "lucide-react";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { NoticiaFormData, ContentBlock } from "@/types/noticia-editor";
 
 interface Sede {
-  id: string
-  nombre: string
+  id: string;
+  nombre: string;
+}
+
+interface Noticia {
+  id: string;
+  titulo: string;
+  contenido: string;
+  resumen: string | null;
+  imagen: string | null;
+  sedeId: string | null;
+  sede: Sede | null;
+  esPromocion: boolean;
+  fechaInicio: Date | null;
+  fechaFin: Date | null;
+  activo: boolean;
+  destacado: boolean;
+  fechaPublicacion: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface EnhancedNoticiaFormProps {
-  noticia?: any
-  sedes: Sede[]
-  onSubmit: (data: NoticiaFormData) => void
-  onCancel: () => void
-  isLoading?: boolean
+  noticia?: Noticia | null;
+  sedes: Sede[];
+  onSubmit: (data: NoticiaFormData) => void;
+  onCancel: () => void;
+  isLoading: boolean;
 }
 
 export function EnhancedNoticiaForm({ 
@@ -61,429 +81,668 @@ export function EnhancedNoticiaForm({
   sedes, 
   onSubmit, 
   onCancel, 
-  isLoading = false 
+  isLoading 
 }: EnhancedNoticiaFormProps) {
-  const [activeTab, setActiveTab] = useState('edit')
-  const [mainImageFile, setMainImageFile] = useState<File | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
   const [formData, setFormData] = useState<NoticiaFormData>({
-    titulo: noticia?.titulo || '',
-    resumen: noticia?.resumen || '',
-    imagen: noticia?.imagen || '',
-    esPromocion: noticia?.esPromocion || false,
-    fechaInicio: noticia?.fechaInicio ? new Date(noticia.fechaInicio).toISOString().split('T')[0] : '',
-    fechaFin: noticia?.fechaFin ? new Date(noticia.fechaFin).toISOString().split('T')[0] : '',
-    sedeId: noticia?.sedeId || '',
-    contenido: noticia?.contenido ? parseContenido(noticia.contenido) : [
-      {
-        id: '1',
-        type: 'text',
-        content: '',
-        alignment: 'left',
-        color: '#ffffff'
-      }
-    ]
-  })
+    titulo: "",
+    resumen: "",
+    contenido: [],
+    imagen: "",
+    esPromocion: false,
+    fechaInicio: "",
+    fechaFin: "",
+    sedeId: "",
+    activo: true,
+    destacado: false,
+    imagenPosicion: "banner"
+  });
 
-  function parseContenido(contenido: string): ContentBlock[] {
-    // Parse existing HTML content to blocks (simplified version)
-    return [
-      {
-        id: '1',
-        type: 'text',
-        content: contenido,
-        alignment: 'left',
-        color: '#ffffff'
-      }
-    ]
-  }
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
+  const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const addContentBlock = (type: 'text' | 'subtitle' | 'image') => {
+  // Initialize form with noticia data if editing
+  useEffect(() => {
+    if (noticia) {
+      setFormData({
+        titulo: noticia.titulo,
+        resumen: noticia.resumen || "",
+        contenido: [],
+        imagen: noticia.imagen || "",
+        esPromocion: noticia.esPromocion,
+        fechaInicio: noticia.fechaInicio ? new Date(noticia.fechaInicio).toISOString().split('T')[0] : "",
+        fechaFin: noticia.fechaFin ? new Date(noticia.fechaFin).toISOString().split('T')[0] : "",
+        sedeId: noticia.sedeId || "",
+        activo: noticia.activo,
+        destacado: noticia.destacado,
+        imagenPosicion: "banner"
+      });
+      
+      // Parse content blocks if they exist
+      let existingContent: ContentBlock[] = [];
+      try {
+        // Handle different content formats
+        if (Array.isArray(noticia.contenido)) {
+          existingContent = noticia.contenido;
+        } else if (typeof noticia.contenido === 'string') {
+          // Try to parse as JSON first
+          try {
+            existingContent = JSON.parse(noticia.contenido);
+          } catch {
+            // If parsing fails, create a paragraph block with the string content
+            existingContent = [{
+              id: Date.now().toString(),
+              type: 'parrafo',
+              content: noticia.contenido,
+              estilo: {
+                alineacion: 'left',
+                color: '#000000',
+                tamaño: 'mediano'
+              }
+            }];
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing content blocks:', error);
+        existingContent = [];
+      }
+      
+      setContentBlocks(existingContent);
+    }
+  }, [noticia]);
+
+  // Content block functions
+  const addContentBlock = (type: 'titulo' | 'subtitulo' | 'parrafo' | 'imagen') => {
     const newBlock: ContentBlock = {
       id: Date.now().toString(),
       type,
-      content: '',
-      alignment: 'left',
-      color: '#ffffff',
-      ...(type === 'subtitle' && { fontSize: 'medium' }),
-      ...(type === 'image' && { 
+      content: "",
+      estilo: {
+        alineacion: 'left',
+        color: '#000000',
+        tamaño: 'mediano'
+      },
+      ...(type === 'imagen' && {
         imageSettings: {
-          position: 'center',
-          url: '',
-          alt: ''
+          position: 'izquierda',
+          url: "",
+          alt: "",
+          posicion: 'izquierda'
         }
       })
-    }
+    };
+    setContentBlocks([...contentBlocks, newBlock]);
+  };
 
-    setFormData(prev => ({
-      ...prev,
-      contenido: [...prev.contenido, newBlock]
-    }))
-  }
+  const removeContentBlock = (id: string) => {
+    setContentBlocks(contentBlocks.filter(block => block.id !== id));
+  };
 
-  const updateContentBlock = (index: number, block: ContentBlock) => {
-    setFormData(prev => ({
-      ...prev,
-      contenido: prev.contenido.map((b, i) => i === index ? block : b)
-    }))
-  }
+  const updateContentBlock = (id: string, field: string, value: any) => {
+    setContentBlocks(contentBlocks.map(block => 
+      block.id === id ? { ...block, [field]: value } : block
+    ));
+  };
 
-  const deleteContentBlock = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      contenido: prev.contenido.filter((_, i) => i !== index)
-    }))
-  }
-
-  const generateHTMLContent = (): string => {
-    return formData.contenido.map(block => {
-      switch (block.type) {
-        case 'subtitle':
-          return `<h2 style="text-align: ${block.alignment}; color: ${block.color || '#ffffff'}; font-size: ${block.fontSize === 'large' ? '2rem' : block.fontSize === 'small' ? '1.5rem' : '1.8rem'};">${block.content}</h2>`
-        case 'text':
-          return `<div style="text-align: ${block.alignment}; color: ${block.color || '#ffffff'};">${block.content.replace(/\n/g, '<br>')}</div>`
-        case 'image':
-          if (!block.imageSettings?.url) return ''
-          const imageStyles = {
-            banner: 'width: 100%; height: 400px; object-fit: cover;',
-            center: 'display: block; margin: 0 auto; max-width: 100%; height: 300px; object-fit: cover;',
-            left: 'float: left; margin-right: 20px; width: 200px; height: 200px; object-fit: cover;',
-            right: 'float: right; margin-left: 20px; width: 200px; height: 200px; object-fit: cover;'
-          }
-          return `<img src="${block.imageSettings.url}" alt="${block.imageSettings.alt}" style="${imageStyles[block.imageSettings.position]}">`
-        default:
-          return ''
-      }
-    }).join('\n')
-  }
-
-  const handleMainImageUpload = async (file: File) => {
-    if (!file) return
-    
-    setIsUploading(true)
+  // Image upload function
+  const handleImageUpload = async (file: File, isMainImage: boolean = false) => {
+    setIsUploading(true);
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('folder', 'energym/noticias')
-      
+      const formData = new FormData();
+      formData.append('file', file);
+
       const response = await fetch('/api/upload', {
         method: 'POST',
-        body: formData
-      })
-      
-      if (!response.ok) throw new Error('Error al subir imagen')
-      
-      const result = await response.json()
-      setFormData(prev => ({ ...prev, imagen: result.url }))
-      toast.success('Imagen subida exitosamente')
-    } catch (error) {
-      toast.error('Error al subir la imagen')
-      console.error('Upload error:', error)
-    } finally {
-      setIsUploading(false)
-    }
-  }
+        body: formData,
+      });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Subir imagen principal si hay un archivo nuevo
-    if (mainImageFile && !formData.imagen.includes('cloudinary')) {
-      await handleMainImageUpload(mainImageFile)
+      if (!response.ok) {
+        throw new Error('Error al subir la imagen');
+      }
+
+      const result = await response.json();
+      
+      if (isMainImage) {
+        setFormData(prev => ({ ...prev, imagen: result.url }));
+      }
+      
+      return result.url;
+    } catch (error) {
+      toast.error('Error al subir la imagen');
+      throw error;
+    } finally {
+      setIsUploading(false);
     }
-    
-    // Create submit data with HTML content
+  };
+
+  const handleSubmit = () => {
+    if (!formData.titulo.trim()) {
+      toast.error("El título es requerido");
+      return;
+    }
+
     const submitData = {
       ...formData,
-      contenido: generateHTMLContent()
-    }
-    
-    // Submit as any to bypass type checking for the submit function
-    onSubmit(submitData as any)
-  }
+      contenido: contentBlocks
+    };
 
-  return (
-    <div className="w-full max-w-7xl mx-auto">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex items-center justify-between mb-6">
-          <TabsList className="bg-[#1A1A1A] border border-white/10">
-            <TabsTrigger value="edit" className="data-[state=active]:bg-[#D604E0] data-[state=active]:text-white">
-              <Edit3 className="w-4 h-4 mr-2" />
-              Editor
-            </TabsTrigger>
-            <TabsTrigger value="preview" className="data-[state=active]:bg-[#D604E0] data-[state=active]:text-white">
-              <Eye className="w-4 h-4 mr-2" />
-              Previsualización
-            </TabsTrigger>
-          </TabsList>
+    onSubmit(submitData);
+  };
 
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              disabled={isLoading}
-              className="border-white/20 text-white hover:bg-white/10"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isLoading}
-              className="bg-[#D604E0] hover:bg-[#D604E0]/80 text-white"
-            >
-              {isLoading ? 'Guardando...' : noticia ? 'Actualizar' : 'Crear'}
-            </Button>
+  const renderPreview = () => {
+    return (
+      <div className="space-y-4 max-w-4xl mx-auto">
+        {/* Title */}
+        <h1 className="text-3xl font-bold text-white mb-4">
+          {formData.titulo || "Título de la noticia"}
+        </h1>
+
+        {/* Summary */}
+        {formData.resumen && (
+          <div className="text-gray-300 text-lg mb-6 italic">
+            {formData.resumen}
           </div>
+        )}
+
+        {/* Main Image */}
+        {formData.imagen && (
+          <div className="mb-6">
+            <img 
+              src={formData.imagen} 
+              alt={formData.titulo}
+              className="w-full h-64 object-cover rounded-lg"
+            />
+          </div>
+        )}
+
+        {/* Content Blocks */}
+        <div className="space-y-4">
+          {contentBlocks.map((block) => {
+            const alignmentClass = {
+              'left': 'text-left',
+              'center': 'text-center',
+              'right': 'text-right',
+              'justify': 'text-justify'
+            }[block.estilo.alineacion] || 'text-left';
+
+            const sizeClass = {
+              'pequeño': 'text-sm',
+              'mediano': 'text-base',
+              'grande': 'text-xl'
+            }[block.estilo.tamaño] || 'text-base';
+
+            if (block.type === 'titulo') {
+              return (
+                <h2 key={block.id} className={`text-2xl font-bold text-white ${alignmentClass} ${sizeClass}`}>
+                  {block.content || "Título"}
+                </h2>
+              );
+            }
+
+            if (block.type === 'subtitulo') {
+              return (
+                <h3 key={block.id} className={`text-xl font-semibold text-gray-200 ${alignmentClass} ${sizeClass}`}>
+                  {block.content || "Subtítulo"}
+                </h3>
+              );
+            }
+
+            if (block.type === 'parrafo') {
+              return (
+                <p key={block.id} className={`text-gray-300 leading-relaxed ${alignmentClass} ${sizeClass}`}>
+                  {block.content || "Párrafo de texto..."}
+                </p>
+              );
+            }
+
+            if (block.type === 'imagen' && block.imageSettings?.url) {
+              return (
+                <div key={block.id} className={`mb-4 ${alignmentClass}`}>
+                  <img 
+                    src={block.imageSettings.url} 
+                    alt={block.imageSettings.alt || "Imagen"}
+                    className="max-w-full h-auto rounded-lg"
+                  />
+                </div>
+              );
+            }
+
+            return null;
+          })}
         </div>
 
-        <TabsContent value="edit" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Basic Info */}
-              <Card className="bg-[#1A1A1A] border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white">Información Básica</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label className="text-white">Título</Label>
-                    <ControlledInput
-                      value={formData.titulo}
-                      onChange={(e) => setFormData(prev => ({ ...prev, titulo: e.target.value }))}
-                      placeholder="Título de la noticia..."
-                      className="bg-[#0A0A0A] border-white/10"
-                    />
-                  </div>
+        {/* Metadata */}
+        <div className="mt-8 pt-4 border-t border-gray-700">
+          <div className="flex flex-wrap gap-2">
+            {formData.esPromocion && (
+              <Badge className="bg-[#D604E0] text-white">Promoción</Badge>
+            )}
+            {formData.destacado && (
+              <Badge className="bg-yellow-500 text-white">Destacado</Badge>
+            )}
+            {formData.sedeId && (
+              <Badge variant="outline" className="border-gray-600 text-gray-300">
+                {sedes.find(s => s.id === formData.sedeId)?.nombre}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
-                  <div>
-                    <Label className="text-white">Resumen</Label>
-                    <ControlledTextarea
-                      value={formData.resumen}
-                      onChange={(e) => setFormData(prev => ({ ...prev, resumen: e.target.value }))}
-                      placeholder="Breve resumen de la noticia..."
-                      rows={3}
-                      className="bg-[#0A0A0A] border-white/10"
-                    />
-                  </div>
+  return (
+    <div className="space-y-6">
+      {/* Header Actions */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-white">
+          {noticia ? "Editar Noticia" : "Crear Nueva Noticia"}
+        </h2>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowPreview(true)}
+            className="border-gray-600 text-gray-300 hover:bg-gray-700"
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            Vista Previa
+          </Button>
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            className="border-gray-600 text-gray-300 hover:bg-gray-700"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="bg-[#D604E0] hover:bg-[#D604E0]/90 text-white"
+          >
+            {isLoading ? "Guardando..." : (
+              <>
+                {noticia ? <Save className="w-4 h-4 mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                {noticia ? "Actualizar" : "Publicar"}
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
 
-                  <div>
-                    <Label className="text-white">Imagen Principal</Label>
-                    <div className="mt-2">
-                      <input
-                        type="file"
-                        id="main-image"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            setMainImageFile(file)
-                            handleMainImageUpload(file)
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="main-image"
-                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-colors"
-                      >
-                        {formData.imagen ? (
-                          <div className="relative w-full h-full">
-                            <img
-                              src={formData.imagen}
-                              alt="Preview"
-                              className="w-full h-full object-cover rounded-lg"
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                setFormData(prev => ({ ...prev, imagen: '' }))
-                                setMainImageFile(null)
-                              }}
-                              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition-colors"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center">
-                            {isUploading ? (
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
-                            ) : (
-                              <Upload className="h-8 w-8 text-white/60 mb-2" />
-                            )}
-                            <p className="text-sm text-white/60">
-                              {isUploading ? 'Subiendo...' : 'Click para agregar imagen'}
-                            </p>
-                            <p className="text-xs text-white/40">PNG, JPG hasta 5MB</p>
-                          </div>
-                        )}
-                      </label>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Form */}
+        <div className="space-y-6">
+          {/* Title */}
+          <Card className="bg-[#1A1A1A] border-[#2A2A2A]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Type className="w-5 h-5" />
+                Título de la Noticia
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Input
+                value={formData.titulo}
+                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                placeholder="Crea un título atractivo para tu noticia"
+                className="bg-[#2A2A2A] border-[#3A3A3A] text-white placeholder-gray-500"
+              />
+              <p className="text-sm text-gray-400 mt-2">
+                Ej: "Nuevos horarios de verano en todas nuestras sedes"
+              </p>
+            </CardContent>
+          </Card>
 
-              {/* Content Blocks */}
-              <Card className="bg-[#1A1A1A] border-white/10">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-white">Contenido</CardTitle>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => addContentBlock('subtitle')}
-                        className="border-white/20 text-white hover:bg-white/10"
-                      >
-                        <Type className="w-4 h-4 mr-1" />
-                        Subtítulo
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => addContentBlock('text')}
-                        className="border-white/20 text-white hover:bg-white/10"
-                      >
-                        <Edit3 className="w-4 h-4 mr-1" />
-                        Párrafo
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => addContentBlock('image')}
-                        className="border-white/20 text-white hover:bg-white/10"
-                      >
-                        <ImageIcon className="w-4 h-4 mr-1" />
-                        Imagen
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <AnimatePresence>
-                    {formData.contenido.map((block, index) => (
-                      <ContentBlockEditor
-                        key={block.id}
-                        block={block}
-                        onUpdate={(updatedBlock) => updateContentBlock(index, updatedBlock)}
-                        onDelete={() => deleteContentBlock(index)}
-                      />
-                    ))}
-                  </AnimatePresence>
+          {/* Summary */}
+          <Card className="bg-[#1A1A1A] border-[#2A2A2A]">
+            <CardHeader>
+              <CardTitle className="text-white">Resumen</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={formData.resumen}
+                onChange={(e) => setFormData({ ...formData, resumen: e.target.value })}
+                placeholder="Breve resumen de la noticia (opcional)"
+                className="bg-[#2A2A2A] border-[#3A3A3A] text-white placeholder-gray-500 min-h-[100px]"
+              />
+            </CardContent>
+          </Card>
 
-                  {formData.contenido.length === 0 && (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500 mb-4">
-                        No hay bloques de contenido. Agrega subtítulos, párrafos o imágenes.
-                      </p>
-                      <div className="flex justify-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => addContentBlock('subtitle')}
-                          className="border-white/20 text-white hover:bg-white/10"
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Subtítulo
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => addContentBlock('text')}
-                          className="border-white/20 text-white hover:bg-white/10"
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Párrafo
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => addContentBlock('image')}
-                          className="border-white/20 text-white hover:bg-white/10"
-                        >
-                          <Plus className="w-4 h-4 mr-1" />
-                          Imagen
-                        </Button>
+          {/* Content Blocks */}
+          <Card className="bg-[#1A1A1A] border-[#2A2A2A]">
+            <CardHeader>
+              <CardTitle className="text-white">Contenido</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Add Content Buttons */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addContentBlock('titulo')}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                >
+                  <Type className="w-4 h-4 mr-2" />
+                  Título
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addContentBlock('subtitulo')}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                >
+                  <Type className="w-4 h-4 mr-2" />
+                  Subtítulo
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addContentBlock('parrafo')}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                >
+                  <AlignLeft className="w-4 h-4 mr-2" />
+                  Párrafo
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => addContentBlock('imagen')}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                >
+                  <Image className="w-4 h-4 mr-2" />
+                  Imagen
+                </Button>
+              </div>
+
+              {/* Content Blocks List */}
+              <div className="space-y-3">
+                {contentBlocks.map((block, index) => (
+                  <motion.div
+                    key={block.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-[#2A2A2A] border-[#3A3A3A] rounded-lg p-4"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="border-gray-600 text-gray-300">
+                          {block.type === 'titulo' && 'Título'}
+                          {block.type === 'subtitulo' && 'Subtítulo'}
+                          {block.type === 'parrafo' && 'Párrafo'}
+                          {block.type === 'imagen' && 'Imagen'}
+                        </Badge>
+                        <span className="text-sm text-gray-400">#{index + 1}</span>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeContentBlock(block.id)}
+                        className="text-red-400 hover:text-red-300 h-8 w-8 p-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
 
-            {/* Settings Sidebar */}
-            <div className="space-y-6">
-              <Card className="bg-[#1A1A1A] border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white">Configuración</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-white">Es Promoción</Label>
-                    <CustomSwitch
-                      checked={formData.esPromocion}
-                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, esPromocion: checked }))}
-                    />
+                    {block.type === 'imagen' ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            id={`image-upload-${block.id}`}
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageUpload(file, false).then((url) => {
+                                  updateContentBlock(block.id, 'imageSettings', {
+                                    ...block.imageSettings,
+                                    url: url
+                                  });
+                                });
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => document.getElementById(`image-upload-${block.id}`)?.click()}
+                            disabled={isUploading}
+                            className="border-[#D604E0] text-[#D604E0] hover:bg-[#D604E0] hover:text-white"
+                          >
+                            <Upload className="w-3 h-3 mr-1" />
+                            {isUploading ? 'Subiendo...' : 'Subir'}
+                          </Button>
+                        </div>
+                        <Input
+                          value={block.imageSettings?.alt || ""}
+                          onChange={(e) => updateContentBlock(block.id, 'imageSettings', {
+                            ...block.imageSettings,
+                            alt: e.target.value
+                          })}
+                          placeholder="Texto alternativo (alt)"
+                          className="bg-[#1A1A1A] border-[#3A3A3A] text-white placeholder-gray-500"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <Textarea
+                          value={block.content}
+                          onChange={(e) => updateContentBlock(block.id, 'content', e.target.value)}
+                          placeholder={
+                            block.type === 'titulo' ? "Ingresa el título..." :
+                            block.type === 'subtitulo' ? "Ingresa el subtítulo..." :
+                            "Ingresa el párrafo..."
+                          }
+                          className="bg-[#1A1A1A] border-[#3A3A3A] text-white placeholder-gray-500 min-h-[80px]"
+                        />
+
+                        {/* Text Formatting Options */}
+                        <div className="flex flex-wrap gap-2">
+                          <Select
+                            value={block.estilo.alineacion}
+                            onValueChange={(value) => updateContentBlock(block.id, 'estilo', {
+                              ...block.estilo,
+                              alineacion: value as any
+                            })}
+                          >
+                            <SelectTrigger className="w-32 bg-[#1A1A1A] border-[#3A3A3A] text-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#1A1A1A] border-[#3A3A3A]">
+                              <SelectItem value="left">Izquierda</SelectItem>
+                              <SelectItem value="center">Centro</SelectItem>
+                              <SelectItem value="right">Derecha</SelectItem>
+                              <SelectItem value="justify">Justificado</SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          <Select
+                            value={block.estilo.tamaño}
+                            onValueChange={(value) => updateContentBlock(block.id, 'estilo', {
+                              ...block.estilo,
+                              tamaño: value as any
+                            })}
+                          >
+                            <SelectTrigger className="w-32 bg-[#1A1A1A] border-[#3A3A3A] text-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#1A1A1A] border-[#3A3A3A]">
+                              <SelectItem value="pequeño">Pequeño</SelectItem>
+                              <SelectItem value="mediano">Mediano</SelectItem>
+                              <SelectItem value="grande">Grande</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Settings */}
+        <div className="space-y-6">
+          {/* Main Image */}
+          <Card className="bg-[#1A1A1A] border-[#2A2A2A]">
+            <CardHeader>
+              <CardTitle className="text-white">Imagen Principal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  id="main-image-upload"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleImageUpload(file, true);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('main-image-upload')?.click()}
+                  disabled={isUploading}
+                  className="border-[#D604E0] text-[#D604E0] hover:bg-[#D604E0] hover:text-white"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {isUploading ? 'Subiendo...' : 'Subir Imagen'}
+                </Button>
+              </div>
+              {formData.imagen && (
+                <div className="mt-3">
+                  <img 
+                    src={formData.imagen} 
+                    alt="Preview"
+                    className="w-full h-32 object-cover rounded"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Settings */}
+          <Card className="bg-[#1A1A1A] border-[#2A2A2A]">
+            <CardHeader>
+              <CardTitle className="text-white">Configuración</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Sede */}
+              <div>
+                <Label className="text-gray-300 text-sm">Sede (opcional)</Label>
+                <Select
+                  value={formData.sedeId || "all"}
+                  onValueChange={(value) => setFormData({ ...formData, sedeId: value === "all" ? "" : value })}
+                >
+                  <SelectTrigger className="bg-[#2A2A2A] border-[#3A3A3A] text-white">
+                    <SelectValue placeholder="Seleccionar sede" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#2A2A2A] border-[#3A3A3A]">
+                    <SelectItem value="all">Todas las sedes</SelectItem>
+                    {sedes.map((sede) => (
+                      <SelectItem key={sede.id} value={sede.id}>
+                        {sede.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+
+              {/* Toggle Options */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-gray-300">Es Promoción</Label>
+                    <p className="text-xs text-gray-500">Marcar como contenido promocional</p>
                   </div>
+                  <Switch
+                    checked={formData.esPromocion}
+                    onCheckedChange={(checked) => setFormData({ ...formData, esPromocion: checked })}
+                    className="data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-gray-600 [&>span]:bg-white"
+                  />
+                </div>
 
-                  {formData.esPromocion && (
-                    <div className="space-y-4 border-t border-white/10 pt-4">
+                {formData.esPromocion && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-3 pl-4 border-l-2 border-[#D604E0]/30"
+                  >
+                    <Label className="text-gray-300 text-sm">Fechas de Promoción</Label>
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label className="text-white">Fecha de Inicio</Label>
-                        <ControlledInput
+                        <Label className="text-gray-400 text-xs">Inicio</Label>
+                        <Input
                           type="date"
                           value={formData.fechaInicio}
-                          onChange={(e) => setFormData(prev => ({ ...prev, fechaInicio: e.target.value }))}
-                          className="bg-[#0A0A0A] border-white/10"
+                          onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
+                          className="bg-[#2A2A2A] border-[#3A3A3A] text-white"
                         />
                       </div>
-
                       <div>
-                        <Label className="text-white">Fecha de Fin</Label>
-                        <ControlledInput
+                        <Label className="text-gray-400 text-xs">Fin</Label>
+                        <Input
                           type="date"
                           value={formData.fechaFin}
-                          onChange={(e) => setFormData(prev => ({ ...prev, fechaFin: e.target.value }))}
-                          className="bg-[#0A0A0A] border-white/10"
+                          onChange={(e) => setFormData({ ...formData, fechaFin: e.target.value })}
+                          className="bg-[#2A2A2A] border-[#3A3A3A] text-white"
                         />
                       </div>
                     </div>
-                  )}
+                  </motion.div>
+                )}
 
+                <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-white">Sede</Label>
-                    <Select value={formData.sedeId} onValueChange={(value) => setFormData(prev => ({ ...prev, sedeId: value }))}>
-                      <SelectTrigger className="bg-[#0A0A0A] border-white/10">
-                        <SelectValue placeholder="Seleccionar sede" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#0A0A0A] border-white/10">
-                        <SelectItem value="general">Todas las sedes</SelectItem>
-                        {sedes.map((sede) => (
-                          <SelectItem key={sede.id} value={sede.id}>
-                            {sede.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-gray-300">Destacado</Label>
+                    <p className="text-xs text-gray-500">Mostrar en sección destacada</p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
+                  <Switch
+                    checked={formData.destacado}
+                    onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
+                    className="data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-gray-600 [&>span]:bg-white"
+                  />
+                </div>
 
-        <TabsContent value="preview">
-          <NoticiaPreview
-            titulo={formData.titulo}
-            resumen={formData.resumen}
-            imagen={formData.imagen}
-            contenido={formData.contenido}
-          />
-        </TabsContent>
-      </Tabs>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-gray-300">Activo</Label>
+                    <p className="text-xs text-gray-500">Publicar inmediatamente</p>
+                  </div>
+                  <Switch
+                    checked={formData.activo}
+                    onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                    className="data-[state=checked]:bg-[#D604E0] data-[state=unchecked]:bg-gray-600 [&>span]:bg-white"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
+          <DialogHeader>
+            <DialogTitle className="text-white">Vista Previa de la Noticia</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {renderPreview()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }

@@ -28,6 +28,13 @@ export async function POST(request: NextRequest) {
     // Verificar que el plan existe
     const plan = await prisma.plan.findUnique({
       where: { id: planId },
+      include: {
+        sedes: {
+          include: {
+            sede: true
+          }
+        }
+      }
     });
 
     if (!plan) {
@@ -37,31 +44,84 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Crear orden/pago
-    const order = await prisma.order.create({
+    // Verificar si el usuario puede comprar este plan (validación de sede)
+    console.log("Validando sede - Usuario:", {
+      userId: session.user.id,
+      userSedeId: session.user.sedeId,
+      planId: planId,
+      planSedes: plan.sedes
+    });
+    
+    if (session.user.sedeId) {
+      // Si el usuario tiene sede asignada, verificar que el plan esté disponible en esa sede
+      // Si el plan no tiene sedes definidas, se asume que está disponible para todos
+      if (!plan.sedes || plan.sedes.length === 0) {
+        console.log("Plan sin sedes definidas, permitiendo compra");
+        // Plan sin restricciones de sede, permitir compra
+      } else {
+        const isPlanAvailableInUserSede = plan.sedes.some(sede => sede.sede.id === session.user.sedeId);
+        console.log("Verificando disponibilidad:", {
+          userSedeId: session.user.sedeId,
+          planSedes: plan.sedes.map(s => ({ id: s.sede.id, nombre: s.sede.nombre })),
+          isAvailable: isPlanAvailableInUserSede
+        });
+        
+        if (!isPlanAvailableInUserSede) {
+          return NextResponse.json(
+            { 
+              error: "No puedes comprar este plan porque no pertenece a tu sede. Solo puedes comprar planes disponibles en tu sede actual.",
+              code: "SEDE_RESTRICTION"
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
+    // Determinar la sede a usar
+    const sedeIdToUse = session.user.sedeId || plan.sedes[0]?.sede.id;
+    
+    if (!sedeIdToUse) {
+      return NextResponse.json(
+        { error: "El plan no tiene sedes disponibles" },
+        { status: 400 }
+      );
+    }
+
+    // Crear orden de plan usando el modelo correcto
+    const order = await prisma.planOrder.create({
       data: {
         userId: session.user.id,
-        totalAmount: amount,
+        planId: planId,
+        sedeId: sedeIdToUse,
+        quantity: 1,
+        unitPrice: amount,
+        totalPrice: amount,
         status: "PENDING",
-        paymentMethod: paymentMethod,
-        paymentStatus: "PENDING",
-        orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        planId: planId, // Referencia directa al plan
-        items: {
-          create: {
-            planId: planId, // Usar planId en lugar de productId
-            quantity: 1,
-            unitPrice: amount,
-            totalPrice: amount,
-          }
-        }
       },
+    });
+
+    // Crear registro de pago
+    const payment = await prisma.payment.create({
+      data: {
+        sedeId: sedeIdToUse,
+        amount: amount,
+        paymentMethod: paymentMethod,
+        status: "PENDING",
+        transactionId: `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        gatewayResponse: {
+          cardName: cardName || "Anónimo",
+          planName: plan.nombre,
+          planType: plan.tipo,
+        }
+      }
     });
 
     return NextResponse.json({
       success: true,
-      paymentId: order.id,
+      paymentId: payment.id,
       order: order,
+      payment: payment,
     });
   } catch (error) {
     console.error("Error creating order:", error);

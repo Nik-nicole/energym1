@@ -26,17 +26,13 @@ export async function PATCH(
       );
     }
 
-    // Buscar al usuario y su orden más reciente
+    // Buscar al usuario y sus órdenes de planes
     const user = await prisma.user.findUnique({
       where: { id: params.id },
       include: {
-        orders: {
+        planOrders: {
           include: {
-            items: {
-              include: {
-                plan: true,
-              },
-            },
+            plan: true,
           },
           orderBy: {
             createdAt: 'desc'
@@ -53,42 +49,51 @@ export async function PATCH(
       );
     }
 
-    const latestOrder = user.orders[0];
-    if (!latestOrder) {
+    const latestPlanOrder = user.planOrders[0];
+    if (!latestPlanOrder) {
       return NextResponse.json(
-        { error: "El usuario no tiene órdenes" },
+        { error: "El usuario no tiene órdenes de planes" },
         { status: 400 }
       );
     }
 
-    // Actualizar el estado de la orden (solo el plan, no el usuario)
-    const updatedOrder = await prisma.order.update({
-      where: { id: latestOrder.id },
+    // Actualizar el estado del plan en UserPlan o crearlo si no existe
+    const userPlan = await prisma.userPlan.upsert({
+      where: {
+        userId_planId: {
+          userId: params.id,
+          planId: planId,
+        },
+      },
+      update: {
+        isActive: isActive,
+      },
+      create: {
+        userId: params.id,
+        planId: planId,
+        isActive: isActive,
+      },
+    });
+
+    // Actualizar el estado de la orden de plan
+    const updatedOrder = await prisma.planOrder.update({
+      where: { id: latestPlanOrder.id },
       data: {
-        status: isActive ? "CONFIRMED" : "CANCELLED",
-        paymentStatus: isActive ? "PAID" : "CANCELLED",
+        status: isActive ? "VERIFIED" : "CANCELLED",
       },
       include: {
-        items: {
-          include: {
-            plan: true,
-          },
-        },
+        plan: true,
         user: true,
       },
     });
 
-    // NO desactivar al usuario - solo el plan
+    // Obtener el usuario actualizado
     const updatedUser = await prisma.user.findUnique({
       where: { id: params.id },
       include: {
-        orders: {
+        planOrders: {
           include: {
-            items: {
-              include: {
-                plan: true,
-              },
-            },
+            plan: true,
           },
           orderBy: {
             createdAt: 'desc'
@@ -105,10 +110,9 @@ export async function PATCH(
     });
 
     // Transformar los datos para incluir el plan activo/desactivado
-    const planItem = updatedOrder.items.find(item => item.plan);
-    const planStatus = planItem?.plan ? {
-      id: planItem.plan.id,
-      nombre: planItem.plan.nombre,
+    const planStatus = updatedOrder.plan ? {
+      id: updatedOrder.plan.id,
+      nombre: updatedOrder.plan.nombre,
       fechaInicio: updatedOrder.createdAt.toISOString().split('T')[0],
       fechaFin: new Date(updatedOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       isActive: isActive,

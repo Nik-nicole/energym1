@@ -6,10 +6,13 @@ import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+// Debug: Verificar si el modelo Order está disponible
+console.log("Modelos disponibles:", Object.keys(prisma));
+
 async function getData(paymentId: string) {
   console.log("Buscando orden con ID:", paymentId);
   try {
-    const order = await prisma.order.findUnique({
+    const order = await (prisma as any).order.findUnique({
       where: { id: paymentId },
       select: {
         id: true,
@@ -58,49 +61,23 @@ async function getData(paymentId: string) {
 
     if (orderItem?.planId) {
       // Buscar el plan por planId si existe en el orderItem
-      planInfo = await prisma.plan.findUnique({
+      planInfo = await (prisma as any).plan.findUnique({
         where: { id: orderItem.planId },
       });
     } else if (order.planId) {
       // Buscar el plan por planId si existe en la orden
-      planInfo = await prisma.plan.findUnique({
+      planInfo = await (prisma as any).plan.findUnique({
         where: { id: order.planId },
       });
     } else if (orderItem?.productId) {
       // Fallback: buscar el plan por productId si existe
-      planInfo = await prisma.plan.findUnique({
+      planInfo = await (prisma as any).plan.findUnique({
         where: { id: orderItem.productId },
       });
     }
 
     // Convertir orden a formato de payment para compatibilidad
-    const payment: {
-      id: string;
-      userId: string;
-      planId: string;
-      amount: number;
-      paymentMethod: string;
-      status: string;
-      paymentStatus: string;
-      cardName: string | null;
-      email: string;
-      transactionId: string;
-      createdAt: Date;
-      user: {
-        id: string;
-        firstName: string;
-        lastName: string | null;
-        email: string;
-      };
-      plan: {
-        id: string;
-        nombre: string;
-        precio: number;
-        descripcion: string;
-        duracion: string;
-        esVip: boolean;
-      };
-    } = {
+    const payment = {
       id: order.id,
       userId: order.userId,
       planId: order.planId || orderItem?.planId || orderItem?.productId || "",
@@ -112,6 +89,8 @@ async function getData(paymentId: string) {
       email: order.user.email,
       transactionId: order.orderNumber,
       createdAt: order.createdAt,
+      order: order,
+      shippingAddress: order.shippingAddress,
       user: order.user,
       plan: planInfo ? {
         id: planInfo.id,
@@ -130,7 +109,7 @@ async function getData(paymentId: string) {
       },
     };
 
-    return { payment };
+    return { payment: payment as any };
   } catch (error) {
     console.error("Error fetching payment data:", error);
     return null;

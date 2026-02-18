@@ -61,13 +61,9 @@ export async function PATCH(
             nombre: true,
           },
         },
-        orders: {
+        planOrders: {
           include: {
-            items: {
-              include: {
-                plan: true,
-              },
-            },
+            plan: true,
           },
           orderBy: {
             createdAt: 'desc'
@@ -76,7 +72,8 @@ export async function PATCH(
         },
         _count: {
           select: {
-            orders: true,
+            planOrders: true,
+            productOrders: true,
           },
         },
       },
@@ -90,17 +87,17 @@ export async function PATCH(
     }
 
     // Obtener el plan activo usando la misma lógica que en la página principal
-    const latestOrder = updatedUser.orders[0];
-    const activePlan = latestOrder?.items.find((item: any) => item.plan)?.plan;
+    const latestPlanOrder = updatedUser.planOrders[0];
+    const activePlan = latestPlanOrder?.plan;
     
     let planStatus = null;
-    if (latestOrder && activePlan) {
-      if (latestOrder.status === "CONFIRMED" && latestOrder.paymentStatus === "PAID") {
+    if (latestPlanOrder && activePlan) {
+      if (latestPlanOrder.status === "VERIFIED") {
         planStatus = {
           id: activePlan.id,
           nombre: activePlan.nombre,
-          fechaInicio: latestOrder.createdAt.toISOString().split('T')[0],
-          fechaFin: new Date(latestOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
+          fechaFin: new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           isActive: true,
           isDeactivated: false,
         };
@@ -108,8 +105,8 @@ export async function PATCH(
         planStatus = {
           id: activePlan.id,
           nombre: activePlan.nombre,
-          fechaInicio: latestOrder.createdAt.toISOString().split('T')[0],
-          fechaFin: new Date(latestOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
+          fechaFin: new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           isActive: false,
           isDeactivated: true,
         };

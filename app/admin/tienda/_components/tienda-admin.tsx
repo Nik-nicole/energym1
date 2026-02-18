@@ -36,10 +36,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ShoppingBag, Edit, Trash2, Plus, Package, DollarSign, MapPin, Star, Eye, Calendar, User, TrendingUp, Upload, X } from "lucide-react";
+import { ShoppingBag, Edit, Trash2, Plus, Package, DollarSign, MapPin, Star, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { OrdersStats } from "./orders-stats";
 
 interface Sede {
   id: string;
@@ -65,31 +64,9 @@ interface Producto {
   };
 }
 
-interface OrderItem {
-  id: string;
-  quantity: number;
-  product: {
-    id: string;
-    nombre: string;
-    imagen: string | null;
-  };
-  order: {
-    id: string;
-    createdAt: Date;
-    orderNumber: string;
-    user: {
-      firstName: string;
-      lastName?: string;
-      email: string;
-    };
-    totalAmount: number;
-  };
-}
-
 interface TiendaAdminProps {
   productos: Producto[];
   sedes: Sede[];
-  orderItems?: OrderItem[];
 }
 
 const categorias = [
@@ -102,16 +79,12 @@ const categorias = [
   "OTROS",
 ];
 
-export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) {
+export function TiendaAdmin({ productos, sedes }: TiendaAdminProps) {
   const [productosList, setProductosList] = useState<Producto[]>(productos);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingProducto, setEditingProducto] = useState<Producto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("productos");
-
-  // Manejar el caso cuando orderItems es undefined
-  const orderItemsList = orderItems || [];
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -299,7 +272,7 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Tienda</h1>
           <p className="text-muted-foreground">
-            Gestiona productos y órdenes
+            Gestiona productos
           </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -476,40 +449,14 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
         </Dialog>
       </div>
 
-      {/* Menú de navegación simple */}
-      <div className="bg-[#141414] rounded-lg p-1 flex gap-1">
-        <button
-          onClick={() => setActiveTab("productos")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md transition-all ${
-            activeTab === "productos"
-              ? "bg-[#040AE0] text-white"
-              : "text-gray-400 hover:text-white hover:bg-white/10"
-          }`}
-        >
-          <ShoppingBag className="w-4 h-4" />
-          Productos
-        </button>
-        <button
-          onClick={() => setActiveTab("ordenes")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md transition-all ${
-            activeTab === "ordenes"
-              ? "bg-[#040AE0] text-white"
-              : "text-gray-400 hover:text-white hover:bg-white/10"
-          }`}
-        >
-          <Eye className="w-4 h-4" />
-          Órdenes
-        </button>
-      </div>
 
-      {/* Contenido según tab activa */}
-      {activeTab === "productos" && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-        >
+      {/* Lista de productos */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+      >
           {productosList.map((producto, index) => (
             <motion.div
               key={producto.id}
@@ -623,73 +570,6 @@ export function TiendaAdmin({ productos, sedes, orderItems }: TiendaAdminProps) 
             </motion.div>
           ))}
         </motion.div>
-      )}
-
-      {activeTab === "ordenes" && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="space-y-6"
-        >
-          {/* Estadísticas de órdenes */}
-          <OrdersStats orders={orderItemsList} />
-          
-          {/* Lista de órdenes */}
-          <div className="bg-[#1A1A1A] rounded-xl border border-white/10 p-6">
-            <div className="space-y-4">
-              <h3 className="text-xl font-bold text-white mb-4">Órdenes Recientes</h3>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {orderItemsList.slice(0, 20).map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="bg-[#141414] rounded-lg p-4 border border-white/5"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-[#040AE0] rounded-full"></div>
-                        <span className="text-sm text-white font-medium">
-                          #{item.order.orderNumber}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-400">
-                        {new Date(item.order.createdAt).toLocaleString('es-CO')}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="text-sm text-white font-medium">
-                          {item.order.user.firstName} {item.order.user.lastName}
-                        </p>
-                        <p className="text-xs text-gray-400">{item.order.user.email}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold gradient-text">
-                          {formatCurrency(item.order.totalAmount)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShoppingBag className="w-4 h-4 text-[#040AE0]" />
-                        <span className="text-sm text-white">
-                          {item.product ? item.product.nombre : 'Producto eliminado'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-400">x{item.quantity}</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

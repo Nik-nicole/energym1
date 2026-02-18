@@ -38,7 +38,8 @@ export async function POST(
         },
         _count: {
           select: {
-            orders: true,
+            planOrders: true,
+            productOrders: true,
           },
         },
       },

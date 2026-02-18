@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 
-import { Check, Crown, Zap, Star, ChevronDown } from "lucide-react";
-import { motion } from "framer-motion";
+import { Check, Crown, Zap, Star, ChevronDown, AlertCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface PlanCardProps {
   plan: {
@@ -15,8 +22,17 @@ interface PlanCardProps {
     descripcion: string;
     beneficios: string[];
     duracion: string;
+    tipo: string;
     esVip: boolean;
     destacado: boolean;
+    activo: boolean;
+    sedes?: Array<{
+      id: string;
+      sede: {
+        id: string;
+        nombre: string;
+      };
+    }>;
   };
   index: number;
 }
@@ -25,8 +41,8 @@ export function PlanCard({ plan, index }: PlanCardProps) {
   const { data: session } = useSession();
   const isVip = plan?.esVip ?? false;
   const isDestacado = plan?.destacado ?? false;
-
   const [showBenefits, setShowBenefits] = useState(false);
+  const [showSedeErrorModal, setShowSedeErrorModal] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -36,6 +52,19 @@ export function PlanCard({ plan, index }: PlanCardProps) {
     }).format(price ?? 0);
   };
 
+  // Verificar si el usuario puede comprar este plan
+  const canUserPurchasePlan = () => {
+    if (!session) return true; // Si no está logueado, puede ver el plan pero se le pedirá login
+    
+    // Si el usuario no tiene sede asignada, puede comprar cualquier plan
+    if (!session.user.sedeId) return true;
+    
+    // Verificar si el plan está disponible en la sede del usuario
+    if (!plan.sedes || plan.sedes.length === 0) return true;
+    
+    return plan.sedes.some(sede => sede.sede.id === session.user.sedeId);
+  };
+
   const handleSelectPlan = () => {
     if (!session) {
       // Si no está logueado, redirigir a login
@@ -43,7 +72,13 @@ export function PlanCard({ plan, index }: PlanCardProps) {
       return;
     }
 
-    // Si está logueado, redirigir a pago con PSG
+    // Verificar si el usuario puede comprar este plan
+    if (!canUserPurchasePlan()) {
+      setShowSedeErrorModal(true);
+      return;
+    }
+
+    // Si está logueado y puede comprar, redirigir a pago con PSG
     window.location.href = `/pago/${plan.id}`;
   };
 
@@ -88,15 +123,46 @@ export function PlanCard({ plan, index }: PlanCardProps) {
         </div>
         <button
             onClick={handleSelectPlan}
+            disabled={!canUserPurchasePlan()}
             className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-              isVip
+              !canUserPurchasePlan()
+                ? "bg-red-500/20 text-red-400 border border-red-500/50 cursor-not-allowed"
+                : isVip
                 ? "gradient-bg hover:opacity-90"
                 : "bg-white/10 hover:bg-white/20 text-white"
             }`}
           >
             <Zap className="w-4 h-4" />
-            {session ? "Seleccionar Plan" : "Empezar Ahora"}
+            {!canUserPurchasePlan() ? "No disponible en tu sede" : (session ? "Seleccionar Plan" : "Empezar Ahora")}
           </button>
+
+          {/* Modal de error de sede */}
+          <AnimatePresence>
+            {showSedeErrorModal && (
+              <Dialog open={showSedeErrorModal} onOpenChange={setShowSedeErrorModal}>
+                <DialogContent className="bg-[#1A1A1A] border border-[#2A2A2A] text-white">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-400" />
+                      <span className="text-red-400">Restricción de Sede</span>
+                    </DialogTitle>
+                  </DialogHeader>
+                  <DialogDescription className="text-gray-300">
+                    No puedes comprar este plan porque no perteneces a esta sede donde se encuentra el plan. 
+                    Solo puedes comprar planes disponibles en tu sede actual.
+                  </DialogDescription>
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button
+                      onClick={() => setShowSedeErrorModal(false)}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                    >
+                      Entendido
+                    </button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </AnimatePresence>
 
         <div className="flex flex-col gap-3 mt-auto">
           <div className="border border-gray-700 rounded-lg overflow-hidden">

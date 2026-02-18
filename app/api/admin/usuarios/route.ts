@@ -22,7 +22,8 @@ export async function GET() {
         },
         _count: {
           select: {
-            orders: true,
+            planOrders: true,
+            productOrders: true,
           },
         },
       },
@@ -99,7 +100,8 @@ export async function POST(request: NextRequest) {
         },
         _count: {
           select: {
-            orders: true,
+            planOrders: true,
+            productOrders: true,
           },
         },
       },

@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log("Datos recibidos en API:", JSON.stringify(body, null, 2));
+    
     const {
       titulo,
       contenido,
@@ -55,17 +57,41 @@ export async function POST(request: NextRequest) {
       destacado,
     } = body;
 
+    console.log("Campos extraídos:", { titulo, contenido, resumen, imagen, esPromocion });
+
     if (!titulo || !contenido) {
+      console.log("Error: Campos requeridos faltantes", { titulo: !!titulo, contenido: !!contenido });
       return NextResponse.json(
-        { error: "Faltan campos requeridos" },
+        { error: "Faltan campos requeridos", details: { titulo: !!titulo, contenido: !!contenido } },
         { status: 400 }
       );
+    }
+
+    // Convertir content blocks a HTML si es un array
+    let contenidoHtml = contenido;
+    if (Array.isArray(contenido)) {
+      contenidoHtml = contenido.map((block: any) => {
+        switch (block.type) {
+          case 'titulo':
+            return `<h2 style="text-align: ${block.estilo?.alineacion || 'left'}; color: ${block.estilo?.color || '#000'}; font-size: ${block.estilo?.tamaño === 'grande' ? '2rem' : block.estilo?.tamaño === 'pequeño' ? '1rem' : '1.5rem'};">${block.content}</h2>`;
+          case 'subtitulo':
+            return `<h3 style="text-align: ${block.estilo?.alineacion || 'left'}; color: ${block.estilo?.color || '#000'}; font-size: ${block.estilo?.tamaño === 'grande' ? '1.5rem' : block.estilo?.tamaño === 'pequeño' ? '0.875rem' : '1.25rem'};">${block.content}</h3>`;
+          case 'parrafo':
+            return `<p style="text-align: ${block.estilo?.alineacion || 'left'}; color: ${block.estilo?.color || '#000'}; font-size: ${block.estilo?.tamaño === 'grande' ? '1.125rem' : block.estilo?.tamaño === 'pequeño' ? '0.875rem' : '1rem'};">${block.content}</p>`;
+          case 'imagen':
+            return `<div style="text-align: ${block.imageSettings?.posicion || 'left'}; margin: 1rem 0;">
+              <img src="${block.imageSettings?.url || ''}" alt="${block.imageSettings?.alt || ''}" style="max-width: 100%; height: auto;" />
+            </div>`;
+          default:
+            return `<p>${block.content}</p>`;
+        }
+      }).join('\n');
     }
 
     const noticia = await prisma.noticia.create({
       data: {
         titulo,
-        contenido,
+        contenido: contenidoHtml,
         resumen,
         imagen,
         sedeId: sedeId || null,

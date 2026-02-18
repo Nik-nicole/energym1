@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Edit, Trash2, Plus, Upload, Image as ImageIcon, X, Heart, MessageCircle, Share2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Type, Image, Palette, Minus, Plus as PlusIcon } from "lucide-react";
+import { Edit, Trash2, Plus, Upload, Image as ImageIcon, X, Heart, MessageCircle, Share2, AlignLeft, AlignCenter, AlignRight, AlignJustify, Type, Image, Palette, Minus, Eye, Edit3 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { EnhancedNoticiaForm } from "@/components/admin/enhanced-noticia-form";
@@ -113,7 +113,7 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
   };
 
   // Content block functions
-  const addContentBlock = (type: ContentBlock['type']) => {
+  const addContentBlock = (type: 'titulo' | 'subtitulo' | 'parrafo' | 'imagen') => {
     const newBlock: ContentBlock = {
       id: Date.now().toString(),
       type,
@@ -205,22 +205,6 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
     try {
       let imageUrl = data.imagen;
 
-      // Si hay un archivo de imagen, subirlo
-      if (imagenFile) {
-        const formDataUpload = new FormData();
-        formDataUpload.append("file", imagenFile);
-
-        const uploadResponse = await fetch("/api/upload", {
-          method: "POST",
-          body: formDataUpload,
-        });
-
-        if (uploadResponse.ok) {
-          const uploadResult = await uploadResponse.json();
-          imageUrl = uploadResult.url;
-        }
-      }
-
       const response = await fetch(`/api/admin/noticias/${editingNoticia.id}`, {
         method: "PUT",
         headers: {
@@ -235,7 +219,6 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
       setNoticiasList(noticiasList.map((n) => (n.id === updatedNoticia.id ? updatedNoticia : n)));
       setIsEditDialogOpen(false);
       setEditingNoticia(null);
-      resetForm();
       toast.success("Noticia actualizada exitosamente");
     } catch (error) {
       toast.error("Error al actualizar noticia");
@@ -267,7 +250,6 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
     }
   };
 
-  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -287,491 +269,142 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
               Nueva Noticia
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
+          <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
             <DialogHeader>
               <DialogTitle className="gradient-text">Crear Nueva Noticia</DialogTitle>
             </DialogHeader>
             
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="contenido" className="text-[#F8F8F8]">Contenido</Label>
-                <ControlledTextarea
-                  id="contenido"
-                  value={formData.contenido.map(block => block.content).join('\n\n')}
-                  onChange={(e) => {
-                    const contentArray = e.target.value.split('\n\n').map(content => ({
-                      id: Date.now().toString() + Math.random(),
-                      type: 'text' as const,
-                      content,
-                      estilo: {
-                        alineacion: 'left' as const,
-                        color: '#000000',
-                        tamaño: 'mediano' as const
-                      }
-                    }));
-                    setFormData({ ...formData, contenido: contentArray });
-                  }}
-                  placeholder="Escribe el contenido completo de la noticia aquí (formato blog)..."
-                  rows={15}
-                  maxLength={50000}
-                  showCharCount={true}
-                  showWarning={true}
-                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                />
-              </div>
+            <EnhancedNoticiaForm
+              sedes={sedes}
+              onSubmit={handleCreate}
+              onCancel={() => {
+                setIsCreateDialogOpen(false);
+                resetForm();
+              }}
+              isLoading={isLoading}
+            />
+          </DialogContent>
+        </Dialog>
 
-              <div className="space-y-2">
-                <Label className="text-[#F8F8F8]">Resumen</Label>
-                <ControlledTextarea
-                  id="resumen"
-                  value={formData.resumen}
-                  onChange={(e) => setFormData({ ...formData, resumen: e.target.value })}
-                  placeholder="Breve resumen (opcional)"
-                  rows={2}
-                  maxLength={200}
-                  showCharCount={true}
-                  showWarning={true}
-                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <Label className="text-[#F8F8F8] font-semibold">Contenido de la Noticia</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => addContentBlock('titulo')}
-                      className="bg-[#D604E0] text-white hover:bg-[#D604E0]/90 px-3 py-1 text-sm"
-                    >
-                      + Título
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => addContentBlock('subtitulo')}
-                      className="bg-[#040AE0] text-white hover:bg-[#040AE0]/90 px-3 py-1 text-sm"
-                    >
-                      + Subtítulo
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => addContentBlock('parrafo')}
-                      className="bg-[#1E1E1E] text-white hover:bg-[#1E1E1E]/90 px-3 py-1 text-sm"
-                    >
-                      + Párrafo
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => addContentBlock('imagen')}
-                      className="bg-[#A0A0A0] text-white hover:bg-[#1E1E1E]/90 px-3 py-1 text-sm"
-                    >
-                      + Imagen
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Content Blocks */}
-                <div className="space-y-4 max-h-64 overflow-y-auto">
-                  {contentBlocks.map((block, index) => (
-                    <div key={block.id} className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <span className="text-xs font-medium text-[#D604E0] bg-[#D604E0]/10 px-2 py-1 rounded">
-                          {block.type === 'titulo' ? 'TÍTULO' : block.type === 'subtitulo' ? 'SUBTÍTULO' : block.type === 'parrafo' ? 'PÁRRAFO' : 'IMAGEN'}
-                        </span>
-                        <Button
-                          type="button"
-                          onClick={() => removeContentBlock(block.id)}
-                          className="text-red-400 hover:text-red-300 text-sm"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      {block.type === 'imagen' ? (
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label className="text-[#F8F8F8]">URL de la imagen</Label>
-                              <ControlledInput
-                                value={block.imageSettings?.url || ''}
-                                onChange={(e) => updateContentBlock(block.id, 'imageSettings', { ...block.imageSettings, position: block.imageSettings?.position || 'izquierda', url: e.target.value })}
-                                placeholder="https://ejemplo.com/imagen.jpg"
-                                className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-[#F8F8F8]">Texto alternativo</Label>
-                              <ControlledInput
-                                value={block.imageSettings?.alt || ''}
-                                onChange={(e) => updateContentBlock(block.id, 'imageSettings', { ...block.imageSettings, position: block.imageSettings?.position || 'izquierda', alt: e.target.value })}
-                                placeholder="Descripción de la imagen"
-                                className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-[#F8F8F8]">Posición de la imagen</Label>
-                            <Select
-                              value={block.imageSettings?.posicion || 'izquierda'}
-                              onValueChange={(value) => updateContentBlock(block.id, 'imageSettings', { ...block.imageSettings, position: block.imageSettings?.position || 'izquierda', posicion: value as any })}
-                            >
-                              <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
-                                <SelectValue placeholder="Seleccionar posición" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-[#141414] border-[#1E1E1E]">
-                                <SelectItem value="banner">Banner (arriba)</SelectItem>
-                                <SelectItem value="izquierda">Izquierda</SelectItem>
-                                <SelectItem value="derecha">Derecha</SelectItem>
-                                <SelectItem value="centro">Centro</SelectItem>
-                                <SelectItem value="sin">Sin imagen</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <ControlledTextarea
-                            value={block.content}
-                            onChange={(e) => updateContentBlock(block.id, 'content', e.target.value)}
-                            placeholder={block.type === 'titulo' ? 'Escribe el título aquí...' : block.type === 'subtitulo' ? 'Escribe el subtítulo aquí...' : 'Escribe el párrafo aquí...'}
-                            rows={block.type === 'parrafo' ? 4 : 2}
-                            showCharCount={true}
-                            className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                          />
-                          
-                          {/* Style Controls */}
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="space-y-2">
-                              <Label className="text-[#F8F8F8]">Alineación</Label>
-                              <Select
-                                value={block.estilo?.alineacion || 'left'}
-                                onValueChange={(value) => updateContentBlock(block.id, 'estilo', { ...block.estilo, alineacion: value as any })}
-                              >
-                                <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white text-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#141414] border-[#1E1E1E]">
-                                  <SelectItem value="left">Izquierda</SelectItem>
-                                  <SelectItem value="center">Centro</SelectItem>
-                                  <SelectItem value="right">Derecha</SelectItem>
-                                  <SelectItem value="justify">Justificado</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-[#F8F8F8]">Color</Label>
-                              <input
-                                type="color"
-                                value={block.estilo?.color || '#000000'}
-                                onChange={(e) => updateContentBlock(block.id, 'estilo', { ...block.estilo, color: e.target.value })}
-                                className="w-full h-8 rounded cursor-pointer"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-[#F8F8F8]">Tamaño</Label>
-                              <Select
-                                value={block.estilo?.tamaño || 'mediano'}
-                                onValueChange={(value) => updateContentBlock(block.id, 'estilo', { ...block.estilo, tamaño: value as any })}
-                              >
-                                <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white text-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#141414] border-[#1E1E1E]">
-                                  <SelectItem value="pequeño">Pequeño</SelectItem>
-                                  <SelectItem value="mediano">Mediano</SelectItem>
-                                  <SelectItem value="grande">Grande</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[#F8F8F8]">Imagen de Portada Principal</Label>
-                <div className="border-2 border-dashed border-[#1E1E1E] rounded-lg p-4">
-                  <input
-                    type="file"
-                    id="create-imagen"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setImagenFile(file);
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setFormData({ ...formData, imagen: reader.result as string });
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="create-imagen"
-                    className="flex flex-col items-center justify-center cursor-pointer"
-                  >
-                    {(formData.imagen || imagenFile) ? (
-                      <div className="relative w-full h-48">
-                        <img
-                          src={formData.imagen || (imagenFile ? URL.createObjectURL(imagenFile) : '')}
-                          alt="Preview"
-                          className="w-full h-full object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setImagenFile(null);
-                            setFormData({ ...formData, imagen: "" });
-                          }}
-                          className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition-colors"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload className="h-12 w-12 text-[#A0A0A0] mb-2" />
-                        <p className="text-sm text-[#A0A0A0]">Click para subir imagen</p>
-                        <p className="text-xs text-[#A0A0A0]">PNG, JPG hasta 10MB</p>
-                      </>
-                    )}
-                  </label>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[#F8F8F8]">Posición de Imagen Principal</Label>
-                <Select
-                  value={formData.imagenPosicion}
-                  onValueChange={(value) => setFormData({ ...formData, imagenPosicion: value })}
-                >
-                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
-                    <SelectValue placeholder="Seleccionar posición" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#141414] border-[#1E1E1E]">
-                    <SelectItem value="banner">Banner (arriba)</SelectItem>
-                    <SelectItem value="izquierda">Izquierda</SelectItem>
-                    <SelectItem value="derecha">Derecha</SelectItem>
-                    <SelectItem value="centro">Centro</SelectItem>
-                    <SelectItem value="sin">Sin imagen</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sedeId" className="text-[#F8F8F8]">Sede (opcional)</Label>
-                  <Select
-                    value={formData.sedeId}
-                    onValueChange={(value) => setFormData({ ...formData, sedeId: value })}
-                  >
-                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
-                      <SelectValue placeholder="Seleccionar sede" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#141414] border-[#1E1E1E]">
-                      <SelectItem value="general">Todas las sedes</SelectItem>
-                      {sedes.map((sede) => (
-                        <SelectItem key={sede.id} value={sede.id}>
-                          {sede.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#F8F8F8]">Estado</Label>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <CustomSwitch
-                        id="activo"
-                        checked={formData.activo}
-                        onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
-                      />
-                      <Label htmlFor="activo" className="text-[#F8F8F8]">Activa</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CustomSwitch
-                        id="destacado"
-                        checked={formData.destacado}
-                        onCheckedChange={(checked) => setFormData({ ...formData, destacado: checked })}
-                      />
-                      <Label htmlFor="destacado" className="text-[#F8F8F8]">Destacada</Label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <CustomSwitch
-                  id="esPromocion"
-                  checked={formData.esPromocion}
-                  onCheckedChange={(checked) => setFormData({ ...formData, esPromocion: checked })}
-                />
-                <Label htmlFor="esPromocion" className="text-[#F8F8F8]">Es promoción</Label>
-              </div>
-              {formData.esPromocion && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fechaInicio" className="text-[#F8F8F8]">Fecha de inicio</Label>
-                    <ControlledInput
-                      id="fechaInicio"
-                      type="date"
-                      value={formData.fechaInicio}
-                      onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
-                      className="bg-[#0A0A0A] border-[#1E1E1E] text-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fechaFin" className="text-[#F8F8F8]">Fecha de fin</Label>
-                    <ControlledInput
-                      id="fechaFin"
-                      type="date"
-                      value={formData.fechaFin}
-                      onChange={(e) => setFormData({ ...formData, fechaFin: e.target.value })}
-                      className="bg-[#0A0A0A] border-[#1E1E1E] text-white"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white">
-                Cancelar
-              </Button>
-              <Button onClick={handleCreate} disabled={isLoading} className="gradient-bg hover:opacity-90">
-                {isLoading ? "Creando..." : "Crear Noticia"}
-              </Button>
-            </div>
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
+            <DialogHeader>
+              <DialogTitle className="gradient-text">Editar Noticia</DialogTitle>
+            </DialogHeader>
+            {editingNoticia && (
+              <EnhancedNoticiaForm
+                noticia={editingNoticia}
+                sedes={sedes}
+                onSubmit={handleUpdate}
+                onCancel={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingNoticia(null);
+                }}
+                isLoading={isLoading}
+              />
+            )}
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Grid de Noticias con el nuevo diseño */}
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2">
+      {/* Noticias List */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {noticiasList.map((noticia) => (
-          <motion.div
-            key={noticia.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative flex flex-col sm:flex-row bg-[#1A1A1A] rounded-2xl overflow-hidden shadow-lg border border-white/5 hover:border-[#D604E0]/30 transition-all duration-300 group h-full sm:h-64"
-          >
-            {/* Imagen Izquierda (40%) */}
-            <div className="w-full sm:w-2/5 relative p-3 flex-shrink-0">
-              <div className="h-48 sm:h-full w-full rounded-xl overflow-hidden relative bg-[#0A0A0A]">
+          <Card key={noticia.id} className="bg-[#1A1A1A] border-[#2A2A2A] hover:border-[#D604E0]/50 transition-all duration-300 overflow-hidden rounded-xl">
+            {/* Header con imagen y badge */}
+            <div className="relative">
+              <div className="h-48 overflow-hidden">
                 {noticia.imagen ? (
                   <img
                     src={noticia.imagen}
                     alt={noticia.titulo}
-                    className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="w-12 h-12 text-[#A0A0A0]" />
+                  <div className="w-full h-full bg-gradient-to-br from-[#D604E0]/20 to-[#3B82F6]/20 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-6xl font-bold text-white mb-2">DAYS</div>
+                      <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center">
+                        <div className="w-12 h-12 bg-white/30 rounded flex items-center justify-center">
+                          <div className="text-2xl text-white">👥</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
+              
+              {/* Badge de tipo */}
+              <div className="absolute top-3 right-3">
+                <div className="px-3 py-1 rounded-full text-xs font-semibold bg-[#D604E0] text-white">
+                  {noticia.esPromocion ? 'PROMOCIÓN' : noticia.destacado ? 'DESTACADO' : 'NOTICIA'}
+                </div>
+              </div>
             </div>
 
-            {/* Contenido Derecha */}
-            <div className="w-full sm:w-3/5 p-5 flex flex-col relative">
-              {/* Etiqueta Superior Derecha */}
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex gap-2">
-                  {!noticia.activo && (
-                    <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-full border border-red-500/20">
-                      INACTIVA
-                    </span>
-                  )}
-                </div>
-                <span className="text-xs font-medium text-[#D604E0] bg-[#D604E0]/10 px-3 py-1 rounded-full border border-[#D604E0]/20">
-                  {noticia.sede?.nombre || "General"}
-                </span>
+            <CardContent className="p-6">
+              {/* Título y descripción */}
+              <div className="mb-4">
+                <h3 className="text-2xl font-bold text-[#D604E0] mb-2">
+                  {noticia.esPromocion ? 'NUEVA SEDE' : noticia.titulo}
+                </h3>
+                <p className="text-sm text-gray-400">
+                  {noticia.esPromocion ? 'Agregamos una nueva sede' : noticia.resumen || 'Sin descripción'}
+                </p>
               </div>
 
-              {/* Título */}
-              <h3 className="text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
-                {noticia.titulo}
-              </h3>
+              {/* Separador */}
+              <div className="border-t border-gray-700 my-4"></div>
 
-              {/* Descripción */}
-              <p className="text-sm text-gray-400 line-clamp-3 mb-4 flex-grow leading-relaxed">
-                {noticia.resumen || noticia.contenido}
-              </p>
-
-              {/* Espacio para acciones futuras si es necesario */}
-              <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(noticia)}
-                    className="h-8 w-8 p-0 text-[#A0A0A0] hover:text-white hover:bg-white/10 rounded-full"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-full"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-[#141414] border-[#1E1E1E]">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white">
-                          ¿Eliminar noticia?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-[#A0A0A0]">
-                          Esta acción no se puede deshacer.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-[#1E1E1E] text-[#F8F8F8] hover:bg-[#2A2A2A]">
-                          Cancelar
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDelete(noticia.id)}
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          Eliminar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+              {/* Fecha e interacciones */}
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-gray-400">
+                  {new Date(noticia.fechaPublicacion).toLocaleDateString("es-CO", { 
+                    day: 'numeric', 
+                    month: 'long' 
+                  })}
                 </div>
-            </div>
-          </motion.div>
+                <div className="flex gap-3">
+                  <div className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors cursor-pointer">
+                    <Heart className="h-4 w-4" />
+                  </div>
+                  <div className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors cursor-pointer">
+                    <MessageCircle className="h-4 w-4" />
+                  </div>
+                  <div className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors cursor-pointer">
+                    <Share2 className="h-4 w-4" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(noticia)}
+                  className="flex-1 border-[#D604E0]/50 text-[#D604E0] hover:bg-[#D604E0] hover:text-white transition-all duration-200"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDelete(noticia.id)}
+                  className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Eliminar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
-
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
-          <DialogHeader>
-            <DialogTitle className="gradient-text">Editar Noticia</DialogTitle>
-          </DialogHeader>
-          
-          <EnhancedNoticiaForm
-            noticia={editingNoticia}
-            sedes={sedes}
-            onSubmit={handleUpdate}
-            onCancel={() => {
-              setIsEditDialogOpen(false);
-              setEditingNoticia(null);
-              resetForm();
-            }}
-            isLoading={isLoading}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
+
+

@@ -23,64 +23,66 @@ interface Producto {
   };
 }
 
-interface Sede {
-  id: string;
-  nombre: string;
-}
-
-interface MarketplaceClientProps {
+interface MarketplaceSidebarProps {
   productos: Producto[];
-  sedes: Sede[];
+  sedes: Array<{
+    id: string;
+    nombre: string;
+  }>;
 }
 
-export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps) {
+export function MarketplaceSidebar({ productos, sedes }: MarketplaceSidebarProps) {
   const { addItem, items } = useCart();
+  
+  // Estados para filtros
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSede, setSelectedSede] = useState<string>("all");
-  const [selectedCategoria, setSelectedCategoria] = useState<string>("all");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
-  const [sortBy, setSortBy] = useState<string>("destacado");
-
+  const [selectedSede, setSelectedSede] = useState("all");
+  const [selectedCategoria, setSelectedCategoria] = useState("all");
+  const [sortBy, setSortBy] = useState("destacado");
+  
   // Obtener categorías únicas
   const categorias = useMemo(() => {
     const cats = new Set(productos.map(p => p.categoria));
     return Array.from(cats);
   }, [productos]);
-
-  // Obtener rango de precios
+  
+  // Calcular límites de precio
   const priceRangeLimits = useMemo(() => {
+    if (productos.length === 0) return { min: 0, max: 100000 };
     const prices = productos.map(p => p.precio);
     return {
       min: Math.min(...prices),
       max: Math.max(...prices)
     };
   }, [productos]);
-
-  // Filtrar productos
+  
+  const [priceRange, setPriceRange] = useState([priceRangeLimits.min, priceRangeLimits.max]);
+  
+  // Filtrar y ordenar productos
   const productosFiltrados = useMemo(() => {
     let filtered = productos;
-
+    
     // Filtrar por búsqueda
     if (searchTerm) {
-      filtered = filtered.filter(p =>
+      filtered = filtered.filter(p => 
         p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
+    
     // Filtrar por sede
     if (selectedSede !== "all") {
       filtered = filtered.filter(p => p.sede.id === selectedSede);
     }
-
+    
     // Filtrar por categoría
     if (selectedCategoria !== "all") {
       filtered = filtered.filter(p => p.categoria === selectedCategoria);
     }
-
+    
     // Filtrar por rango de precio
     filtered = filtered.filter(p => p.precio >= priceRange[0] && p.precio <= priceRange[1]);
-
+    
     // Ordenar
     switch (sortBy) {
       case "precio-asc":
@@ -97,10 +99,10 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
         filtered.sort((a, b) => (b.destacado ? 1 : 0) - (a.destacado ? 1 : 0));
         break;
     }
-
+    
     return filtered;
   }, [productos, searchTerm, selectedSede, selectedCategoria, priceRange, sortBy]);
-
+  
   const handleAddToCart = (producto: Producto, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
@@ -108,12 +110,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
     }
     addItem(producto);
   };
-
-  const getItemQuantity = (productId: string) => {
-    const item = items.find(item => item.id === productId);
-    return item ? item.quantity : 0;
-  };
-
+  
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
       style: "currency",
@@ -121,7 +118,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
       minimumFractionDigits: 0,
     }).format(price);
   };
-
+  
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedSede("all");
@@ -129,10 +126,10 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
     setPriceRange([priceRangeLimits.min, priceRangeLimits.max]);
     setSortBy("destacado");
   };
-
+  
   const hasActiveFilters = searchTerm || selectedSede !== "all" || selectedCategoria !== "all" || 
     priceRange[0] !== priceRangeLimits.min || priceRange[1] !== priceRangeLimits.max;
-
+  
   return (
     <div className="flex-1 pt-24 pb-16">
       <div className="max-w-[1200px] mx-auto px-4">
@@ -150,7 +147,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
             de las mejores marcas disponibles en todas nuestras sedes.
           </p>
         </motion.div>
-
+        
         {/* Layout principal con sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar de filtros */}
@@ -172,7 +169,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
                   </button>
                 )}
               </div>
-
+              
               <div className="space-y-6">
                 {/* Búsqueda */}
                 <div>
@@ -188,7 +185,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
                     />
                   </div>
                 </div>
-
+                
                 {/* Categorías */}
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-3">Categorías</label>
@@ -218,7 +215,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
                     ))}
                   </div>
                 </div>
-
+                
                 {/* Sede */}
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-2">Sede</label>
@@ -233,7 +230,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
                     ))}
                   </select>
                 </div>
-
+                
                 {/* Rango de precio */}
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-2">Rango de precio</label>
@@ -261,7 +258,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
                     </div>
                   </div>
                 </div>
-
+                
                 {/* Ordenar */}
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-2">Ordenar por</label>
@@ -279,7 +276,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
               </div>
             </div>
           </motion.div>
-
+          
           {/* Contenido principal */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -298,7 +295,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
                 </p>
               )}
             </div>
-
+            
             {/* Grid de productos */}
             {productosFiltrados.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -316,144 +313,30 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
                           <div className="absolute top-3 right-3 z-10">
                             <span className="px-2 py-1 bg-[#040AE0] rounded-full text-white text-xs font-medium">
                               Destacado
-
-              {/* Ordenar */}
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Ordenar por</label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0A0A0A] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#040AE0]"
-                >
-                  <option value="destacado">Destacados</option>
-                  <option value="precio-asc">Precio: Menor a Mayor</option>
-                  <option value="precio-desc">Precio: Mayor a Menor</option>
-                  <option value="nombre">Nombre A-Z</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Contenido principal */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-          className="lg:col-span-3"
-        >
-          {/* Resultados */}
-          <div className="mb-6 flex items-center justify-between">
-            <p className="text-gray-400">
-              Mostrando <span className="text-white font-medium">{productosFiltrados.length}</span> productos
-            </p>
-            {hasActiveFilters && (
-              <p className="text-sm text-gray-500">
-                Filtros activos
-              </p>
-            )}
-          </div>
-
-          {/* Grid de productos */}
-          {productosFiltrados.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {productosFiltrados.map((producto, index) => (
-                <motion.div
-                  key={producto.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <Link href={`/marketplace/product/${producto.id}`}>
-                    <div className="bg-[#0A0A0A] rounded-xl overflow-hidden border border-transparent hover:border-[#040AE0]/30 transition-all duration-300 group">
-                      {/* Badge de destacado */}
-                      {producto.destacado && (
-                        <div className="absolute top-3 right-3 z-10">
-                          <span className="px-2 py-1 bg-[#040AE0] rounded-full text-white text-xs font-medium">
-                            Destacado
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Imagen del producto */}
-                      <div className="aspect-square bg-gradient-to-br from-[#040AE0]/5 to-[#D604E0]/5 overflow-hidden relative">
-                        {producto.imagen ? (
-                          <img 
-                            src={producto.imagen.split(',')[0]} 
-                            alt={producto.nombre}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-12 h-12 text-[#040AE0]/20" />
+                            </span>
                           </div>
                         )}
                         
-                        {/* Indicador de múltiples imágenes */}
-                        {producto.imagen && producto.imagen.split(',').length > 1 && (
-                          <div className="absolute top-2 right-2 px-2 py-1 bg-[#141414]/80 backdrop-blur-sm rounded-full">
-                            <span className="text-white text-xs">
-                              +{producto.imagen.split(',').length - 1}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Información */}
-                      <div className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs text-gray-500">
-                            {producto.categoria}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-gray-500" />
-                            <span className="text-xs text-gray-500">{producto.sede.nombre}</span>
-                          </div>
-                        </div>
-
-                        <h3 className="text-white font-medium mb-2 line-clamp-1 group-hover:text-[#040AE0] transition-colors">
-                          {producto.nombre}
-                        </h3>
-
-                        <p className="text-gray-400 text-xs line-clamp-2 mb-3">
-                          {producto.descripcion}
-                        </p>
-
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-lg font-bold text-white">
-                            {formatPrice(producto.precio)}
-                          </span>
-                          {producto.stock > 0 ? (
-                            <span className="text-xs text-green-500">
-                              {producto.stock} disponibles
-                            </span>
+                        {/* Imagen del producto */}
+                        <div className="relative h-48 overflow-hidden">
+                          {producto.imagen ? (
+                            <img
+                              src={producto.imagen}
+                              alt={producto.nombre}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
                           ) : (
-                            <span className="text-xs text-red-500">
-                              Agotado
-                            </span>
+                            <div className="w-full h-full bg-gradient-to-br from-[#040AE0]/20 to-[#D604E0]/20 flex items-center justify-center">
+                              <Package className="w-12 h-12 text-gray-600" />
+                            </div>
                           )}
                         </div>
-
-                        {/* Botones de acción */}
-                        <div className="flex gap-2">
-                          <button
-                            onClick={(e) => handleAddToCart(producto, e)}
-                            disabled={producto.stock === 0}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                              producto.stock > 0
-                                ? "bg-[#D604E0] hover:bg-[#D604E0]/80 text-white"
-                                : "bg-gray-800 text-gray-500 cursor-not-allowed"
-                            }`}
-                          >
-                            <ShoppingBag className="w-4 h-4 inline mr-2" />
-                            {producto.stock > 0 ? "Agregar" : "Agotado"}
-                          </button>
-                          
-                          <button
-                            className="px-3 py-2 bg-[#141414] border border-white/10 rounded-lg text-white hover:bg-white/10 transition-all"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
+                        
+                        {/* Información del producto */}
+                        <div className="p-4">
+                          {/* Categoría y sede */}
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="px-2 py-1 bg-white/10 rounded-full text-xs text-gray-300">
                               {producto.categoria}
                             </span>
                             <div className="flex items-center gap-1">
@@ -461,15 +344,15 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
                               <span className="text-xs text-gray-500">{producto.sede.nombre}</span>
                             </div>
                           </div>
-
+                          
                           <h3 className="text-white font-medium mb-2 line-clamp-1 group-hover:text-[#040AE0] transition-colors">
                             {producto.nombre}
                           </h3>
-
+                          
                           <p className="text-gray-400 text-xs line-clamp-2 mb-3">
                             {producto.descripcion}
                           </p>
-
+                          
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-lg font-bold text-white">
                               {formatPrice(producto.precio)}
@@ -484,7 +367,7 @@ export function MarketplaceSidebar({ productos, sedes }: MarketplaceClientProps)
                               </span>
                             )}
                           </div>
-
+                          
                           {/* Botones de acción */}
                           <div className="flex gap-2">
                             <button

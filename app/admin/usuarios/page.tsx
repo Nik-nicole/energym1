@@ -15,27 +15,30 @@ async function getUsersData() {
             nombre: true,
           },
         },
-        orders: {
+        planOrders: {
           include: {
-            items: {
-              include: {
-                plan: {
-                  select: {
-                    id: true,
-                    nombre: true,
-                    precio: true,
-                    duracion: true,
-                  }
-                },
-                product: {
-                  select: {
-                    id: true,
-                    nombre: true,
-                    precio: true,
-                  }
-                }
-              },
-            },
+            plan: {
+              select: {
+                id: true,
+                nombre: true,
+                precio: true,
+                duracion: true,
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+        },
+        productOrders: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                nombre: true,
+                precio: true,
+              }
+            }
           },
           orderBy: {
             createdAt: 'desc'
@@ -43,7 +46,8 @@ async function getUsersData() {
         },
         _count: {
           select: {
-            orders: true,
+            planOrders: true,
+            productOrders: true,
           },
         },
       },
@@ -64,26 +68,24 @@ async function getUsersData() {
 
     // Transformar los datos para incluir el plan activo o desactivado
     const usersWithPlans = users.map(user => {
-      // Buscar TODAS las órdenes con planes (pagadas y no pagadas), ordenadas por fecha
-      const allPlanOrders = user.orders
-        .filter(order => order.items.some(item => item.plan))
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      // Buscar TODAS las órdenes de planes, ordenadas por fecha
+      const allPlanOrders = (user as any).planOrders || [];
       
-      // Buscar específicamente órdenes con planes PAGADAS
-      const paidPlanOrders = allPlanOrders.filter(order => order.paymentStatus === "PAID");
+      // Buscar específicamente órdenes con planes VERIFICADAS (equivalente a pagadas)
+      const verifiedPlanOrders = allPlanOrders.filter((order: any) => order.status === "VERIFIED");
       
-      // Priorizar: 1) Plan pagado más reciente, 2) Plan más reciente (sin importar pago)
-      const latestPlanOrder = paidPlanOrders[0] || allPlanOrders[0];
+      // Priorizar: 1) Plan verificado más reciente, 2) Plan más reciente (sin importar estado)
+      const latestPlanOrder = verifiedPlanOrders[0] || allPlanOrders[0];
       
-      const activePlan = latestPlanOrder?.items.find(item => item.plan)?.plan;
+      const activePlan = latestPlanOrder?.plan;
       
       // Determinar si el plan está activo o desactivado
       let planStatus = null;
       if (latestPlanOrder && activePlan) {
-        const isPaid = latestPlanOrder.paymentStatus === "PAID";
+        const isVerified = latestPlanOrder.status === "VERIFIED";
         
-        if (isPaid) {
-          // Plan pagado - siempre mostrar el plan, verificar estado en UserPlan
+        if (isVerified) {
+          // Plan verificado - verificar estado en UserPlan
           const userPlanState = userPlans.find((up: any) => up.plan.id === activePlan.id && up.userId === user.id);
           
           // Siempre mostrar el plan, con su estado correspondiente
@@ -104,7 +106,7 @@ async function getUsersData() {
             userPlanState: userPlanState ? 'exists' : 'not found'
           });
         } else {
-          // Plan comprado pero no pagado aún
+          // Plan comprado pero no verificado aún
           planStatus = {
             id: activePlan.id,
             nombre: activePlan.nombre,
@@ -142,7 +144,7 @@ async function getUsersData() {
       orderBy: { nombre: "asc" },
     });
 
-    return { users: usersWithPlans, sedes, plans };
+    return { users: usersWithPlans as any, sedes, plans };
   } catch (error) {
     console.error("Error fetching users:", error);
     return null;

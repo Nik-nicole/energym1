@@ -21,10 +21,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {EnhancedNoticiaForm} from "@/components/admin/enhanced-noticia-form";
 import { Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { EnhancedNoticiaForm } from "@/components/admin/enhanced-noticia-form";
+
 import { NoticiaFormData } from "@/types/noticia-editor";
 
 interface Sede {

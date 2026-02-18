@@ -33,39 +33,7 @@ async function getTiendaData() {
       orderBy: { nombre: "asc" },
     });
 
-    // Obtener datos de órdenes
-    let orderItems = [];
-    try {
-      orderItems = await prisma.orderItem.findMany({
-        include: {
-          product: {
-            select: {
-              id: true,
-              nombre: true,
-              imagen: true,
-            },
-          },
-          order: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 100, // Limitar a las últimas 100 órdenes
-      });
-    } catch (error) {
-      console.error("Error fetching order items:", error);
-      orderItems = [];
-    }
-
-    return { productos, sedes, orderItems };
+    return { productos: productos as any, sedes };
   } catch (error) {
     console.error("Error fetching tienda data:", error);
     return null;
@@ -81,7 +49,7 @@ export default async function TiendaPage() {
 
   return (
     <AdminLayout>
-      <TiendaAdmin productos={data.productos} sedes={data.sedes} orderItems={data.orderItems} />
+      <TiendaAdmin productos={data.productos} sedes={data.sedes} />
     </AdminLayout>
   );
 }

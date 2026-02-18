@@ -85,3 +85,9 @@ body {
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+.custom-modal-width {
+  @media (min-width: 640px) {
+    max-width: 70rem !important;
+  }
+}

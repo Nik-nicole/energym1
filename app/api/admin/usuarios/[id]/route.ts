@@ -73,7 +73,8 @@ export async function PUT(
         },
         _count: {
           select: {
-            orders: true,
+            planOrders: true,
+            productOrders: true,
           },
         },
       },
@@ -117,7 +118,8 @@ export async function PATCH(
         },
         _count: {
           select: {
-            orders: true,
+            planOrders: true,
+            productOrders: true,
           },
         },
       },

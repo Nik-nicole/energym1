@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,7 @@ import {
   Clock,
   Upload,
   Image as ImageIcon,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -81,11 +82,26 @@ interface Sede {
   activo: boolean;
   createdAt: Date;
   updatedAt: Date;
+  paymentGatewayId?: string | null;
+  paymentGateway?: {
+    id: string;
+    nombre: string;
+    tipo: string;
+    cuentaBanco: string;
+  } | null;
   _count: {
     usuarios: number;
     productos: number;
     noticias: number;
+    planesEnSede: number;
   };
+}
+
+interface PaymentGateway {
+  id: string;
+  nombre: string;
+  tipo: string;
+  cuentaBanco: string;
 }
 
 interface SedesAdminProps {
@@ -111,6 +127,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
     imagen: "",
     horario: "",
     activo: true,
+    paymentGatewayId: "",
   });
 
   // Estado para horarios estructurados
@@ -126,6 +143,24 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
 
   const [imagenFile, setImagenFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [paymentGateways, setPaymentGateways] = useState<PaymentGateway[]>([]);
+
+  // Cargar pasarelas de pago
+  useEffect(() => {
+    const fetchPaymentGateways = async () => {
+      try {
+        const response = await fetch('/api/admin/payment-gateways');
+        if (response.ok) {
+          const data = await response.json();
+          setPaymentGateways(data);
+        }
+      } catch (error) {
+        console.error('Error fetching payment gateways:', error);
+      }
+    };
+
+    fetchPaymentGateways();
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -138,6 +173,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
       imagen: "",
       horario: "",
       activo: true,
+      paymentGatewayId: "",
     });
     setHorarios([
       { dia: 'lunes', abierto: true, apertura: '09:00', cierre: '18:00' },
@@ -256,6 +292,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
           imagen: imageUrl || 'https://cdn.abacus.ai/images/223406aa-b7ac-4de5-bd3a-93424a34a9e8.png',
           horario: horarioString,
           activo: formData.activo,
+          paymentGatewayId: formData.paymentGatewayId || null,
         }),
       });
 
@@ -289,6 +326,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
       imagen: sede.imagen || "",
       horario: sede.horario,
       activo: sede.activo,
+      paymentGatewayId: sede.paymentGatewayId || "",
     });
     // Parsear y cargar los horarios existentes
     const horariosParsed = parseHorarioString(sede.horario);
@@ -484,6 +522,34 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paymentGateway" className="text-[#F8F8F8]">Cuenta de Pago</Label>
+                <Select
+                  value={formData.paymentGatewayId}
+                  onValueChange={(value) => setFormData({ ...formData, paymentGatewayId: value })}
+                >
+                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
+                    <SelectValue placeholder="Selecciona una cuenta de pago" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                    {paymentGateways.map((gateway) => (
+                      <SelectItem
+                        key={gateway.id}
+                        value={gateway.id}
+                        className="text-white hover:bg-[#1E1E1E] focus:bg-[#D604E0]"
+                      >
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          <div>
+                            <div className="font-medium">{gateway.nombre}</div>
+                            <div className="text-xs text-[#A0A0A0]">{gateway.tipo} - {gateway.cuentaBanco}</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="descripcion" className="text-[#F8F8F8]">Descripción</Label>
@@ -1035,6 +1101,34 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-paymentGateway" className="text-[#F8F8F8]">Cuenta de Pago</Label>
+              <Select
+                value={formData.paymentGatewayId}
+                onValueChange={(value) => setFormData({ ...formData, paymentGatewayId: value })}
+              >
+                <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
+                  <SelectValue placeholder="Selecciona una cuenta de pago" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                  {paymentGateways.map((gateway) => (
+                    <SelectItem
+                      key={gateway.id}
+                      value={gateway.id}
+                      className="text-white hover:bg-[#1E1E1E] focus:bg-[#D604E0]"
+                    >
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        <div>
+                          <div className="font-medium">{gateway.nombre}</div>
+                          <div className="text-xs text-[#A0A0A0]">{gateway.tipo} - {gateway.cuentaBanco}</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-descripcion" className="text-[#F8F8F8]">Descripción</Label>

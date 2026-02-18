@@ -13,6 +13,7 @@ export async function GET() {
 
     const sedes = await prisma.sede.findMany({
       include: {
+        paymentGateway: true,
         _count: {
           select: {
             usuarios: true,
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
       imagen,
       horario,
       activo,
+      paymentGatewayId,
     } = body;
 
     if (!nombre || !direccion || !ciudad || !telefono || !horario) {
@@ -73,8 +75,10 @@ export async function POST(request: NextRequest) {
         imagen,
         horario,
         activo,
+        paymentGatewayId: paymentGatewayId || null,
       },
       include: {
+        paymentGateway: true,
         _count: {
           select: {
             usuarios: true,

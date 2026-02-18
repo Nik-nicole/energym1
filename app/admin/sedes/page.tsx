@@ -14,6 +14,7 @@ async function getSedesData() {
             usuarios: true,
             productos: true,
             noticias: true,
+            planesEnSede: true,
           },
         },
       },

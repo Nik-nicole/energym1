@@ -18,6 +18,9 @@ import {
   LogOut,
   User,
   Home,
+  ChevronDown,
+  ChevronRight,
+  Receipt,
 } from "lucide-react";
 import { LogoutConfirmDialog } from "@/components/logout-confirm-dialog";
 
@@ -66,6 +69,7 @@ interface AdminSidebarProps {
 export function AdminSidebar({ className }: AdminSidebarProps) {
   const pathname = usePathname();
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isOrdersMenuOpen, setIsOrdersMenuOpen] = useState(false);
 
   return (
     <>
@@ -100,8 +104,60 @@ export function AdminSidebar({ className }: AdminSidebarProps) {
                   </Link>
                 </Button>
               ))}
+              
+              {/* Menú desplegable de Órdenes */}
+              <div className="space-y-1">
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start text-[#F8F8F8] hover:text-white hover:bg-[#1E1E1E]",
+                    (pathname === "/admin/ordenes/productos" || pathname === "/admin/ordenes/planes") && "bg-[#1E1E1E] text-white"
+                  )}
+                  onClick={() => setIsOrdersMenuOpen(!isOrdersMenuOpen)}
+                >
+                  <Receipt className="mr-2 h-4 w-4" />
+                  Órdenes
+                  {isOrdersMenuOpen ? (
+                    <ChevronDown className="ml-auto h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="ml-auto h-4 w-4" />
+                  )}
+                </Button>
+                
+                {isOrdersMenuOpen && (
+                  <div className="ml-4 space-y-1">
+                    <Button
+                      variant={pathname === "/admin/ordenes/productos" ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-sm text-[#F8F8F8] hover:text-white hover:bg-[#1E1E1E]",
+                        pathname === "/admin/ordenes/productos" && "bg-[#1E1E1E] text-white"
+                      )}
+                      asChild
+                    >
+                      <Link href="/admin/ordenes/productos">
+                        <ShoppingBag className="mr-2 h-3 w-3" />
+                        Productos
+                      </Link>
+                    </Button>
+                    
+                    <Button
+                      variant={pathname === "/admin/ordenes/planes" ? "secondary" : "ghost"}
+                      className={cn(
+                        "w-full justify-start text-sm text-[#F8F8F8] hover:text-white hover:bg-[#1E1E1E]",
+                        pathname === "/admin/ordenes/planes" && "bg-[#1E1E1E] text-white"
+                      )}
+                      asChild
+                    >
+                      <Link href="/admin/ordenes/planes">
+                        <Package className="mr-2 h-3 w-3" />
+                        Planes
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+            </div>
           <Separator className="bg-[#1E1E1E]" />
           <div className="px-3 py-2">
             <div className="space-y-1">

@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, X, Save, Palette, FileText } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, X, Save, Palette, FileText, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface PerfilClientProps {
   user: {
@@ -24,8 +32,17 @@ interface PerfilClientProps {
     descripcion: string;
     beneficios: string[];
     duracion: string;
+    tipo: string;
     esVip: boolean;
-    destacado?: boolean;
+    destacado: boolean;
+    activo: boolean;
+    sedes?: Array<{
+      id: string;
+      sede: {
+        id: string;
+        nombre: string;
+      };
+    }>;
   }[];
   orders: {
     id: string;
@@ -60,6 +77,7 @@ interface PerfilClientProps {
 }
 
 export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
+  const { data: session } = useSession();
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
       style: "currency",
@@ -89,6 +107,40 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [bannerGradient, setBannerGradient] = useState("from-[#040AE0] via-[#D604E0] to-[#040AE0]");
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showSedeErrorModal, setShowSedeErrorModal] = useState(false);
+
+  // Verificar si el usuario puede comprar este plan
+  const canUserPurchasePlan = (plan: any) => {
+    if (!session) return true; // Si no está logueado, puede ver el plan pero se le pedirá login
+    
+    // Si el usuario no tiene sede asignada, puede comprar cualquier plan
+    if (!session.user.sedeId) return true;
+    
+    // Los planes en el perfil ya están filtrados por sede del usuario,
+    // así que si llega aquí, es porque está disponible
+    return true;
+  };
+
+  const handlePlanSelection = (planId: string) => {
+    const plan = planes.find(p => p.id === planId);
+    
+    if (!plan) return;
+
+    if (!session) {
+      // Si no está logueado, redirigir a login
+      window.location.href = `/login?redirect=/perfil&id=${planId}`;
+      return;
+    }
+
+    // Verificar si el usuario puede comprar este plan
+    if (!canUserPurchasePlan(plan)) {
+      setShowSedeErrorModal(true);
+      return;
+    }
+
+    // Si está logueado y puede comprar, redirigir a pago
+    window.location.href = `/pago/${planId}`;
+  };
 
   // Opciones de gradientes para el banner
   const gradientOptions = [
@@ -196,11 +248,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
     }
   };
 
-  const handlePlanSelection = (planId: string) => {
-    // Redirigir a la página de pago con el plan seleccionado
-    window.location.href = `/pago/${planId}`;
-  };
-
+  
   const scrollToPlans = () => {
     const planesSection = document.getElementById('planes-disponibles');
     planesSection?.scrollIntoView({ behavior: 'smooth' });
@@ -484,14 +532,17 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
 
                   <button
                     onClick={() => handlePlanSelection(plan?.id)}
+                    disabled={!canUserPurchasePlan(plan)}
                     className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                      plan?.esVip
+                      !canUserPurchasePlan(plan)
+                        ? "bg-red-500/20 text-red-400 border border-red-500/50 cursor-not-allowed"
+                        : plan?.esVip
                         ? "gradient-bg hover:opacity-90"
                         : "bg-white/10 hover:bg-white/20 text-white"
                     }`}
                   >
                     <Zap className="w-4 h-4" />
-                    Comprar Plan
+                    {!canUserPurchasePlan(plan) ? "No disponible en tu sede" : "Seleccionar Plan"}
                   </button>
 
                   {/* Flecha desplegable */}
@@ -705,6 +756,34 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
           </div>
         </div>
       )}
+      
+      {/* Modal de error de restricción de sede */}
+      <AnimatePresence>
+        {showSedeErrorModal && (
+          <Dialog open={showSedeErrorModal} onOpenChange={setShowSedeErrorModal}>
+            <DialogContent className="bg-[#1A1A1A] border border-[#2A2A2A] text-white">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-400" />
+                  <span className="text-red-400">Restricción de Sede</span>
+                </DialogTitle>
+              </DialogHeader>
+              <DialogDescription className="text-gray-300">
+                No puedes comprar este plan porque no perteneces a esta sede donde se encuentra el plan. 
+                Solo puedes comprar planes disponibles en tu sede actual.
+              </DialogDescription>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setShowSedeErrorModal(false)}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Entendido
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

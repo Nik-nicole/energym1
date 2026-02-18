@@ -111,9 +111,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   });
   
   const [isOpen, setIsOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  // Cargar carrito desde localStorage al montar
+  // Evitar error de hidratación
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Cargar carrito desde localStorage al montar (solo en cliente)
+  useEffect(() => {
+    if (!isClient) return;
+    
     const savedCart = localStorage.getItem("cart");
     if (savedCart) {
       try {
@@ -123,12 +131,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         console.error("Error loading cart:", error);
       }
     }
-  }, []);
+  }, [isClient]);
 
-  // Guardar carrito en localStorage cuando cambie
+  // Guardar carrito en localStorage cuando cambie (solo en cliente)
   useEffect(() => {
+    if (!isClient) return;
+    
     localStorage.setItem("cart", JSON.stringify(state.items));
-  }, [state.items]);
+  }, [state.items, isClient]);
 
   const addItem = (product: any) => {
     const cartItem: CartItem = {
