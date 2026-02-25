@@ -26,11 +26,22 @@ export function LogoutConfirmDialog({ open, onOpenChange }: LogoutConfirmDialogP
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      await signOut({ redirect: false });
+      // Cerrar sesión inmediatamente sin esperar
+      await signOut({ 
+        redirect: false,
+        callbackUrl: "/"
+      });
+      
+      // Cerrar el diálogo y redirigir inmediatamente
       onOpenChange(false);
-      router.push("/");
+      
+      // Forzar redirección inmediata
+      window.location.href = "/";
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
+      // Incluso si hay error, intentar redirigir
+      window.location.href = "/";
+    } finally {
       setIsLoggingOut(false);
     }
   };

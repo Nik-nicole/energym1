@@ -28,13 +28,13 @@ export async function PATCH(
     const { status } = body;
 
     // Validar que el estado sea válido
-    const validStatuses = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"];
+    const validStatuses = ["PENDING", "VERIFIED", "CANCELLED"];
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: "Estado no válido" }, { status: 400 });
     }
 
     // Obtener la orden actual
-    const existingOrder = await prisma.order.findUnique({
+    const existingOrder = await prisma.planOrder.findUnique({
       where: { id: orderId },
     });
 
@@ -42,12 +42,10 @@ export async function PATCH(
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
-    // Validar flujo de estados
+    // Validar flujo de estados para PlanOrder
     const statusFlow: Record<string, string[]> = {
-      "PENDING": ["CONFIRMED", "CANCELLED"],
-      "CONFIRMED": ["SHIPPED", "CANCELLED"],
-      "SHIPPED": ["DELIVERED"],
-      "DELIVERED": [], // Estado final
+      "PENDING": ["VERIFIED", "CANCELLED"],
+      "VERIFIED": ["CANCELLED"],
       "CANCELLED": [], // Estado final
     };
 
@@ -59,7 +57,7 @@ export async function PATCH(
     }
 
     // Actualizar la orden
-    const updatedOrder = await prisma.order.update({
+    const updatedOrder = await prisma.planOrder.update({
       where: { id: orderId },
       data: { 
         status,
@@ -74,19 +72,43 @@ export async function PATCH(
             email: true,
           },
         },
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                nombre: true,
-                imagen: true,
-              },
-            },
-          },
-        },
+        plan: true,
       },
     });
+
+    // Si la orden está siendo verificada (VERIFIED) y tiene un plan, activar el plan para el usuario
+    if (status === "VERIFIED" && updatedOrder.plan) {
+      try {
+        // Crear registro de plan activo para el usuario
+        await prisma.userPlan.upsert({
+          where: {
+            userId_planId: {
+              userId: updatedOrder.user.id,
+              planId: updatedOrder.planId!,
+            }
+          },
+          update: {
+            isActive: true,
+            startDate: new Date(),
+            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+            paymentId: updatedOrder.paymentId,
+          },
+          create: {
+            userId: updatedOrder.user.id,
+            planId: updatedOrder.planId!,
+            isActive: true,
+            startDate: new Date(),
+            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+            paymentId: updatedOrder.paymentId,
+          },
+        });
+
+        console.log(`Plan activado para usuario ${updatedOrder.user.email} - Plan: ${updatedOrder.plan.nombre}`);
+      } catch (planError) {
+        console.error("Error al activar plan:", planError);
+        // No fallar la actualización de la orden si hay error con el plan
+      }
+    }
 
     // Aquí podrías agregar notificaciones al cliente
     // Por ejemplo: enviar email, notificación push, etc.

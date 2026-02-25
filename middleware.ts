@@ -18,6 +18,11 @@ export default withAuth(
       }
     }
 
+    // Para logout, no hacer verificaciones adicionales
+    if (pathname === "/api/auth/signout") {
+      return NextResponse.next();
+    }
+
     return NextResponse.next();
   },
   {
@@ -34,7 +39,7 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * - api (API routes except auth)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)

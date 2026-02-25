@@ -25,35 +25,42 @@ export async function GET(
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    // Obtener la orden
-    const order = await prisma.order.findFirst({
+    // Obtener la orden del producto
+    const productOrder = await prisma.productOrder.findFirst({
       where: {
         id: id,
         userId: user.id,
       },
       include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
+        product: true,
+        sede: true
       },
     });
 
-    if (!order) {
+    if (!productOrder) {
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
     return NextResponse.json({
       success: true,
       order: {
-        id: order.id,
-        orderNumber: order.orderNumber,
-        totalAmount: order.totalAmount,
-        status: order.status,
-        paymentStatus: order.paymentStatus,
-        items: order.items,
-        createdAt: order.createdAt,
+        id: productOrder.id,
+        orderNumber: `ORD-${productOrder.id}`,
+        totalAmount: productOrder.totalPrice,
+        status: productOrder.status,
+        paymentStatus: 'PENDING',
+        items: [{
+          id: productOrder.product.id,
+          quantity: productOrder.quantity,
+          unitPrice: productOrder.unitPrice,
+          totalPrice: productOrder.totalPrice,
+          product: {
+            id: productOrder.product.id,
+            nombre: productOrder.product.nombre,
+            imagen: productOrder.product.imagen
+          }
+        }],
+        createdAt: productOrder.createdAt,
       },
     });
   } catch (error) {

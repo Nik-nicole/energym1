@@ -90,10 +90,8 @@ export function NoticiasSection({ noticias, showViewAll = true, customTitle, cus
                 </div>
 
                 {/* Título */}
-                <Link href={`/noticias/${noticia.id}`}>
-                  <h3 className="text-2xl font-bold text-white mb-3 line-clamp-2 leading-tight group-hover:text-[#D604E0] transition-colors cursor-pointer">
-                    {noticia.titulo}
-                  </h3>
+                <Link href={`/noticias/${noticia.id}`} className="text-2xl font-bold text-white mb-3 line-clamp-2 leading-tight group-hover:text-[#D604E0] transition-colors cursor-pointer">
+                  {noticia.titulo}
                 </Link>
 
                 {/* Descripción */}

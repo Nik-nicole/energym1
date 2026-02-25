@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
+    const type = searchParams.get('type'); // 'product', 'plan', o 'all'
 
     // Si no se especifica fecha, usar hoy
     const targetDate = date || new Date().toISOString().split('T')[0];
@@ -30,40 +31,112 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(`${targetDate}T00:00:00.000Z`);
     const endDate = new Date(`${targetDate}T23:59:59.999Z`);
 
-    const orders = await prisma.order.findMany({
-      where: {
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-        paymentStatus: "PAID", // Solo órdenes pagadas
+    const dateFilter = {
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
+    };
+
+    let orders: any[] = [];
+
+    // Obtener órdenes de productos
+    if (!type || type === 'all' || type === 'product') {
+      const productOrders = await prisma.productOrder.findMany({
+        where: {
+          ...dateFilter,
+          status: "PAID", // Solo órdenes pagadas
         },
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                nombre: true,
-                imagen: true,
-              },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
             },
           },
+          product: {
+            select: {
+              id: true,
+              nombre: true,
+              imagen: true,
+              categoria: true,
+            },
+          },
+          sede: {
+            select: {
+              id: true,
+              nombre: true,
+              ciudad: true,
+            },
+          },
+          payment: true,
         },
-      },
-      orderBy: [
-        { status: 'asc' }, // Ordenar por estado (pendientes primero)
-        { createdAt: 'desc' }, // Luego por fecha
-      ],
-    });
+        orderBy: [
+          { createdAt: 'desc' },
+        ],
+      });
+
+      orders = orders.concat(
+        productOrders.map(order => ({
+          ...order,
+          type: 'product',
+          orderType: 'product',
+        }))
+      );
+    }
+
+    // Obtener órdenes de planes
+    if (!type || type === 'all' || type === 'plan') {
+      const planOrders = await prisma.planOrder.findMany({
+        where: {
+          ...dateFilter,
+          status: "PAID", // Solo órdenes pagadas
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          plan: {
+            select: {
+              id: true,
+              nombre: true,
+              tipo: true,
+              esVip: true,
+              duracion: true,
+            },
+          },
+          sede: {
+            select: {
+              id: true,
+              nombre: true,
+              ciudad: true,
+            },
+          },
+          payment: true,
+        },
+        orderBy: [
+          { createdAt: 'desc' },
+        ],
+      });
+
+      orders = orders.concat(
+        planOrders.map(order => ({
+          ...order,
+          type: 'plan',
+          orderType: 'plan',
+        }))
+      );
+    }
+
+    // Ordenar todas las órdenes por fecha
+    orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return NextResponse.json({
       success: true,

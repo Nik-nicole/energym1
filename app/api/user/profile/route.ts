@@ -22,7 +22,12 @@ export async function GET(request: NextRequest) {
       include: { 
         sede: {
           select: { id: true, nombre: true }
-        }
+        },
+        userPlans: {
+          include: {
+            plan: true,
+          },
+        },
       },
     });
 
@@ -105,7 +110,12 @@ export async function PUT(request: NextRequest) {
       include: {
         sede: {
           select: { id: true, nombre: true }
-        }
+        },
+        userPlans: {
+          include: {
+            plan: true,
+          },
+        },
       },
     });
 

@@ -25,6 +25,9 @@ export async function GET(
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
+    // Verificar si es administrador o el dueño de la orden
+    const isAdmin = user.role === 'ADMIN';
+
     // Obtener la orden de producto
     const productOrder = await prisma.productOrder.findUnique({
       where: { id: id },
@@ -42,6 +45,11 @@ export async function GET(
 
     if (!productOrder) {
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
+    }
+
+    // Solo permitir acceso si es administrador o el dueño de la orden y está pagada
+    if (!isAdmin && (productOrder.userId !== user.id || productOrder.status !== 'PAID')) {
+      return NextResponse.json({ error: "No autorizado para ver esta orden" }, { status: 403 });
     }
 
     // Crear timeline basado en el status

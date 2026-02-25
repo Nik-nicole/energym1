@@ -3,7 +3,7 @@ import { Header } from "@/components/ui/header";
 import { Footer } from "@/components/ui/footer";
 import { HeroSection } from "./_components/hero-section";
 import { SedesSection } from "./_components/sedes-section";
-import { PlanesSection } from "./_components/planes-section";
+import { PlanesWrapper } from "./_components/planes-wrapper";
 import { HomeStoreSection } from "./_components/home-store-section";
 import { MarketplaceSection } from "./_components/marketplace-section";
 import { NoticiasSection } from "./_components/noticias-section";
@@ -55,7 +55,7 @@ export default async function HomePage() {
       <Header />
       <HeroSection />
       <SedesSection sedes={sedes} />
-      <PlanesSection planes={planes} />
+      <PlanesWrapper planes={planes} />
       <HomeStoreSection productos={productos as any} />
       <NoticiasSection noticias={noticias} />
       <CTASection />

@@ -36,6 +36,7 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "nequi">("card");
   const [cardData, setCardData] = useState({
     cardNumber: "",
@@ -59,26 +60,15 @@ export default function PaymentPage() {
   const fetchOrderDetails = async () => {
     try {
       const response = await fetch(`/api/orders/${id}`);
-      console.log("Fetching order from:", `/api/orders/${id}`);
       
       if (response.ok) {
         const data = await response.json();
-        console.log("Order data received:", data);
         setOrderDetails(data.order);
       } else {
-        const errorData = await response.json();
-        console.error("Order fetch error:", errorData);
-        if (response.status === 404) {
-          // Si no se encuentra la orden, redirigir al marketplace
-          router.push("/marketplace");
-        }
+        // NO REDIRIGIR AUTOMÁTICAMENTE - mostrar error en su lugar
       }
     } catch (error) {
-      console.error("Error fetching order:", error);
-      // En caso de error, redirigir al marketplace después de un tiempo
-      setTimeout(() => {
-        router.push("/marketplace");
-      }, 3000);
+      // NO REDIRIGIR AUTOMÁTICAMENTE - mostrar error en su lugar
     } finally {
       setLoading(false);
     }
@@ -137,7 +127,26 @@ export default function PaymentPage() {
   if (!orderDetails) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="text-white">Orden no encontrada</div>
+        <div className="text-center max-w-md">
+          <div className="text-white mb-4">
+            {error || "Orden no encontrada"}
+          </div>
+          <div className="space-y-2">
+            <button
+              onClick={() => router.push("/checkout")}
+              className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2 inline" />
+              Volver al Checkout
+            </button>
+            <button
+              onClick={() => router.push("/marketplace")}
+              className="w-full px-4 py-2 bg-gradient-to-r from-[#D604E0] to-[#040AE0] text-white rounded-lg"
+            >
+              Ir a la Tienda
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

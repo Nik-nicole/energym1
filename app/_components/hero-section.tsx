@@ -36,7 +36,7 @@ export function HeroSection() {
               className="w-64 h-32 object-contain mt-4"
             />
           </div>
-          <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto mb-8">
+          <p className="text-lg md:text-xl text-gray-300 max-w-5xl mx-auto mb-8 px-2">
             En ENERGYM Club creemos en el poder de romper límites.
             En el fuego interno que te impulsa, incluso cuando nadie está mirando.
             No somos un gimnasio. Somos un manifiesto de alto rendimiento, una comunidad que vive la disciplina como estilo de vida y el bienestar como lujo esencial.

@@ -23,46 +23,77 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
+    // Validar que haya items
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: "No hay productos en la orden" }, { status: 400 });
+    }
+
+    // Por ahora, procesamos solo el primer item del carrito
+    const firstItem = items[0];
+    
+    // Verificar que el producto exista
+    const product = await prisma.producto.findUnique({
+      where: { id: firstItem.productId }
+    });
+
+    if (!product || !product.activo) {
+      return NextResponse.json({ error: "Producto no disponible" }, { status: 404 });
+    }
+
+    // Verificar stock
+    if (product.stock < firstItem.quantity) {
+      return NextResponse.json({ error: "Stock insuficiente" }, { status: 400 });
+    }
+
+    // Obtener una sede válida
+    let sedeId = product.sedeId;
+    if (!sedeId) {
+      const sedes = await prisma.sede.findMany({
+        where: { activo: true },
+        take: 1
+      });
+      if (sedes.length === 0) {
+        return NextResponse.json({ error: "No hay sedes disponibles" }, { status: 400 });
+      }
+      sedeId = sedes[0].id;
+    }
+
     // Generar número de orden único
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    // Crear la orden
-    const order = await prisma.order.create({
+    // Crear la orden del producto (sin procesar pago todavía)
+    const productOrder = await prisma.productOrder.create({
       data: {
-        orderNumber,
         userId: user.id,
-        totalAmount,
-        status: "PENDING",
-        paymentMethod,
-        paymentStatus: "PENDING",
-        shippingAddress: shippingAddress,
-        items: {
-          create: items.map((item: any) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.quantity * item.unitPrice,
-          })),
-        },
+        productId: product.id,
+        sedeId: sedeId,
+        quantity: firstItem.quantity,
+        unitPrice: firstItem.unitPrice,
+        totalPrice: totalAmount,
+        status: 'PENDING' // Estado inicial, se actualiza después del pago
       },
       include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
+        product: true,
+        sede: true
+      }
     });
 
     return NextResponse.json({
       success: true,
       order: {
-        id: order.id,
-        orderNumber: order.orderNumber,
-        totalAmount: order.totalAmount,
-        status: order.status,
-        paymentStatus: order.paymentStatus,
-        items: order.items,
+        id: productOrder.id,
+        orderNumber: orderNumber,
+        totalAmount: productOrder.totalPrice,
+        status: productOrder.status,
+        paymentStatus: 'PENDING',
+        items: [{
+          id: product.id,
+          quantity: firstItem.quantity,
+          unitPrice: firstItem.unitPrice,
+          totalPrice: totalAmount,
+          product: product
+        }],
+        shippingAddress: shippingAddress
       },
     });
   } catch (error) {

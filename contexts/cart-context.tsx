@@ -166,6 +166,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     dispatch({ type: "CLEAR_CART" });
+    // También limpiar localStorage para evitar recargas
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("cart");
+    }
   };
 
   return (

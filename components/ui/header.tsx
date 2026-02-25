@@ -41,13 +41,11 @@ export function Header() {
       <div className="max-w-[1200px] mx-auto px-4 py-2 flex items-center justify-between">
         {/* Logo - Izquierda */}
         <Link href="/" className="flex items-center group">
-          <div className="p-1">
-            <img
-              src="/logo.png"
-              alt="Energym Logo"
-              className="w-48 h-16 object-contain scale-150 group-hover:scale-155 transition-transform"
-            />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Energym Logo"
+            className="w-48 h-16 object-contain scale-150 group-hover:scale-155 transition-transform"
+          />
         </Link>
 
         {/* Navegación - Centro */}
@@ -69,33 +67,36 @@ export function Header() {
         {/* Acciones - Derecha */}
         <div className="flex items-center gap-4">
           <CartButton />
-          {isAuthenticated ? (
+          {mounted && isAuthenticated ? (
             <>
               {isAdmin ? (
                 <>
-                  <Link href="/admin" className="flex items-center gap-1 text-[#D604E0] hover:text-[#E640F0] transition-colors">
+                  <Link href="/admin" className="hidden md:flex items-center gap-1 text-[#D604E0] hover:text-[#E640F0] transition-colors">
                     <Settings className="w-4 h-4" />
-                    Panel Admin
+                    <span>Panel Admin</span>
+                  </Link>
+                  <Link href="/admin" className="md:hidden text-[#D604E0] hover:text-[#E640F0] transition-colors">
+                    <Settings className="w-5 h-5" />
                   </Link>
                   <button onClick={() => setIsLogoutDialogOpen(true)} className="flex items-center gap-1 text-[#D604E0] hover:text-[#E640F0] transition-colors">
                     <LogOut className="w-4 h-4" />
-                    Salir
+                    <span className="hidden md:inline">Salir</span>
                   </button>
                 </>
               ) : (
                 <>
                   <Link href="/perfil" className="flex items-center gap-1 text-gray-300 hover:text-white transition-colors">
                     <User className="w-4 h-4" />
-                    Perfil
+                    <span className="hidden md:inline">Perfil</span>
                   </Link>
                   <button onClick={() => setIsLogoutDialogOpen(true)} className="flex items-center gap-1 text-[#D604E0] hover:text-[#E640F0] transition-colors">
                     <LogOut className="w-4 h-4" />
-                    Salir
+                    <span className="hidden md:inline">Salir</span>
                   </button>
                 </>
               )}
             </>
-          ) : (
+          ) : mounted ? (
             <>
               <Link href="/login" className="text-gray-300 hover:text-white transition-colors">
                 Iniciar Sesión
@@ -103,6 +104,12 @@ export function Header() {
               <Link href="/registro" className="px-4 py-2 gradient-bg rounded-lg font-medium hover:opacity-90 transition-opacity">
                 Registrarse
               </Link>
+            </>
+          ) : (
+            // Placeholder para mantener consistencia durante hidratación
+            <>
+              <div className="w-20 h-8 bg-gray-700 rounded animate-pulse"></div>
+              <div className="w-24 h-8 bg-gray-700 rounded animate-pulse"></div>
             </>
           )}
         </div>
@@ -126,24 +133,42 @@ export function Header() {
               <Link href="/#planes" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Planes</Link>
               <Link href="/marketplace" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Tienda</Link>
               <Link href="/#noticias" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Noticias</Link>
-              {isAuthenticated ? (
+              {mounted && isAuthenticated ? (
                 <>
                   {isAdmin ? (
                     <>
-                      <Link href="/admin" onClick={() => setMenuOpen(false)} className="text-[#D604E0] py-2">Panel Admin</Link>
-                      <button onClick={() => { setMenuOpen(false); setIsLogoutDialogOpen(true); }} className="text-[#D604E0] py-2 text-left">Cerrar Sesión</button>
+                      <Link href="/admin" onClick={() => setMenuOpen(false)} className="text-[#D604E0] py-2 flex items-center gap-2">
+                        <Settings className="w-5 h-5" />
+                        <span>Panel Admin</span>
+                      </Link>
+                      <button onClick={() => { setMenuOpen(false); setIsLogoutDialogOpen(true); }} className="text-[#D604E0] py-2 text-left flex items-center gap-2">
+                        <LogOut className="w-5 h-5" />
+                        <span>Cerrar Sesión</span>
+                      </button>
                     </>
                   ) : (
                     <>
-                      <Link href="/perfil" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Mi Perfil</Link>
-                      <button onClick={() => { setMenuOpen(false); setIsLogoutDialogOpen(true); }} className="text-[#D604E0] py-2 text-left">Cerrar Sesión</button>
+                      <Link href="/perfil" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2 flex items-center gap-2">
+                        <User className="w-5 h-5" />
+                        <span>Mi Perfil</span>
+                      </Link>
+                      <button onClick={() => { setMenuOpen(false); setIsLogoutDialogOpen(true); }} className="text-[#D604E0] py-2 text-left flex items-center gap-2">
+                        <LogOut className="w-5 h-5" />
+                        <span>Cerrar Sesión</span>
+                      </button>
                     </>
                   )}
                 </>
-              ) : (
+              ) : mounted ? (
                 <>
                   <Link href="/login" onClick={() => setMenuOpen(false)} className="text-gray-300 py-2">Iniciar Sesión</Link>
                   <Link href="/registro" onClick={() => setMenuOpen(false)} className="gradient-bg text-center py-3 rounded-lg font-medium">Registrarse</Link>
+                </>
+              ) : (
+                // Placeholder para mantener consistencia durante hidratación
+                <>
+                  <div className="w-24 h-8 bg-gray-700 rounded animate-pulse"></div>
+                  <div className="w-24 h-8 bg-gray-700 rounded animate-pulse"></div>
                 </>
               )}
             </nav>

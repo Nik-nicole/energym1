@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { PlanCard } from "@/components/ui/plan-card";
 import { CreditCard } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 interface Plan {
   id: string;
@@ -11,11 +12,25 @@ interface Plan {
   descripcion: string;
   beneficios: string[];
   duracion: string;
+  tipo: string;
   esVip: boolean;
   destacado: boolean;
+  activo: boolean;
 }
 
-export function PlanesSection({ planes }: { planes: Plan[] }) {
+interface PlanesSectionProps {
+  planes: Plan[];
+  hasActivePlan?: boolean;
+  activePlan?: {
+    id: string;
+    nombre: string;
+    esVip: boolean;
+  } | null;
+}
+
+export function PlanesSection({ planes, hasActivePlan, activePlan }: PlanesSectionProps) {
+  const { data: session } = useSession();
+  
   return (
     <section id="planes" className="py-20 bg-[#050505]">
       <div className="max-w-[1200px] mx-auto px-4">
@@ -41,7 +56,13 @@ export function PlanesSection({ planes }: { planes: Plan[] }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {(planes ?? []).map((plan, index) => (
-            <PlanCard key={plan?.id ?? index} plan={plan} index={index} />
+            <PlanCard 
+              key={plan?.id ?? index} 
+              plan={plan} 
+              index={index}
+              hasActivePlan={hasActivePlan}
+              activePlan={activePlan}
+            />
           ))}
         </div>
       </div>

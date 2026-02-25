@@ -29,11 +29,17 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (items.length === 0) {
-      router.push("/marketplace");
+    // NO redirigir si el status está en loading (esperando sesión o carrito)
+    if (status === "loading") {
       return;
     }
 
+    // Solo redirigir si el carrito está vacío Y no estamos procesando el checkout Y la sesión está lista
+    if (items.length === 0 && !loading && status === "authenticated") {
+      router.push("/marketplace");
+      return;
+    }
+    
     // Prellenar datos del usuario
     if (session?.user) {
       setShippingAddress(prev => ({
@@ -41,7 +47,7 @@ export default function CheckoutPage() {
         name: `${(session.user as any)?.name || ""} ${(session.user as any)?.lastName || ""}`.trim()
       }));
     }
-  }, [status, session, items.length, router]);
+  }, [status, session, items.length, router, loading]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -74,9 +80,10 @@ export default function CheckoutPage() {
           paymentMethod: "WOMPI"
         }),
       });
-
+      
       if (!response.ok) {
-        throw new Error("Error creating order");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Error creating order");
       }
 
       const { order } = await response.json();
@@ -84,7 +91,10 @@ export default function CheckoutPage() {
       // Limpiar carrito
       clearCart();
 
-      // Redirigir a página de pago (integración con Wompi)
+      // Esperar un momento para que el estado se actualice
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Redirigir a página de pago
       router.push(`/payment/${order.id}`);
     } catch (error) {
       console.error("Checkout error:", error);

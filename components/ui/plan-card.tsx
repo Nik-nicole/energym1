@@ -35,14 +35,21 @@ interface PlanCardProps {
     }>;
   };
   index: number;
+  hasActivePlan?: boolean;
+  activePlan?: {
+    id: string;
+    nombre: string;
+    esVip: boolean;
+  } | null | undefined;
 }
 
-export function PlanCard({ plan, index }: PlanCardProps) {
+export function PlanCard({ plan, index, hasActivePlan, activePlan }: PlanCardProps) {
   const { data: session } = useSession();
   const isVip = plan?.esVip ?? false;
   const isDestacado = plan?.destacado ?? false;
   const [showBenefits, setShowBenefits] = useState(false);
   const [showSedeErrorModal, setShowSedeErrorModal] = useState(false);
+  const [showActivePlanModal, setShowActivePlanModal] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -68,7 +75,12 @@ export function PlanCard({ plan, index }: PlanCardProps) {
   const handleSelectPlan = () => {
     if (!session) {
       // Si no está logueado, redirigir a login
-      window.location.href = `/login?redirect=/planes&id=${plan.id}`;
+      return; // El Link se encargará de la redirección
+    }
+
+    // Si el usuario ya tiene un plan activo, mostrar modal
+    if (hasActivePlan && activePlan !== null && activePlan !== undefined) {
+      setShowActivePlanModal(true);
       return;
     }
 
@@ -78,8 +90,7 @@ export function PlanCard({ plan, index }: PlanCardProps) {
       return;
     }
 
-    // Si está logueado y puede comprar, redirigir a pago con PSG
-    window.location.href = `/pago/${plan.id}`;
+    // Si está logueado y puede comprar, el Link se encargará de la redirección
   };
 
   return (
@@ -121,20 +132,47 @@ export function PlanCard({ plan, index }: PlanCardProps) {
             </span>
           </div>
         </div>
-        <button
-            onClick={handleSelectPlan}
-            disabled={!canUserPurchasePlan()}
+        {!session ? (
+          <Link
+            href={`/login?redirect=/planes&id=${plan.id}`}
             className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-              !canUserPurchasePlan()
-                ? "bg-red-500/20 text-red-400 border border-red-500/50 cursor-not-allowed"
-                : isVip
+              isVip
                 ? "gradient-bg hover:opacity-90"
                 : "bg-white/10 hover:bg-white/20 text-white"
             }`}
           >
             <Zap className="w-4 h-4" />
-            {!canUserPurchasePlan() ? "No disponible en tu sede" : (session ? "Seleccionar Plan" : "Empezar Ahora")}
+            Empezar Ahora
+          </Link>
+        ) : hasActivePlan && activePlan !== null && activePlan !== undefined ? (
+          <button
+            onClick={handleSelectPlan}
+            className="w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 bg-orange-500/20 text-orange-400 border border-orange-500/50 cursor-not-allowed"
+          >
+            <Zap className="w-4 h-4" />
+            Tienes Plan Activo
           </button>
+        ) : !canUserPurchasePlan() ? (
+          <button
+            onClick={handleSelectPlan}
+            className="w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 bg-red-500/20 text-red-400 border border-red-500/50 cursor-not-allowed"
+          >
+            <Zap className="w-4 h-4" />
+            No disponible en tu sede
+          </button>
+        ) : (
+          <Link
+            href={`/pago/${plan.id}`}
+            className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+              isVip
+                ? "gradient-bg hover:opacity-90"
+                : "bg-white/10 hover:bg-white/20 text-white"
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            Seleccionar Plan
+          </Link>
+        )}
 
           {/* Modal de error de sede */}
           <AnimatePresence>
@@ -154,6 +192,34 @@ export function PlanCard({ plan, index }: PlanCardProps) {
                   <div className="flex justify-end gap-3 mt-6">
                     <button
                       onClick={() => setShowSedeErrorModal(false)}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                    >
+                      Entendido
+                    </button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </AnimatePresence>
+
+          {/* Modal de plan activo */}
+          <AnimatePresence>
+            {showActivePlanModal && (
+              <Dialog open={showActivePlanModal} onOpenChange={setShowActivePlanModal}>
+                <DialogContent className="bg-[#1A1A1A] border border-[#2A2A2A] text-white">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-orange-400" />
+                      <span className="text-orange-400">Ya tienes un plan activo</span>
+                    </DialogTitle>
+                  </DialogHeader>
+                  <DialogDescription className="text-gray-300">
+                    Actualmente tienes el plan <span className="font-bold text-orange-400">{activePlan?.nombre}</span> activo.
+                    Si deseas realizar cambios o adquirir un nuevo plan, por favor comunícate con el administrador.
+                  </DialogDescription>
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button
+                      onClick={() => setShowActivePlanModal(false)}
                       className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                     >
                       Entendido

@@ -27,39 +27,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    // Obtener la orden
-    const order = await prisma.order.findFirst({
+    // Obtener la orden del producto
+    const productOrder = await prisma.productOrder.findFirst({
       where: {
         id: orderId,
         userId: user.id,
       },
+      include: {
+        product: true,
+        sede: true
+      }
     });
 
-    if (!order) {
+    if (!productOrder) {
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
     // Verificar que el monto coincida
-    if (order.totalAmount !== amount) {
+    if (productOrder.totalPrice !== amount) {
       return NextResponse.json({ error: "El monto no coincide con la orden" }, { status: 400 });
     }
 
     // Simular procesamiento de pago (siempre exitoso en esta simulación)
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Actualizar el estado de la orden
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: "CONFIRMED",
-        paymentStatus: "PAID",
-      },
-    });
-
     // Crear registro de pago simulado
     const payment = await prisma.payment.create({
       data: {
-        orderId: orderId,
+        sedeId: productOrder.sedeId,
         amount: amount,
         paymentMethod: paymentMethod || "WOMPI",
         status: "COMPLETED",
@@ -70,6 +65,25 @@ export async function POST(request: NextRequest) {
           paymentMethod,
         },
       },
+    });
+
+    // Actualizar el estado de la orden del producto
+    const updatedOrder = await prisma.productOrder.update({
+      where: { id: orderId },
+      data: {
+        paymentId: payment.id,
+        status: "PAID",
+      },
+    });
+
+    // Actualizar stock del producto
+    await prisma.producto.update({
+      where: { id: productOrder.productId },
+      data: {
+        stock: {
+          decrement: productOrder.quantity
+        }
+      }
     });
 
     console.log("Payment simulated:", payment);
@@ -85,9 +99,7 @@ export async function POST(request: NextRequest) {
       },
       order: {
         id: updatedOrder.id,
-        orderNumber: updatedOrder.orderNumber,
         status: updatedOrder.status,
-        paymentStatus: updatedOrder.paymentStatus,
       },
     });
   } catch (error) {

@@ -6,6 +6,8 @@ import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { PlanCards } from "@/components/ui/plan-cards";
+import { UserOrdersModal } from "@/components/user-orders-modal";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +26,26 @@ interface PerfilClientProps {
     createdAt: Date;
     image?: string | null;
     sede: { id: string; nombre: string; direccion: string } | null;
+    userPlans?: Array<{
+      id: string;
+      userId: string;
+      planId: string;
+      isActive: boolean;
+      startDate: Date;
+      endDate: Date | null;
+      plan: {
+        id: string;
+        nombre: string;
+        precio: number;
+        descripcion: string;
+        beneficios: string[];
+        duracion: string;
+        tipo: string;
+        esVip: boolean;
+        destacado: boolean;
+        activo: boolean;
+      };
+    }>;
   } | null;
   planes: {
     id: string;
@@ -97,7 +119,6 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
   const isAdmin = user?.role === "ADMIN";
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [plansExpanded, setPlansExpanded] = useState<{ [key: string]: boolean }>({});
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editFormData, setEditFormData] = useState({
     firstName: user?.firstName || "",
@@ -107,39 +128,27 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [bannerGradient, setBannerGradient] = useState("from-[#040AE0] via-[#D604E0] to-[#040AE0]");
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showSedeErrorModal, setShowSedeErrorModal] = useState(false);
+  const [showOrdersModal, setShowOrdersModal] = useState(false);
 
-  // Verificar si el usuario puede comprar este plan
-  const canUserPurchasePlan = (plan: any) => {
-    if (!session) return true; // Si no está logueado, puede ver el plan pero se le pedirá login
-    
-    // Si el usuario no tiene sede asignada, puede comprar cualquier plan
-    if (!session.user.sedeId) return true;
-    
-    // Los planes en el perfil ya están filtrados por sede del usuario,
-    // así que si llega aquí, es porque está disponible
-    return true;
+  // Función para recargar datos del usuario
+  const reloadUserData = async () => {
+    try {
+      const response = await fetch('/api/user/profile');
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Datos recargados:", data.user);
+        // Aquí podrías actualizar el estado del usuario si fuera necesario
+        // Por ahora, recargamos la página para asegurar que todo se actualice
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error recargando datos:", error);
+    }
   };
 
-  const handlePlanSelection = (planId: string) => {
-    const plan = planes.find(p => p.id === planId);
-    
-    if (!plan) return;
-
-    if (!session) {
-      // Si no está logueado, redirigir a login
-      window.location.href = `/login?redirect=/perfil&id=${planId}`;
-      return;
-    }
-
-    // Verificar si el usuario puede comprar este plan
-    if (!canUserPurchasePlan(plan)) {
-      setShowSedeErrorModal(true);
-      return;
-    }
-
-    // Si está logueado y puede comprar, redirigir a pago
-    window.location.href = `/pago/${planId}`;
+  const scrollToPlans = () => {
+    const plansTitle = document.querySelector('[data-plans-title]');
+    plansTitle?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   // Opciones de gradientes para el banner
@@ -152,24 +161,43 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
     { name: "Cian a Verde", value: "from-[#06B6D4] via-[#10B981] to-[#06B6D4]" },
   ];
 
-  // Verificar si el usuario tiene un plan activo (basado en órdenes con pago completado)
-  const hasActivePlan = orders.some(order => 
-    order.paymentStatus === "PAID" && 
-    order.status === "CONFIRMED" &&
-    order.items.some(item => item.plan !== null)
+  // Verificar si el usuario tiene un plan activo (basado en UserPlan activos)
+  console.log("Usuario:", user);
+  console.log("UserPlans:", user?.userPlans);
+  
+  const hasActivePlan = user?.userPlans?.some((userPlan) => 
+    userPlan.isActive && 
+    (!userPlan.endDate || new Date(userPlan.endDate) > new Date())
+  ) || false;
+  
+  const activeUserPlan = user?.userPlans?.find((userPlan) => 
+    userPlan.isActive && 
+    (!userPlan.endDate || new Date(userPlan.endDate) > new Date())
   );
   
-  const paidOrder = orders.find(order => 
-    order.paymentStatus === "PAID" && 
-    order.status === "CONFIRMED" &&
-    order.items.some(item => item.plan !== null)
-  );
+  console.log("hasActivePlan:", hasActivePlan);
+  console.log("activeUserPlan:", activeUserPlan);
   
-  const activePlan = hasActivePlan && paidOrder ? {
-    ...paidOrder.items.find(item => item.plan !== null)?.plan,
-    fechaInicio: paidOrder.createdAt,
-    fechaFin: new Date(paidOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000),
+  const activePlan = hasActivePlan && activeUserPlan ? {
+    ...activeUserPlan.plan,
+    fechaInicio: activeUserPlan.startDate,
+    fechaFin: activeUserPlan.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Si no hay endDate, mostrar 30 días desde inicio
   } : null;
+
+  console.log("ActivePlan completo:", activePlan);
+  console.log("¿Es VIP?:", activePlan?.esVip);
+  console.log("Nombre del plan:", activePlan?.nombre);
+  console.log("Tipo del plan:", activePlan?.tipo);
+
+  // Lógica mejorada para detectar si es VIP
+  const isVipPlan = activePlan?.esVip || 
+                     activePlan?.tipo === "VIP" || 
+                     activePlan?.nombre?.toLowerCase().includes("premium") ||
+                     activePlan?.nombre?.toLowerCase().includes("vip") ||
+                     activePlan?.nombre?.toLowerCase().includes("oro") ||
+                     activePlan?.nombre?.toLowerCase().includes("platino");
+
+  console.log("¿Es VIP por lógica mejorada?:", isVipPlan);
 
   const handleProfileUpdate = async () => {
     setIsLoading(true);
@@ -249,11 +277,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
   };
 
   
-  const scrollToPlans = () => {
-    const planesSection = document.getElementById('planes-disponibles');
-    planesSection?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  
   return (
     <div className="flex-1 min-h-screen bg-zinc-950 pb-8">
       {/* BANNER SUPERIOR - LLEGA DE LADO A LADO */}
@@ -300,7 +324,19 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
       <div className="max-w-5xl mx-auto px-4">
         {/* FOTO DE PERFIL */}
         <div className="relative -mt-16 mb-6">
-          <div className="w-32 h-32 bg-zinc-800 rounded-full border-4 border-zinc-950 shadow-xl overflow-hidden mx-auto">
+          {/* Coronita para usuarios VIP - fuera del contenedor */}
+          {hasActivePlan && isVipPlan && (
+            <div className="absolute -top-4 left-1/2 -translate-x-17 z-20">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-full blur-sm opacity-50"></div>
+                <div className="relative bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-full p-1.5 shadow-lg">
+                  <Crown className="w-4 h-4 text-white" />
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="w-32 h-32 bg-zinc-800 rounded-full border-4 border-zinc-950 shadow-xl overflow-hidden mx-auto relative">
             {user?.image ? (
               <img
                 src={user.image}
@@ -313,6 +349,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
               </div>
             )}
           </div>
+          
           <button
             onClick={() => document.getElementById('profile-image-input')?.click()}
             className="absolute bottom-0 right-1/2 translate-x-16 p-2 bg-[#0047AB] hover:bg-[#0047AB]/80 rounded-full transition-colors"
@@ -387,7 +424,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
         </div>
 
         {/* BOTONES DE ACCIÓN */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <button
             onClick={() => setIsEditingProfile(true)}
             className="px-6 py-3 bg-white text-zinc-900 font-medium rounded-xl hover:bg-gray-100 transition-all text-sm"
@@ -400,59 +437,69 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
           >
             Tienda
           </button>
+          <button
+            onClick={() => setShowOrdersModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-[#D604E0] to-[#040AE0] text-white font-medium rounded-xl hover:opacity-90 transition-all text-sm"
+          >
+            Ver Órdenes de Productos
+          </button>
         </div>
 
         {/* TARJETA DEL PLAN ACTIVO O SELECCIÓN DE PLAN */}
         {hasActivePlan ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 mb-8">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-8">
+            {/* Header minimalista con toque fucsia */}
+            <div className="flex items-center justify-between mb-8">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Dumbbell className="w-5 h-5 text-white" />
-                  <span className="text-lg font-bold text-white">Tu Plan Actual</span>
-                </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-[#0047AB] to-[#EC4899] bg-clip-text text-transparent">
+                <h2 className="text-2xl font-bold text-fuchsia-400 mb-2">
                   {activePlan?.nombre}
                 </h2>
-                <p className="text-sm text-gray-400 mt-1">
-                  {formatPrice(activePlan?.precio || 0)}/{activePlan?.duracion}
-                </p>
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl font-thin text-white">
+                    {formatPrice(activePlan?.precio || 0)}
+                  </span>
+                  <span className="text-zinc-400">/{activePlan?.duracion}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-gray-400 text-sm">Activo</span>
+              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-800 rounded-full border border-zinc-700">
+                <div className="w-2 h-2 bg-fuchsia-500 rounded-full"></div>
+                <span className="text-sm text-zinc-300">Activo</span>
               </div>
             </div>
 
-            {/* Fechas */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">Inicio</p>
-                <p className="text-sm font-semibold text-gray-200">
+            {/* Fechas con diseño bonito */}
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-4 text-center">
+                <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Inicio</p>
+                <p className="text-sm font-medium text-white">
                   {formatDate(activePlan?.fechaInicio || new Date())}
                 </p>
               </div>
-              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">Finaliza</p>
-                <p className="text-sm font-semibold text-gray-200">
+              <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-4 text-center">
+                <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Finaliza</p>
+                <p className="text-sm font-medium text-white">
                   {formatDate(activePlan?.fechaFin || new Date())}
                 </p>
               </div>
             </div>
 
-            {/* Beneficios del plan */}
-            <div className="mb-6">
-              <p className="text-sm font-medium text-gray-400 mb-3">Beneficios incluidos:</p>
+            {/* Todos los beneficios con toque fucsia */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <p className="text-sm text-zinc-400">Beneficios incluidos:</p>
+                <span className="text-xs px-2 py-1 bg-fuchsia-500/10 text-fuchsia-400 rounded-full">
+                  {activePlan?.beneficios?.length || 0} beneficios
+                </span>
+              </div>
               <div className="space-y-2">
-                {activePlan?.beneficios?.slice(0, 3).map((beneficio, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
-                    <Check className="w-4 h-4 text-[#EC4899]" />
-                    <span>{beneficio}</span>
+                {activePlan?.beneficios.map((beneficio: string, index: number) => (
+                  <div key={index} className="flex items-center gap-3 py-1">
+                    <div className="w-4 h-4 rounded-full border border-fuchsia-500/30 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-2.5 h-2.5 text-fuchsia-400" />
+                    </div>
+                    <span className="text-sm text-zinc-300">{beneficio}</span>
                   </div>
                 ))}
-                {activePlan?.beneficios && activePlan.beneficios.length > 3 && (
-                  <p className="text-xs text-gray-500">+{activePlan.beneficios.length - 3} beneficios más...</p>
-                )}
               </div>
             </div>
           </div>
@@ -474,198 +521,75 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
         )}
 
         {/* SECCIÓN DE PLANES DISPONIBLES */}
-        <div id="planes-disponibles">
-          <h3 className="text-xl font-bold text-white mb-6">Planes Disponibles</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {(planes ?? []).map((plan, index) => {
-              const planId = plan?.id ?? `plan-${index}`;
-              const isExpanded = plansExpanded[planId] || false;
-              
-              return (
-                <motion.div
-                  key={planId}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className={`relative rounded-2xl p-6 transition-all duration-300 ${
-                    plan?.esVip
-                      ? "bg-gradient-to-br from-[#D604E0]/20 to-[#040AE0]/20 border-2 border-[#D604E0]/50"
-                      : "bg-[#141414] border border-white/10 hover:border-white/20"
-                  }`}
-                >
-                  {plan?.esVip && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 gradient-bg rounded-full text-sm font-medium flex items-center gap-1">
-                      <Crown className="w-4 h-4" />
-                      VIP
-                    </div>
-                  )}
-                  {plan?.destacado && !plan?.esVip && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#040AE0] rounded-full text-sm font-medium flex items-center gap-1">
-                      <Star className="w-4 h-4" />
-                      Popular
-                    </div>
-                  )}
-
-                  <div className="text-center mb-6 pt-2">
-                    <h3 className={`text-xl font-bold mb-2 ${plan?.esVip ? "gradient-text" : "text-white"}`}>
-                      {plan?.nombre ?? "Plan"}
-                    </h3>
-                    <p className="text-gray-400 text-sm mb-4">{plan?.descripcion ?? ""}</p>
-                    <div className="flex items-end justify-center gap-1">
-                      <span className={`text-4xl font-bold ${plan?.esVip ? "gradient-text" : "text-white"}`}>
-                        {formatPrice(plan?.precio ?? 0)}
-                      </span>
-                      <span className="text-gray-400 mb-1">/{plan?.duracion ?? "mes"}</span>
-                    </div>
-                  </div>
-
-                  <ul className={`space-y-3 mb-6 overflow-hidden transition-all duration-300 ${
-                    isExpanded ? 'max-h-96' : 'max-h-32'
-                  }`}>
-                    {(plan?.beneficios ?? []).map((beneficio, i) => (
-                      <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
-                        <Check className={`w-5 h-5 flex-shrink-0 ${plan?.esVip ? "text-[#D604E0]" : "text-[#040AE0]"}`} />
-                        <span>{beneficio ?? ""}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button
-                    onClick={() => handlePlanSelection(plan?.id)}
-                    disabled={!canUserPurchasePlan(plan)}
-                    className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                      !canUserPurchasePlan(plan)
-                        ? "bg-red-500/20 text-red-400 border border-red-500/50 cursor-not-allowed"
-                        : plan?.esVip
-                        ? "gradient-bg hover:opacity-90"
-                        : "bg-white/10 hover:bg-white/20 text-white"
-                    }`}
-                  >
-                    <Zap className="w-4 h-4" />
-                    {!canUserPurchasePlan(plan) ? "No disponible en tu sede" : "Seleccionar Plan"}
-                  </button>
-
-                  {/* Flecha desplegable */}
-                  <button
-                    onClick={() => setPlansExpanded(prev => ({ ...prev, [planId]: !prev[planId] }))}
-                    className="absolute bottom-2 left-1/2 -translate-x-1/2 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-                  >
-                    <ChevronDown className={`w-4 h-4 text-white transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                  </button>
-                </motion.div>
-              );
-            })}
-          </div>
+        <div className="mt-8" data-plans-section>
+          <h3 className="text-2xl font-bold text-white mb-6 text-center" data-plans-title>Planes Disponibles</h3>
+          <PlanCards 
+            planes={planes} 
+            hasActivePlan={hasActivePlan}
+            activePlan={activePlan}
+          />
         </div>
 
         {/* SECCIÓN DE HISTORIAL DE COMPRAS */}
         <div className="mt-12">
-          <h3 className="text-xl font-bold text-white mb-6">Historial de Compras</h3>
-          {orders.filter(order => order.items.some(item => item.product !== null)).length > 0 ? (
-            <div className="space-y-4">
-              {orders
-                .filter(order => order.items.some(item => item.product !== null))
-                .map((order) => (
-                  <motion.div
-                    key={order.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6"
-                  >
-                    <div className="flex items-start justify-between mb-4">
+          <h3 className="text-lg font-light text-zinc-400 mb-6">Historial de Compras</h3>
+          {orders.length > 0 ? (
+            <div className="space-y-3">
+              {orders.map((order) => (
+                <motion.div
+                  key={order.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-zinc-900/50 border border-zinc-800/50 rounded-lg p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-zinc-800/50 rounded-full flex items-center justify-center">
+                        {order.items[0]?.plan ? (
+                          <Crown className="w-4 h-4 text-fuchsia-400/70" />
+                        ) : (
+                          <ShoppingBag className="w-4 h-4 text-zinc-400/70" />
+                        )}
+                      </div>
                       <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <ShoppingBag className="w-5 h-5 text-[#040AE0]" />
-                          <span className="text-white font-medium">{order.orderNumber}</span>
-                        </div>
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-sm font-medium text-zinc-300">
+                          {order.items[0]?.plan ? `Plan: ${order.items[0].plan.nombre}` : order.orderNumber}
+                        </p>
+                        <p className="text-xs text-zinc-500">
                           {formatDate(order.createdAt)}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-white">
-                          {formatPrice(order.totalAmount)}
-                        </p>
-                        <div className="flex items-center gap-2 justify-end mt-1">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            order.paymentStatus === "PAID" 
-                              ? "bg-green-500/20 text-green-500" 
-                              : "bg-yellow-500/20 text-yellow-500"
-                          }`}>
-                            {order.paymentStatus === "PAID" ? "Pagado" : "Pendiente"}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            order.status === "CONFIRMED" 
-                              ? "bg-blue-500/20 text-blue-500" 
-                              : "bg-gray-500/20 text-gray-500"
-                          }`}>
-                            {order.status === "CONFIRMED" ? "Confirmado" : order.status}
-                          </span>
-                        </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-light text-zinc-300">
+                        {formatPrice(order.totalAmount)}
+                      </p>
+                      <div className="flex items-center gap-2 justify-end mt-1">
+                        <span className={`px-2 py-1 rounded-full text-xs font-light ${
+                          order.paymentStatus === "PAID" 
+                            ? "bg-fuchsia-500/10 text-fuchsia-400/80" 
+                            : "bg-zinc-700/50 text-zinc-400"
+                        }`}>
+                          {order.paymentStatus === "PAID" ? "Pagado" : "Pendiente"}
+                        </span>
                       </div>
                     </div>
-
-                    <div className="space-y-3">
-                      {order.items
-                        .filter(item => item.product !== null)
-                        .map((item) => (
-                          <div key={item.id} className="flex items-center gap-4 p-3 bg-zinc-800 rounded-xl">
-                            <div className="w-12 h-12 bg-gradient-to-br from-[#040AE0]/10 to-[#D604E0]/10 rounded-lg overflow-hidden flex-shrink-0">
-                              {item.product?.imagen ? (
-                                <img
-                                  src={item.product.imagen}
-                                  alt={item.product.nombre}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Package className="w-6 h-6 text-[#040AE0]/30" />
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex-1">
-                              <h4 className="text-white font-medium">
-                                {item.product?.nombre || "Producto"}
-                              </h4>
-                              <p className="text-gray-400 text-sm">
-                                Cantidad: {item.quantity} × {formatPrice(item.unitPrice)}
-                              </p>
-                            </div>
-                            
-                            <span className="text-white font-bold">
-                              {formatPrice(item.totalPrice)}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-
-                    {order.paymentStatus === "PAID" && order.status === "CONFIRMED" && (
-                      <div className="mt-4 pt-4 border-t border-zinc-700">
-                        <Link
-                          href={`/pago/confirmacion/${order.id}`}
-                          className="inline-flex items-center gap-2 text-[#040AE0] hover:text-[#040AE0]/80 transition-colors text-sm font-medium"
-                        >
-                          <FileText className="w-4 h-4" />
-                          Ver Comprobante
-                        </Link>
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
+                  </div>
+                </motion.div>
+              ))}
             </div>
           ) : (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center">
-              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">No tienes compras aún</h3>
-              <p className="text-gray-400 mb-6">
+            <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-8 text-center">
+              <Package className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
+              <h3 className="text-lg font-light text-zinc-400 mb-2">No tienes compras aún</h3>
+              <p className="text-zinc-500 text-sm mb-6">
                 Visita nuestro marketplace para encontrar los mejores productos y suplementos.
               </p>
               <Link
                 href="/marketplace"
-                className="inline-flex items-center gap-2 px-6 py-3 gradient-bg rounded-lg font-medium text-white hover:opacity-90 transition-opacity"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-800/50 border border-zinc-700/50 text-zinc-300 rounded-lg hover:bg-zinc-800/70 transition-all text-sm"
               >
-                <ShoppingBag className="w-5 h-5" />
+                <ShoppingBag className="w-4 h-4" />
                 Ir al Marketplace
               </Link>
             </div>
@@ -756,34 +680,12 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
           </div>
         </div>
       )}
-      
-      {/* Modal de error de restricción de sede */}
-      <AnimatePresence>
-        {showSedeErrorModal && (
-          <Dialog open={showSedeErrorModal} onOpenChange={setShowSedeErrorModal}>
-            <DialogContent className="bg-[#1A1A1A] border border-[#2A2A2A] text-white">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-400" />
-                  <span className="text-red-400">Restricción de Sede</span>
-                </DialogTitle>
-              </DialogHeader>
-              <DialogDescription className="text-gray-300">
-                No puedes comprar este plan porque no perteneces a esta sede donde se encuentra el plan. 
-                Solo puedes comprar planes disponibles en tu sede actual.
-              </DialogDescription>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setShowSedeErrorModal(false)}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                >
-                  Entendido
-                </button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </AnimatePresence>
+
+      {/* User Orders Modal */}
+      <UserOrdersModal 
+        open={showOrdersModal} 
+        onOpenChange={setShowOrdersModal} 
+      />
     </div>
   );
 }
