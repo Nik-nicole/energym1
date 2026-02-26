@@ -37,6 +37,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Package, Edit, Trash2, Plus, Star, Clock, DollarSign, MapPin, Check, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useFormValidation, getInputProps, getLabelProps } from "@/hooks/use-form-validation";
 
 interface Sede {
   id: string;
@@ -83,6 +84,20 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showBenefits, setShowBenefits] = useState<{ [key: string]: boolean }>({});
 
+  const validationRules = {
+    nombre: { required: true, message: "El nombre del plan es obligatorio" },
+    precio: { 
+      required: true, 
+      pattern: /^[0-9]+(\.[0-9]{1,2})?$/, 
+      message: "El precio debe ser un número válido" 
+    },
+    descripcion: { required: true, message: "La descripción es obligatoria" },
+    duracion: { required: true, message: "La duración es obligatoria" },
+    tipo: { required: true, message: "El tipo de plan es obligatorio" }
+  };
+
+  const { errors, validateForm, clearErrors, hasErrors } = useFormValidation(validationRules);
+
   useEffect(() => {
     setPlanesList(planes);
   }, [planes]);
@@ -127,6 +142,20 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
   };
 
   const handleCreate = async () => {
+    // Validate form before submission
+    const formDataForValidation = {
+      nombre: formData.nombre,
+      precio: formData.precio.toString(),
+      descripcion: formData.descripcion,
+      duracion: formData.duracion,
+      tipo: formData.tipo
+    };
+
+    if (!validateForm(formDataForValidation)) {
+      toast.error("Por favor, completa todos los campos obligatorios");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch("/api/admin/planes", {
@@ -143,6 +172,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
       setPlanesList([...planesList, newPlan]);
       setIsCreateDialogOpen(false);
       resetForm();
+      clearErrors();
       toast.success("Plan creado exitosamente");
     } catch (error) {
       toast.error("Error al crear plan");
@@ -172,6 +202,20 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
   const handleUpdate = async () => {
     if (!editingPlan) return;
 
+    // Validate form before submission
+    const formDataForValidation = {
+      nombre: formData.nombre,
+      precio: formData.precio.toString(),
+      descripcion: formData.descripcion,
+      duracion: formData.duracion,
+      tipo: formData.tipo
+    };
+
+    if (!validateForm(formDataForValidation)) {
+      toast.error("Por favor, completa todos los campos obligatorios");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch(`/api/admin/planes/${editingPlan.id}`, {
@@ -189,6 +233,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
       setIsEditDialogOpen(false);
       setEditingPlan(null);
       resetForm();
+      clearErrors();
       toast.success("Plan actualizado exitosamente");
     } catch (error) {
       toast.error("Error al actualizar plan");
@@ -270,7 +315,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nombre" className="text-[#F8F8F8]">Nombre</Label>
+                  <Label htmlFor="nombre" {...getLabelProps(errors.nombre)}>Nombre *</Label>
                   <ControlledInput
                     id="nombre"
                     value={formData.nombre}
@@ -279,11 +324,14 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     maxLength={100}
                     showCharCount={true}
                     showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    {...getInputProps(errors.nombre)}
                   />
+                  {errors.nombre && (
+                    <p className="text-red-400 text-sm mt-1">{errors.nombre}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="precio" className="text-[#F8F8F8]">Precio</Label>
+                  <Label htmlFor="precio" {...getLabelProps(errors.precio)}>Precio *</Label>
                   <ControlledInput
                     id="precio"
                     type="number"
@@ -295,12 +343,15 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     showCharCount={true}
                     showWarning={true}
                     required={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    {...getInputProps(errors.precio)}
                   />
+                  {errors.precio && (
+                    <p className="text-red-400 text-sm mt-1">{errors.precio}</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="descripcion" className="text-[#F8F8F8]">Descripción</Label>
+                <Label htmlFor="descripcion" {...getLabelProps(errors.descripcion)}>Descripción *</Label>
                 <ControlledTextarea
                   id="descripcion"
                   value={formData.descripcion}
@@ -310,8 +361,11 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   maxLength={500}
                   showCharCount={true}
                   showWarning={true}
-                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                  {...getInputProps(errors.descripcion)}
                 />
+                {errors.descripcion && (
+                  <p className="text-red-400 text-sm mt-1">{errors.descripcion}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -680,8 +734,8 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   maxLength={100}
                   showCharCount={true}
                   showWarning={true}
-                  required={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                  {...getInputProps(errors.nombre)}
                 />
               </div>
               <div className="space-y-2">

@@ -119,10 +119,13 @@ export async function POST(request: NextRequest) {
         unitPrice,
         totalPrice,
         status: 'PAID', // Solo crear la orden si el pago fue exitoso
-        // Almacenar información adicional en campos JSON si es necesario
-        ...(shippingAddress && {
-          // Podríamos agregar campos a la tabla para esta información
-        })
+        // Guardar información de envío
+        shippingAddress: shippingAddress.direccion,
+        shippingCity: shippingAddress.ciudad,
+        shippingState: shippingAddress.departamento,
+        shippingPhone: shippingAddress.telefono,
+        shippingNotes: shippingAddress.indicaciones,
+        postalCode: shippingAddress.codigoPostal
       },
       include: {
         product: true,

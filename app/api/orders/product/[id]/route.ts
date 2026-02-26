@@ -82,9 +82,9 @@ export async function GET(
         client: {
           name: `${productOrder.user.firstName} ${productOrder.user.lastName || ''}`,
           email: productOrder.user.email,
-          phone: "No especificado", // Podrías agregar este campo al User
-          address: "No especificada", // Podrías agregar este campo al User
-          city: "No especificada" // Podrías agregar este campo al User
+          phone: productOrder.shippingPhone || "No especificado",
+          address: productOrder.shippingAddress || "No especificada",
+          city: productOrder.shippingCity || "No especificada"
         },
         product: {
           name: productOrder.product.nombre,

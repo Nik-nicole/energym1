@@ -1,6 +1,7 @@
 import prisma from "@/lib/db";
 import { AdminLayout } from "./_components/admin-layout";
 import { AdminDashboard } from "./_components/admin-dashboard";
+import { SimpleValidationTest } from "./_components/simple-validation-test";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";

@@ -175,17 +175,25 @@ model PlanOrder {
 }
 
 model ProductOrder {
-  id         String   @id @default(cuid())
-  userId     String
-  productId  String
-  sedeId     String
-  paymentId  String?
-  quantity   Int
-  unitPrice  Float
-  totalPrice Float
-  status     String   @default("PENDING") // PENDING, PACKED, SHIPPED, DELIVERED, CANCELLED
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String
+  productId      String
+  sedeId         String
+  paymentId      String?
+  quantity       Int
+  unitPrice      Float
+  totalPrice     Float
+  status         String   @default("PENDING") // PENDING, PACKED, SHIPPED, DELIVERED, CANCELLED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Shipping information
+  shippingAddress String?  // Full address
+  shippingCity    String?  // City
+  shippingState   String?  // Department/State
+  shippingPhone   String?  // Contact phone
+  shippingNotes   String?  // Additional notes
+  postalCode      String?  // Postal code
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Producto @relation(fields: [productId], references: [id], onDelete: Cascade)

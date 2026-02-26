@@ -578,11 +578,14 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
                 </SelectTrigger>
                 <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
                   <SelectItem value="all" className="text-white">Todas las sedes</SelectItem>
-                  {Array.from(new Set(productOrders.map(order => order.sede))).map(sede => (
-                    <SelectItem key={sede.id} value={sede.id} className="text-white">
-                      {sede.nombre}
-                    </SelectItem>
-                  ))}
+                  {Array.from(new Set(productOrders.map(order => JSON.stringify(order.sede)))).map(sedeStr => {
+                    const sede = JSON.parse(sedeStr);
+                    return (
+                      <SelectItem key={`${sede.id}-${sede.nombre}`} value={sede.id} className="text-white">
+                        {sede.nombre}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

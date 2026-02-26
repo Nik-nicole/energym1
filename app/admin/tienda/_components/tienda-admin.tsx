@@ -39,6 +39,7 @@ import {
 import { ShoppingBag, Edit, Trash2, Plus, Package, DollarSign, MapPin, Star, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useFormValidation, getInputProps, getLabelProps } from "@/hooks/use-form-validation";
 
 interface Sede {
   id: string;
@@ -86,6 +87,26 @@ export function TiendaAdmin({ productos, sedes }: TiendaAdminProps) {
   const [editingProducto, setEditingProducto] = useState<Producto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Validation rules
+  const validationRules = {
+    nombre: { required: true, message: "El nombre es obligatorio" },
+    precio: { 
+      required: true, 
+      pattern: /^[0-9]+(\.[0-9]{1,2})?$/, 
+      message: "El precio no es válido" 
+    },
+    descripcion: { required: true, message: "La descripción es obligatoria" },
+    categoria: { required: true, message: "La categoría es obligatoria" },
+    stock: { 
+      required: true, 
+      pattern: /^[0-9]+$/, 
+      message: "El stock debe ser un número válido" 
+    }
+  };
+
+  const { errors, validateForm, clearErrors } = useFormValidation(validationRules);
+  const { setFieldRef } = useErrorScroll(errors);
+
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
@@ -121,9 +142,24 @@ export function TiendaAdmin({ productos, sedes }: TiendaAdminProps) {
       destacado: false,
     });
     setImagenFile(null);
+    clearErrors();
   };
 
   const handleCreate = async () => {
+    // Validar formulario
+    const formDataForValidation = {
+      nombre: formData.nombre,
+      precio: formData.precio.toString(),
+      descripcion: formData.descripcion,
+      categoria: formData.categoria,
+      stock: formData.stock.toString()
+    };
+
+    if (!validateForm(formDataForValidation)) {
+      toast.error("Por favor, completa todos los campos obligatorios");
+      return;
+    }
+
     setIsLoading(true);
     try {
       let imageUrl = formData.imagen;
@@ -289,80 +325,99 @@ export function TiendaAdmin({ productos, sedes }: TiendaAdminProps) {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nombre" className="text-[#F8F8F8]">Nombre</Label>
+                  <Label htmlFor="nombre" {...getLabelProps(errors.nombre)}>Nombre *</Label>
                   <ControlledInput
                     id="nombre"
+                    ref={setFieldRef('nombre')}
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     placeholder="Nombre del producto"
                     maxLength={100}
                     showCharCount={true}
                     showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.nombre).className}`}
                   />
+                  {errors.nombre && (
+                    <p className="text-xs text-red-400">{errors.nombre}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="precio" className="text-[#F8F8F8]">Precio</Label>
+                  <Label htmlFor="precio" {...getLabelProps(errors.precio)}>Precio *</Label>
                   <ControlledInput
                     id="precio"
                     type="number"
-                    step="1"
+                    step="0.01"
+                    ref={setFieldRef('precio')}
                     value={formData.precio}
-                    onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
-                    placeholder="0"
+                    onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) || 0 })}
+                    placeholder="0.00"
                     maxLength={10}
                     showCharCount={true}
                     showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.precio).className}`}
                   />
+                  {errors.precio && (
+                    <p className="text-xs text-red-400">{errors.precio}</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="descripcion" className="text-[#F8F8F8]">Descripción</Label>
+                <Label htmlFor="descripcion" {...getLabelProps(errors.descripcion)}>Descripción *</Label>
                 <ControlledTextarea
                   id="descripcion"
+                  ref={setFieldRef('descripcion')}
                   value={formData.descripcion}
                   onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                   placeholder="Descripción del producto"
-                  rows={3}
+                  rows={4}
                   maxLength={500}
                   showCharCount={true}
                   showWarning={true}
-                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                  className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.descripcion).className}`}
                 />
+                {errors.descripcion && (
+                  <p className="text-xs text-red-400">{errors.descripcion}</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="categoria" className="text-[#F8F8F8]">Categoría</Label>
+                  <Label htmlFor="categoria" {...getLabelProps(errors.categoria)}>Categoría *</Label>
                   <Select
                     value={formData.categoria}
                     onValueChange={(value) => setFormData({ ...formData, categoria: value })}
                   >
-                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
+                    <SelectTrigger className={`bg-[#0A0A0A] border-[#1E1E1E] text-white ${errors.categoria ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder="Seleccionar categoría" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                    <SelectContent className="bg-[#141414] border-[#1E1E1E]">
                       {categorias.map((categoria) => (
-                        <SelectItem key={categoria} value={categoria} className="text-white hover:bg-[#1E1E1E] focus:bg-[#D604E0]">
+                        <SelectItem key={categoria} value={categoria} className="text-white">
                           {categoria}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.categoria && (
+                    <p className="text-xs text-red-400">{errors.categoria}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="stock" className="text-[#F8F8F8]">Stock</Label>
+                  <Label htmlFor="stock" {...getLabelProps(errors.stock)}>Stock *</Label>
                   <ControlledInput
                     id="stock"
                     type="number"
+                    ref={setFieldRef('stock')}
                     value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
                     placeholder="0"
                     maxLength={6}
                     showCharCount={true}
                     showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.stock).className}`}
                   />
+                  {errors.stock && (
+                    <p className="text-xs text-red-400">{errors.stock}</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
@@ -580,7 +635,7 @@ export function TiendaAdmin({ productos, sedes }: TiendaAdminProps) {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre</Label>
+                <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre *</Label>
                 <ControlledInput
                   id="edit-nombre"
                   value={formData.nombre}
@@ -593,14 +648,15 @@ export function TiendaAdmin({ productos, sedes }: TiendaAdminProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-precio" className="text-[#F8F8F8]">Precio</Label>
+                <Label htmlFor="edit-precio" className="text-[#F8F8F8]">Precio *</Label>
                 <ControlledInput
                   id="edit-precio"
                   type="number"
-                  step="1"
+                  step="0.01"
+                  min="0"
                   value={formData.precio}
                   onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
-                  placeholder="0"
+                  placeholder="0.00"
                   maxLength={10}
                   showCharCount={true}
                   showWarning={true}
@@ -609,7 +665,7 @@ export function TiendaAdmin({ productos, sedes }: TiendaAdminProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-descripcion" className="text-[#F8F8F8]">Descripción</Label>
+              <Label htmlFor="edit-descripcion" className="text-[#F8F8F8]">Descripción *</Label>
               <ControlledTextarea
                 id="edit-descripcion"
                 value={formData.descripcion}
@@ -624,17 +680,17 @@ export function TiendaAdmin({ productos, sedes }: TiendaAdminProps) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-categoria" className="text-[#F8F8F8]">Categoría</Label>
+                <Label htmlFor="edit-categoria" className="text-[#F8F8F8]">Categoría *</Label>
                 <Select
                   value={formData.categoria}
                   onValueChange={(value) => setFormData({ ...formData, categoria: value })}
                 >
-                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
+                  <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
                     <SelectValue placeholder="Seleccionar categoría" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                  <SelectContent className="bg-[#141414] border-[#1E1E1E]">
                     {categorias.map((categoria) => (
-                      <SelectItem key={categoria} value={categoria} className="text-white hover:bg-[#1E1E1E] focus:bg-[#D604E0]">
+                      <SelectItem key={categoria} value={categoria} className="text-white">
                         {categoria}
                       </SelectItem>
                     ))}
@@ -642,14 +698,15 @@ export function TiendaAdmin({ productos, sedes }: TiendaAdminProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-stock" className="text-[#F8F8F8]">Stock</Label>
+                <Label htmlFor="edit-stock" className="text-[#F8F8F8]">Stock *</Label>
                 <ControlledInput
                   id="edit-stock"
                   type="number"
+                  min="0"
                   value={formData.stock}
                   onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) })}
                   placeholder="0"
-                  maxLength={6}
+                  maxLength={5}
                   showCharCount={true}
                   showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"

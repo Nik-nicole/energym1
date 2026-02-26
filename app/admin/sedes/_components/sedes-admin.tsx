@@ -52,6 +52,8 @@ import {
   CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useFormValidation, getInputProps, getLabelProps } from "@/hooks/use-form-validation";
+import { useErrorScroll } from "@/hooks/use-error-scroll";
 
 const CIUDADES_COLOMBIA = [
   "Bogotá",
@@ -116,6 +118,22 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
   const [editingSede, setEditingSede] = useState<Sede | null>(null);
   const [viewingSede, setViewingSede] = useState<Sede | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Validation rules
+  const validationRules = {
+    nombre: { required: true, message: "El nombre es obligatorio" },
+    direccion: { required: true, message: "La dirección es obligatoria" },
+    ciudad: { required: true, message: "La ciudad es obligatoria" },
+    telefono: { 
+      required: true, 
+      pattern: /^[0-9]{7,15}$/, 
+      message: "El teléfono no es válido" 
+    },
+    descripcion: { required: true, message: "La descripción es obligatoria" }
+  };
+
+  const { errors, validateForm, clearErrors } = useFormValidation(validationRules);
+  const { setFieldRef } = useErrorScroll(errors);
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -185,6 +203,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
       { dia: 'domingo', abierto: false, apertura: '09:00', cierre: '14:00' },
     ]);
     setImagenFile(null);
+    clearErrors();
   };
 
   // Función para generar el string de horario
@@ -237,8 +256,17 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
   };
 
   const handleCreate = async () => {
-    if (!formData.nombre || !formData.direccion || !formData.ciudad || !formData.telefono || !formData.descripcion) {
-      toast.error("Por favor completa todos los campos requeridos");
+    // Validar formulario
+    const formDataForValidation = {
+      nombre: formData.nombre,
+      direccion: formData.direccion,
+      ciudad: formData.ciudad,
+      telefono: formData.telefono,
+      descripcion: formData.descripcion
+    };
+
+    if (!validateForm(formDataForValidation)) {
+      toast.error("Por favor, completa todos los campos obligatorios");
       return;
     }
 
@@ -445,83 +473,112 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nombre" className="text-[#F8F8F8]">Nombre</Label>
+                  <Label htmlFor="nombre" {...getLabelProps(errors.nombre)}>Nombre *</Label>
                   <ControlledInput
                     id="nombre"
+                    ref={setFieldRef('nombre')}
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     placeholder="Nombre de la sede"
                     maxLength={100}
                     showCharCount={true}
                     showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.nombre).className}`}
                   />
+                  {errors.nombre && (
+                    <p className="text-xs text-red-400">{errors.nombre}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ciudad" className="text-[#F8F8F8]">Ciudad</Label>
+                  <Label htmlFor="ciudad" {...getLabelProps(errors.ciudad)}>Ciudad *</Label>
                   <Select
                     value={formData.ciudad}
                     onValueChange={(value) => setFormData({ ...formData, ciudad: value })}
                   >
-                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]">
-                      <SelectValue placeholder="Selecciona una ciudad" />
+                    <SelectTrigger className={`bg-[#0A0A0A] border-[#1E1E1E] text-white ${errors.ciudad ? 'border-red-500' : ''}`}>
+                      <SelectValue placeholder="Seleccionar ciudad" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
+                    <SelectContent className="bg-[#141414] border-[#1E1E1E]">
                       {CIUDADES_COLOMBIA.map((ciudad) => (
-                        <SelectItem
-                          key={ciudad}
-                          value={ciudad}
-                          className="text-white hover:bg-[#1E1E1E] focus:bg-[#D604E0]"
-                        >
+                        <SelectItem key={ciudad} value={ciudad} className="text-white">
                           {ciudad}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.ciudad && (
+                    <p className="text-xs text-red-400">{errors.ciudad}</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="direccion" className="text-[#F8F8F8]">Dirección</Label>
-                <ControlledInput
+                <Label htmlFor="direccion" {...getLabelProps(errors.direccion)}>Dirección *</Label>
+                <ControlledTextarea
                   id="direccion"
+                  ref={setFieldRef('direccion')}
                   value={formData.direccion}
                   onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
                   placeholder="Dirección completa"
-                  maxLength={200}
+                  rows={3}
+                  maxLength={500}
                   showCharCount={true}
                   showWarning={true}
-                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                  className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.direccion).className}`}
                 />
+                {errors.direccion && (
+                  <p className="text-xs text-red-400">{errors.direccion}</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="telefono" className="text-[#F8F8F8]">Teléfono</Label>
+                  <Label htmlFor="telefono" {...getLabelProps(errors.telefono)}>Teléfono *</Label>
                   <ControlledInput
                     id="telefono"
+                    ref={setFieldRef('telefono')}
                     value={formData.telefono}
                     onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                    placeholder="Teléfono"
-                    type="tel"
-                    maxLength={20}
+                    placeholder="3001234567"
+                    maxLength={15}
                     showCharCount={true}
                     showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.telefono).className}`}
                   />
+                  {errors.telefono && (
+                    <p className="text-xs text-red-400">{errors.telefono}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-[#F8F8F8]">Email</Label>
                   <ControlledInput
                     id="email"
+                    type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="Email (opcional)"
-                    type="email"
+                    placeholder="email@ejemplo.com"
                     maxLength={100}
                     showCharCount={true}
                     showWarning={true}
                     className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="descripcion" {...getLabelProps(errors.descripcion)}>Descripción *</Label>
+                <ControlledTextarea
+                  id="descripcion"
+                  ref={setFieldRef('descripcion')}
+                  value={formData.descripcion}
+                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                  placeholder="Descripción de la sede"
+                  rows={4}
+                  maxLength={1000}
+                  showCharCount={true}
+                  showWarning={true}
+                  className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.descripcion).className}`}
+                />
+                {errors.descripcion && (
+                  <p className="text-xs text-red-400">{errors.descripcion}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="paymentGateway" className="text-[#F8F8F8]">Cuenta de Pago</Label>
@@ -552,7 +609,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="descripcion" className="text-[#F8F8F8]">Descripción</Label>
+                <Label htmlFor="descripcion" className="text-[#F8F8F8]">Descripción *</Label>
                 <ControlledTextarea
                   id="descripcion"
                   value={formData.descripcion}
@@ -1024,7 +1081,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre</Label>
+                <Label htmlFor="edit-nombre" className="text-[#F8F8F8]">Nombre *</Label>
                 <ControlledInput
                   id="nombre"
                   value={formData.nombre}
@@ -1037,7 +1094,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-ciudad" className="text-[#F8F8F8]">Ciudad</Label>
+                <Label htmlFor="edit-ciudad" className="text-[#F8F8F8]">Ciudad *</Label>
                 <Select
                   value={formData.ciudad}
                   onValueChange={(value) => setFormData({ ...formData, ciudad: value })}
@@ -1060,7 +1117,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-direccion" className="text-[#F8F8F8]">Dirección</Label>
+              <Label htmlFor="edit-direccion" className="text-[#F8F8F8]">Dirección *</Label>
               <ControlledInput
                 id="direccion"
                 value={formData.direccion}
@@ -1074,7 +1131,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-telefono" className="text-[#F8F8F8]">Teléfono</Label>
+                <Label htmlFor="edit-telefono" className="text-[#F8F8F8]">Teléfono *</Label>
                 <ControlledInput
                   id="telefono"
                   value={formData.telefono}
@@ -1131,7 +1188,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-descripcion" className="text-[#F8F8F8]">Descripción</Label>
+              <Label htmlFor="edit-descripcion" className="text-[#F8F8F8]">Descripción *</Label>
               <ControlledTextarea
                 id="edit-descripcion"
                 value={formData.descripcion}

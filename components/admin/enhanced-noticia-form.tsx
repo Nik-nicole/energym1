@@ -379,7 +379,7 @@ export function EnhancedNoticiaForm({
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <Type className="w-5 h-5" />
-                Título de la Noticia
+                Título de la Noticia *
               </CardTitle>
             </CardHeader>
             <CardContent>

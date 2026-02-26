@@ -61,6 +61,7 @@ import {
   PowerOff,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useFormValidation, getInputProps, getLabelProps } from "@/hooks/use-form-validation";
 
 interface Sede {
   id: string;
@@ -114,6 +115,33 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
 
+  // Validation rules
+  const validationRules = {
+    firstName: { required: true, message: "El nombre es obligatorio" },
+    lastName: { required: true, message: "El apellido es obligatorio" },
+    email: { 
+      required: true, 
+      pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, 
+      message: "El email no es válido" 
+    },
+    password: { 
+      required: true, 
+      minLength: 6, 
+      message: "La contraseña debe tener al menos 6 caracteres" 
+    },
+    confirmPassword: { 
+      custom: (value) => {
+        const password = formData.password;
+        return !password || value === password;
+      },
+      message: "Las contraseñas no coinciden"
+    },
+    role: { required: true, message: "El rol es obligatorio" },
+    sedeId: { required: true, message: "La sede es obligatoria" }
+  };
+
+  const { errors, validateForm, clearErrors, hasErrors } = useFormValidation(validationRules);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -123,75 +151,6 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
     role: "CLIENTE",
     sedeId: sedes.length > 0 ? sedes[0].id : "",
   });
-
-  const [formErrors, setFormErrors] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    role: "",
-    sedeId: "",
-  });
-
-  const validateForm = () => {
-    const errors = {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      role: "",
-      sedeId: "",
-    };
-
-    // Validación de nombre
-    if (!formData.firstName.trim()) {
-      errors.firstName = "El nombre es obligatorio";
-    }
-
-    // Validación de apellido
-    if (!formData.lastName.trim()) {
-      errors.lastName = "El apellido es obligatorio";
-    }
-
-    // Validación de email
-    if (!formData.email.trim()) {
-      errors.email = "El email es obligatorio";
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        errors.email = "El email no es válido";
-      }
-    }
-
-    // Validación de contraseña (solo para nuevos usuarios)
-    if (!editingUser && !formData.password) {
-      errors.password = "La contraseña es obligatoria para nuevos usuarios";
-    } else if (formData.password && formData.password.length < 6) {
-      errors.password = "La contraseña debe tener al menos 6 caracteres";
-    }
-
-    // Validación de confirmación de contraseña
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = "Las contraseñas no coinciden";
-    }
-
-    // Validación de rol
-    if (!formData.role) {
-      errors.role = "El rol es obligatorio";
-    }
-
-    // Validación de sede
-    if (!formData.sedeId) {
-      errors.sedeId = "La sede es obligatoria";
-    }
-
-    setFormErrors(errors);
-    
-    // Retornar true si no hay errores
-    return Object.values(errors).every(error => error === "");
-  };
 
   const [showPlanDialog, setShowPlanDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -221,15 +180,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       role: "CLIENTE",
       sedeId: sedes.length > 0 ? sedes[0].id : "",
     });
-    setFormErrors({
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      role: "",
-      sedeId: "",
-    });
+    clearErrors();
   };
 
   const resetPlanForm = () => {
@@ -252,7 +203,18 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
 
   const handleCreate = async () => {
     // Validar formulario
-    if (!validateForm()) {
+    const formDataForValidation = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      password: formData.password,
+      confirmPassword: formData.confirmPassword,
+      role: formData.role,
+      sedeId: formData.sedeId
+    };
+
+    if (!validateForm(formDataForValidation)) {
+      toast.error("Por favor, completa todos los campos obligatorios");
       return;
     }
 
@@ -262,34 +224,18 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
     );
     
     if (emailExists) {
-      setFormErrors(prev => ({ ...prev, email: "El email ya está registrado", sedeId: "" }));
+      toast.error("El email ya está registrado");
       return;
     }
 
-    // Mostrar diálogo de confirmación
-    setConfirmAction({ type: 'create' });
-    setShowConfirmDialog(true);
-  };
-
-  const confirmCreate = async () => {
     setIsLoading(true);
-    setShowConfirmDialog(false);
-    
     try {
-      const response = await fetch("/api/admin/usuarios", {
+      const response = await fetch("/api/admin/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim() || null,
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-          role: formData.role,
-          sedeId: formData.sedeId || null,
-          isActive: true,
-        }),
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -301,6 +247,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       setUsersList([...usersList, newUser]);
       setIsCreateDialogOpen(false);
       resetForm();
+      clearErrors();
       toast.success("Usuario creado exitosamente");
     } catch (error) {
       console.error("Error creating user:", error);
@@ -310,7 +257,6 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       if (error instanceof Error) {
         if (error.message.includes("ya existe")) {
           errorMessage = "El email ya está registrado. Por favor usa otro email.";
-          setFormErrors(prev => ({ ...prev, email: "El email ya está registrado", sedeId: "" }));
         } else {
           errorMessage = error.message;
         }
@@ -333,15 +279,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       role: user.role,
       sedeId: user.sedeId || "",
     });
-    setFormErrors({
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      role: "",
-      sedeId: "",
-    });
+    clearErrors();
     setIsEditDialogOpen(true);
   };
 
@@ -622,7 +560,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="nombre" className="text-[#F8F8F8]">Nombre</Label>
+                  <Label htmlFor="nombre" {...getLabelProps(errors.firstName)}>Nombre *</Label>
                   <ControlledInput
                     id="nombre"
                     value={formData.firstName}
@@ -631,14 +569,14 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                     maxLength={50}
                     showCharCount={true}
                     showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    className={`bg-[#0A0A0A] text-white placeholder-[#A0A0A0] ${getInputProps(errors.firstName).className}`}
                   />
-                  {formErrors.firstName && (
-                    <p className="text-xs text-red-400">{formErrors.firstName}</p>
+                  {errors.firstName && (
+                    <p className="text-xs text-red-400">{errors.firstName}</p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="apellido" className="text-[#F8F8F8]">Apellido</Label>
+                  <Label htmlFor="apellido" {...getLabelProps(errors.lastName)}>Apellido *</Label>
                   <ControlledInput
                     id="apellido"
                     value={formData.lastName}
@@ -647,18 +585,15 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                     maxLength={50}
                     showCharCount={true}
                     showWarning={true}
-                    className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.lastName).className}`}
                   />
-                  {formErrors.lastName && (
-                    <p className="text-xs text-red-400">{formErrors.lastName}</p>
-                  )}
-                  {formErrors.lastName === undefined && (
-                    <p className="text-xs text-red-400">Este campo es obligatorio</p>
+                  {errors.lastName && (
+                    <p className="text-xs text-red-400">{errors.lastName}</p>
                   )}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-[#F8F8F8]">Email</Label>
+                <Label htmlFor="email" {...getLabelProps(errors.email)}>Email *</Label>
                 <ControlledInput
                   id="email"
                   type="email"
@@ -668,13 +603,10 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                   maxLength={100}
                   showCharCount={true}
                   showWarning={true}
-                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                  className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.email).className}`}
                 />
-                {formErrors.email && (
-                  <p className="text-xs text-red-400">{formErrors.email}</p>
-                )}
-                {formErrors.email === undefined && (
-                  <p className="text-xs text-red-400">Este campo es obligatorio</p>
+                {errors.email && (
+                  <p className="text-xs text-red-400">{errors.email}</p>
                 )}
               </div>
               <div className="space-y-2">

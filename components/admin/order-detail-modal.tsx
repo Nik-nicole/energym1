@@ -571,6 +571,8 @@ export function OrderDetailModal({
                 <InfoRow label="Nombre" value={order.client.name} />
                 <InfoRow label="Email" value={order.client.email} />
                 <InfoRow label="Telefono" value={order.client.phone} />
+                <InfoRow label="Direccion" value={order.client.address || "No especificada"} />
+                <InfoRow label="Ciudad" value={order.client.city || "No especificada"} />
               </SectionCard>
 
             </div>
