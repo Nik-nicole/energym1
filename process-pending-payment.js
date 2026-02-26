@@ -1,12 +1,10 @@
 // Script para procesar manualmente un pago pendiente
 // Ejecutar con: node process-pending-payment.js
 
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('./lib/prisma');
 
 async function processPendingPayment() {
   console.log('⚡ Procesando pago pendiente...');
-  
-  const prisma = new PrismaClient();
   
   try {
     // 1. Buscar la orden más reciente que esté pendiente
