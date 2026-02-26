@@ -62,6 +62,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useFormValidation, getInputProps, getLabelProps } from "@/hooks/use-form-validation";
+import { useErrorScroll } from "@/hooks/use-error-scroll";
 
 interface Sede {
   id: string;
@@ -141,6 +142,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
   };
 
   const { errors, validateForm, clearErrors, hasErrors } = useFormValidation(validationRules);
+  const { setFieldRef } = useErrorScroll(errors);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -610,43 +612,39 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-[#F8F8F8]">Contraseña</Label>
+                <Label htmlFor="password" {...getLabelProps(errors.password)}>Contraseña *</Label>
                 <ControlledInput
                   id="password"
                   type="password"
+                  ref={setFieldRef('password')}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Contraseña"
                   maxLength={50}
                   showCharCount={true}
                   showWarning={true}
-                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                  className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.password).className}`}
                 />
-                {formErrors.password && (
-                  <p className="text-xs text-red-400">{formErrors.password}</p>
-                )}
-                {formErrors.password === undefined && (
-                  <p className="text-xs text-red-400">Este campo es obligatorio</p>
+                {errors.password && (
+                  <p className="text-xs text-red-400">{errors.password}</p>
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-[#F8F8F8]">Confirmar Contraseña</Label>
+                <Label htmlFor="confirmPassword" {...getLabelProps(errors.confirmPassword)}>Confirmar Contraseña *</Label>
                 <ControlledInput
                   id="confirmPassword"
                   type="password"
+                  ref={setFieldRef('confirmPassword')}
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="Confirmar Contraseña"
                   maxLength={50}
                   showCharCount={true}
                   showWarning={true}
-                  className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                  className={`bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] ${getInputProps(errors.confirmPassword).className}`}
                 />
-                {formErrors.confirmPassword && (
-                  <p className="text-xs text-red-400">{formErrors.confirmPassword}</p>
-                )}
-                {formErrors.confirmPassword === undefined && (
-                  <p className="text-xs text-red-400">Este campo es obligatorio</p>
+                {errors.confirmPassword && (
+                  <p className="text-xs text-red-400">{errors.confirmPassword}</p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1163,7 +1161,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
               Cancelar
             </Button>
             <Button 
-              onClick={confirmAction.type === 'create' ? confirmCreate : (confirmAction.type === 'plan' ? confirmTogglePlan : confirmToggleActive)} 
+              onClick={confirmAction.type === 'create' ? handleCreate : (confirmAction.type === 'plan' ? confirmTogglePlan : confirmToggleActive)} 
               disabled={isLoading}
               className={`${
                 confirmAction.type === 'toggle' && confirmAction.isActive 

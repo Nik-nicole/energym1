@@ -40,6 +40,7 @@ import { ShoppingBag, Edit, Trash2, Plus, Package, DollarSign, MapPin, Star, Upl
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useFormValidation, getInputProps, getLabelProps } from "@/hooks/use-form-validation";
+import { useErrorScroll } from "@/hooks/use-error-scroll";
 
 interface Sede {
   id: string;
