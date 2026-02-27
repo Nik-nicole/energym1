@@ -147,16 +147,13 @@ async function getUsersData() {
     return { users: usersWithPlans as any, sedes, plans };
   } catch (error) {
     console.error("Error fetching users:", error);
-    return null;
+    // Retornar datos vacíos en lugar de null para evitar 404
+    return { users: [], sedes: [], plans: [] };
   }
 }
 
 export default async function UsuariosPage() {
   const data = await getUsersData();
-
-  if (!data) {
-    notFound();
-  }
 
   return (
     <AdminLayout>
