@@ -1,7 +1,7 @@
 // Script para procesar manualmente un pago pendiente
 // Ejecutar con: node process-pending-payment.js
 
-const { prisma } = require('./lib/prisma');
+const { prisma, disconnectPrisma } = require('./lib/prisma');
 
 async function processPendingPayment() {
   console.log('⚡ Procesando pago pendiente...');
@@ -73,7 +73,7 @@ async function processPendingPayment() {
   } catch (error) {
     console.error('❌ Error al procesar pago:', error);
   } finally {
-    await prisma.$disconnect();
+    await disconnectPrisma();
   }
 }
 

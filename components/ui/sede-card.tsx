@@ -95,20 +95,18 @@ export function SedeCard({ sede, index }: SedeCardProps) {
                   Ver más detalles
                 </span>
                 <span className="text-gray-500">•</span>
-                <a
-                  href={directionsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    window.open(directionsUrl, '_blank', 'noopener,noreferrer');
                   }}
                   className="text-[#040AE0] text-sm font-medium hover:text-[#040AE0]/80 transition-colors flex items-center gap-1"
                   title="Cómo llegar"
                 >
                   <ExternalLink className="w-3 h-3" />
                   Maps
-                </a>
+                </button>
               </div>
               <ArrowRight className="w-5 h-5 text-[#D604E0] group-hover:translate-x-1 transition-transform" />
             </div>
