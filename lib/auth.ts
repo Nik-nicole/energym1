@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { withPrismaQuery } from './prisma-middleware';
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
@@ -18,9 +19,11 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-            include: { sede: true },
+          const user = await withPrismaQuery(async () => {
+            return await prisma.user.findUnique({
+              where: { email: credentials.email },
+              include: { sede: true },
+            });
           });
 
           if (!user) {

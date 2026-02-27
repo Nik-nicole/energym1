@@ -1,13 +1,15 @@
 import prisma from "@/lib/db";
+import { withPrismaQuery } from "@/lib/prisma-middleware";
 import { AdminLayout } from "../_components/admin-layout";
 import { UsuariosAdmin } from "./_components/usuarios-admin";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-async function getUsersData() {
+async function getUsersData(): Promise<{ users: any[]; sedes: any[]; plans: any[] }> {
   try {
-    const users = await prisma.user.findMany({
+    const users = await withPrismaQuery(async () => {
+      return await prisma.user.findMany({
       include: {
         sede: {
           select: {
@@ -52,10 +54,12 @@ async function getUsersData() {
         },
       },
       orderBy: { createdAt: "desc" },
+      });
     });
 
     // Obtener todos los UserPlans para verificar estados personalizados
-    const userPlans = await prisma.userPlan.findMany({
+    const userPlans: any[] = await withPrismaQuery(async () => {
+      return await prisma.userPlan.findMany({
       include: {
         plan: {
           select: {
@@ -65,9 +69,10 @@ async function getUsersData() {
         }
       }
     });
+    });
 
     // Transformar los datos para incluir el plan activo o desactivado
-    const usersWithPlans = users.map(user => {
+    const usersWithPlans: any[] = users.map((user: any) => {
       // Buscar TODAS las órdenes de planes, ordenadas por fecha
       const allPlanOrders = (user as any).planOrders || [];
       
@@ -86,23 +91,23 @@ async function getUsersData() {
         
         if (isVerified) {
           // Plan verificado - verificar estado en UserPlan
-          const userPlanState = userPlans.find((up: any) => up.plan.id === activePlan.id && up.userId === user.id);
+          const userPlanState: { plan: { id: string; nombre: string }; userId: string; isActive: boolean } | undefined = userPlans.find((up: any) => up.plan.id === activePlan.id && up.userId === user.id);
           
           // Siempre mostrar el plan, con su estado correspondiente
-          const isActive = userPlanState ? userPlanState.isActive : true; // Por defecto activo si no hay registro
+          const isPlanActive = userPlanState ? userPlanState.isActive : true; // Por defecto activo si no hay registro
           
           planStatus = {
             id: activePlan.id,
             nombre: activePlan.nombre,
             fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
             fechaFin: new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            isActive: isActive,
-            isDeactivated: !isActive, // Simple: si no está activo, está desactivado
+            isActive: isPlanActive,
+            isDeactivated: !isPlanActive, // Simple: si no está activo, está desactivado
           };
           
           console.log(`📋 Plan ${activePlan.nombre} para ${user.firstName}:`, {
-            isActive,
-            isDeactivated: !isActive,
+            isPlanActive,
+            isDeactivated: !isPlanActive,
             userPlanState: userPlanState ? 'exists' : 'not found'
           });
         } else {
@@ -124,24 +129,28 @@ async function getUsersData() {
       };
     });
 
-    const sedes = await prisma.sede.findMany({
-      select: {
-        id: true,
-        nombre: true,
-      },
-      where: { activo: true },
-      orderBy: { nombre: "asc" },
+    const sedes = await withPrismaQuery(async () => {
+      return await prisma.sede.findMany({
+        select: {
+          id: true,
+          nombre: true,
+        },
+        where: { activo: true },
+        orderBy: { nombre: "asc" },
+      });
     });
 
-    const plans = await prisma.plan.findMany({
-      select: {
-        id: true,
-        nombre: true,
-        precio: true,
-        duracion: true,
-      },
-      where: { activo: true },
-      orderBy: { nombre: "asc" },
+    const plans = await withPrismaQuery(async () => {
+      return await prisma.plan.findMany({
+        select: {
+          id: true,
+          nombre: true,
+          precio: true,
+          duracion: true,
+        },
+        where: { activo: true },
+        orderBy: { nombre: "asc" },
+      });
     });
 
     return { users: usersWithPlans as any, sedes, plans };
