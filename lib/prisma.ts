@@ -4,13 +4,25 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// Add connection pooling to the DATABASE_URL
+const getDatabaseUrl = () => {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) return dbUrl;
+  
+  // Add connection pool parameters if not already present
+  const poolParams = "connection_limit=10&pool_timeout=20";
+  const separator = dbUrl.includes("?") ? "&" : "?";
+  
+  return dbUrl.includes("connection_limit") ? dbUrl : `${dbUrl}${separator}${poolParams}`;
+};
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: ["error"],
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: getDatabaseUrl(),
       },
     },
   });
