@@ -3,14 +3,12 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { planQueries } from "@/lib/query-helpers";
 import prisma from "@/lib/db";
 
 export async function GET() {
   try {
-    const planes = await prisma.plan.findMany({
-      orderBy: { orden: "asc" },
-      include: { sedes: { include: { sede: true } } },
-    });
+    const planes = await planQueries.all();
     return NextResponse.json(planes);
   } catch (error) {
     console.error("Error fetching planes:", error);

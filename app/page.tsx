@@ -1,4 +1,4 @@
-import prisma from "@/lib/db";
+import { sedeQueries, planQueries, productQueries, noticiaQueries } from "@/lib/query-helpers";
 import { Header } from "@/components/ui/header";
 import { Footer } from "@/components/ui/footer";
 import { HeroSection } from "./_components/hero-section";
@@ -11,34 +11,14 @@ import { CTASection } from "./_components/cta-section";
 
 export const dynamic = "force-dynamic";
 
+// 🔥 OPTIMIZADO: Usar query helpers para reutilizar consultas
 async function getData() {
   try {
     const [sedes, planes, productos, noticias] = await Promise.all([
-      prisma.sede.findMany({
-        where: { activo: true },
-        orderBy: { nombre: "asc" },
-      }),
-      prisma.plan.findMany({
-        where: { activo: true },
-        orderBy: { orden: "asc" },
-        include: { sedes: { include: { sede: true } } },
-      }),
-      prisma.producto.findMany({
-        where: { activo: true },
-        orderBy: { destacado: "desc" },
-        include: { 
-          sede: { 
-            select: { id: true, nombre: true } 
-          } 
-        },
-        take: 8,
-      }),
-      prisma.noticia.findMany({
-        where: { activo: true },
-        orderBy: { fechaPublicacion: "desc" },
-        take: 4,
-        include: { sede: { select: { nombre: true } } },
-      }),
+      sedeQueries.all(),
+      planQueries.all(),
+      productQueries.featured(),
+      noticiaQueries.recent(),
     ]);
     return { sedes, planes, productos, noticias };
   } catch (error) {
@@ -47,8 +27,20 @@ async function getData() {
   }
 }
 
-export default async function HomePage() {
+// 🔥 SOLUCIÓN CRÍTICA PARA PRODUCCIÓN
+// Convierte todo a JSON serializable (elimina Date objects)
+async function getSafeData() {
   const { sedes, planes, productos, noticias } = await getData();
+  return {
+    sedes: JSON.parse(JSON.stringify(sedes)),
+    planes: JSON.parse(JSON.stringify(planes)),
+    productos: JSON.parse(JSON.stringify(productos)),
+    noticias: JSON.parse(JSON.stringify(noticias)),
+  };
+}
+
+export default async function HomePage() {
+  const { sedes, planes, productos, noticias } = await getSafeData();
 
   return (
     <main className="min-h-screen">

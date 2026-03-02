@@ -62,6 +62,18 @@ async function getDashboardData() {
   }
 }
 
+// 🔥 SOLUCIÓN CRÍTICA PARA PRODUCCIÓN
+// Convierte todo a JSON serializable (elimina Date objects)
+async function getSafeDashboardData() {
+  const data = await getDashboardData();
+  if (!data) return null;
+  
+  return {
+    stats: data.stats,
+    recentUsers: JSON.parse(JSON.stringify(data.recentUsers)),
+  };
+}
+
 const defaultStats = {
   usersCount: 0,
   plansCount: 0,
@@ -74,7 +86,7 @@ const defaultStats = {
 };
 
 export default async function AdminPage() {
-  const data = await getDashboardData();
+  const data = await getSafeDashboardData();
 
   return (
     <AdminLayout>

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { userQueries, productQueries, sedeQueries } from "@/lib/query-helpers";
 import prisma from "@/lib/db";
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,10 +17,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { items, totalAmount, shippingAddress, paymentMethod } = body;
 
-    // Obtener el usuario
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
+    // Obtener el usuario usando query helper optimizado
+    const user = await userQueries.byEmail(session.user.email);
 
     if (!user) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
@@ -31,10 +32,8 @@ export async function POST(request: NextRequest) {
     // Por ahora, procesamos solo el primer item del carrito
     const firstItem = items[0];
     
-    // Verificar que el producto exista
-    const product = await prisma.producto.findUnique({
-      where: { id: firstItem.productId }
-    });
+    // Verificar que el producto exista usando query helper optimizado
+    const product = await productQueries.byId(firstItem.productId);
 
     if (!product || !product.activo) {
       return NextResponse.json({ error: "Producto no disponible" }, { status: 404 });
@@ -45,13 +44,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Stock insuficiente" }, { status: 400 });
     }
 
-    // Obtener una sede válida
+    // Obtener una sede válida usando query helper optimizado
     let sedeId = product.sedeId;
     if (!sedeId) {
-      const sedes = await prisma.sede.findMany({
-        where: { activo: true },
-        take: 1
-      });
+      const sedes = await sedeQueries.all();
       if (sedes.length === 0) {
         return NextResponse.json({ error: "No hay sedes disponibles" }, { status: 400 });
       }

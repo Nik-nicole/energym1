@@ -149,12 +149,18 @@ export default async function PerfilPage() {
           }
         }]
       }))
-    ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 10);
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10);
+
+    // 🔥 SOLUCIÓN CRÍTICA PARA PRODUCCIÓN
+    // Convierte todo a JSON serializable (elimina Date objects)
+    const safeUser = JSON.parse(JSON.stringify(user));
+    const safePlans = JSON.parse(JSON.stringify(plans));
+    const safeOrders = JSON.parse(JSON.stringify(transformedOrders));
 
     return (
       <main className="min-h-screen flex flex-col">
         <Header />
-        <PerfilClient user={user} planes={plans} orders={transformedOrders} />
+        <PerfilClient user={safeUser} planes={safePlans} orders={safeOrders} />
         <Footer />
       </main>
     );
