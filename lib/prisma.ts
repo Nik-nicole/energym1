@@ -9,8 +9,33 @@ const getDatabaseUrl = () => {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return dbUrl;
   
-  // Add connection pool parameters if not already present
-  const poolParams = "connection_limit=10&pool_timeout=20";
+  // For Aiven PostgreSQL, ensure SSL and proper connection pooling
+  if (dbUrl.includes('aiven') || dbUrl.includes('postgresql')) {
+    const url = new URL(dbUrl);
+    
+    // Add SSL mode for Aiven (required)
+    if (!url.searchParams.has('sslmode')) {
+      url.searchParams.set('sslmode', 'require');
+    }
+    
+    // Add connection pool parameters if not already present
+    if (!url.searchParams.has('connection_limit')) {
+      url.searchParams.set('connection_limit', '10');
+    }
+    
+    if (!url.searchParams.has('pool_timeout')) {
+      url.searchParams.set('pool_timeout', '20');
+    }
+    
+    if (!url.searchParams.has('connect_timeout')) {
+      url.searchParams.set('connect_timeout', '10');
+    }
+    
+    return url.toString();
+  }
+  
+  // Fallback for other database providers
+  const poolParams = "connection_limit=10&pool_timeout=20&connect_timeout=10";
   const separator = dbUrl.includes("?") ? "&" : "?";
   
   return dbUrl.includes("connection_limit") ? dbUrl : `${dbUrl}${separator}${poolParams}`;

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/db";
+import SafeQuery from "@/lib/db-safe-query";
+import { prisma } from "@/lib/prisma";
 import { WompiService } from "@/lib/wompi";
 
 export const dynamic = 'force-dynamic';
@@ -15,9 +16,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener el usuario
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
+    const user = await SafeQuery.query(
+      () => prisma.user.findUnique({
+        where: { email: session.user.email }
+      }),
+      'planOrder.userLookup'
+    );
 
     if (!user) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
@@ -39,21 +43,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar que el plan exista y esté activo
-    const plan = await prisma.plan.findUnique({
-      where: { id: planId }
-    });
+    const plan = await SafeQuery.query(
+      () => prisma.plan.findUnique({
+        where: { id: planId }
+      }),
+      'planOrder.planLookup'
+    );
 
     if (!plan || !plan.activo) {
       return NextResponse.json({ error: "Plan no disponible" }, { status: 404 });
     }
 
     // Verificar que la sede exista
-    const sede = await prisma.sede.findUnique({
-      where: { id: sedeId },
-      include: {
-        paymentGateway: true
-      }
-    });
+    const sede = await SafeQuery.query(
+      () => prisma.sede.findUnique({
+        where: { id: sedeId },
+        include: {
+          paymentGateway: true
+        }
+      }),
+      'planOrder.sedeLookup'
+    );
 
     if (!sede || !sede.activo) {
       return NextResponse.json({ error: "Sede no disponible" }, { status: 404 });
@@ -120,15 +130,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Crear el registro de pago
-    const payment = await prisma.payment.create({
-      data: {
-        sedeId: sede.id,
-        amount: totalPrice,
-        paymentMethod: paymentInfo.method,
-        status: 'COMPLETED',
-        transactionId: wompiResponse.transactionId,
-        gatewayResponse: JSON.parse(JSON.stringify(wompiResponse))
-      }
+    const payment = await SafeQuery.payment.create({
+      sedeId: sede.id,
+      amount: totalPrice,
+      paymentMethod: paymentInfo.method,
+      status: 'COMPLETED',
+      transactionId: wompiResponse.transactionId,
+      gatewayResponse: JSON.parse(JSON.stringify(wompiResponse))
     });
 
     // Crear la orden del plan

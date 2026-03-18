@@ -187,23 +187,6 @@ export function AdminProfile({ admin }: AdminProfileProps) {
                   
                   <Separator className="bg-[#1E1E1E]" />
                   
-                  {/* Gym Stats */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-gray-400">Estadísticas del Gimnasio</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-[#0A0A0A] p-3 rounded-lg text-center">
-                        <Dumbbell className="h-6 w-6 text-[#D604E0] mx-auto mb-1" />
-                        <div className="text-lg font-bold text-white">250+</div>
-                        <div className="text-xs text-gray-400">Miembros</div>
-                      </div>
-                      <div className="bg-[#0A0A0A] p-3 rounded-lg text-center">
-                        <Target className="h-6 w-6 text-[#040AE0] mx-auto mb-1" />
-                        <div className="text-lg font-bold text-white">15</div>
-                        <div className="text-xs text-gray-400">Planes</div>
-                      </div>
-                    </div>
-                  </div>
-                  
                   <div className="text-xs text-gray-500">
                     Última actualización: {new Date(admin.updatedAt).toLocaleDateString()}
                   </div>
@@ -348,7 +331,7 @@ export function AdminProfile({ admin }: AdminProfileProps) {
                 <CardTitle className="text-xl">Estadísticas de Cuenta</CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="bg-[#0A0A0A] p-4 rounded-lg border border-[#1E1E1E]">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-[#D604E0]/20 rounded-lg">
@@ -373,17 +356,6 @@ export function AdminProfile({ admin }: AdminProfileProps) {
                           )}
                         </div>
                         <div className="text-sm text-gray-400">Días como admin</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-[#0A0A0A] p-4 rounded-lg border border-[#1E1E1E]">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-green-500/20 rounded-lg">
-                        <Award className="h-5 w-5 text-green-500" />
-                      </div>
-                      <div>
-                        <div className="text-xl font-bold text-white">Nivel 5</div>
-                        <div className="text-sm text-gray-400">Experiencia</div>
                       </div>
                     </div>
                   </div>

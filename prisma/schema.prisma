@@ -8,94 +8,84 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  CLIENTE
-  ADMIN
-}
-
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String?
-  role      Role     @default(CLIENTE)
-  image     String?
-  sedeId    String?
-  sede      Sede?    @relation(fields: [sedeId], references: [id])
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id            String         @id @default(cuid())
+  email         String         @unique
+  createdAt     DateTime       @default(now())
+  firstName     String
+  image         String?
+  isActive      Boolean        @default(true)
+  lastName      String?
+  password      String
+  role          Role           @default(CLIENTE)
+  sedeId        String?
+  updatedAt     DateTime       @updatedAt
+  planOrders    PlanOrder[]
+  productOrders ProductOrder[]
+  sede          Sede?          @relation(fields: [sedeId], references: [id])
   userPlans     UserPlan[]
-  planOrders    PlanOrder[] // <-- agregamos relación de órdenes de planes
-  productOrders ProductOrder[] // <-- agregamos relación de órdenes de productos
 }
 
 model Sede {
-  id          String   @id @default(cuid())
-  nombre      String
-  direccion   String
-  ciudad      String
-  telefono    String
-  email       String?
-  descripcion String   @db.Text
-  imagen      String?
-  latitud     Float?
-  longitud    Float?
-  horario     String
-  activo      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  usuarios      User[]
-  noticias      Noticia[]
-  planesEnSede  PlanSede[]
-  productos     Producto[]
-  payments      Payment[]
-  planOrders    PlanOrder[]
-  productOrders ProductOrder[]
-
-  paymentGateway   PaymentGateway? @relation(fields: [paymentGatewayId], references: [id])
+  id               String          @id @default(cuid())
+  nombre           String
+  direccion        String
+  ciudad           String
+  telefono         String
+  email            String?
+  descripcion      String
+  imagen           String?
+  latitud          Float?
+  longitud         Float?
+  horario          String
+  activo           Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   paymentGatewayId String?
+  noticias         Noticia[]
+  payments         Payment[]
+  planOrders       PlanOrder[]
+  planesEnSede     PlanSede[]
+  productOrders    ProductOrder[]
+  productos        Producto[]
+  paymentGateway   PaymentGateway? @relation(fields: [paymentGatewayId], references: [id])
+  usuarios         User[]
 }
 
 model PaymentGateway {
   id          String @id @default(cuid())
+  cuentaBanco String
   nombre      String
   tipo        String
-  cuentaBanco String
-
-  sedes Sede[]
+  sedes       Sede[]
 }
 
 model Plan {
-  id          String   @id @default(cuid())
-  nombre      String
-  precio      Float
-  descripcion String   @db.Text
-  beneficios  String[] @default([])
+  id          String      @id @default(cuid())
+  createdAt   DateTime    @default(now())
+  activo      Boolean     @default(true)
+  beneficios  String[]    @default([])
+  descripcion String
+  destacado   Boolean     @default(false)
   duracion    String
-  tipo        String   @default("STANDARD")
-  esVip       Boolean  @default(false)
-  activo      Boolean  @default(true)
-  destacado   Boolean  @default(false)
-  orden       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  sedes      PlanSede[]
-  orderItems PlanOrder[]
-  userPlans  UserPlan[]
+  esVip       Boolean     @default(false)
+  nombre      String
+  orden       Int         @default(0)
+  precio      Float
+  tipo        String      @default("STANDARD")
+  updatedAt   DateTime    @updatedAt
+  orderItems  PlanOrder[]
+  sedes       PlanSede[]
+  userPlans   UserPlan[]
 }
 
 model PlanSede {
   id        String   @id @default(cuid())
   planId    String
   sedeId    String
+  createdAt DateTime @default(now())
   plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
   sede      Sede     @relation(fields: [sedeId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
 
   @@unique([planId, sedeId])
 }
@@ -104,15 +94,14 @@ model UserPlan {
   id        String    @id @default(cuid())
   userId    String
   planId    String
-  plan      Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
   startDate DateTime  @default(now())
   endDate   DateTime?
   isActive  Boolean   @default(true)
   paymentId String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, planId])
   @@index([userId])
@@ -122,11 +111,10 @@ model UserPlan {
 model Noticia {
   id               String    @id @default(cuid())
   titulo           String
-  contenido        String    @db.Text
+  contenido        String
   resumen          String?
   imagen           String?
   sedeId           String?
-  sede             Sede?     @relation(fields: [sedeId], references: [id])
   esPromocion      Boolean   @default(false)
   fechaInicio      DateTime?
   fechaFin         DateTime?
@@ -135,84 +123,84 @@ model Noticia {
   fechaPublicacion DateTime  @default(now())
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+  sede             Sede?     @relation(fields: [sedeId], references: [id])
 }
 
 model Producto {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   nombre      String
-  descripcion String   @db.Text
+  descripcion String
   precio      Float
   imagen      String?
-  categoria   String   @default("GENERAL")
-  stock       Int      @default(0)
-  activo      Boolean  @default(true)
-  destacado   Boolean  @default(false)
+  categoria   String         @default("GENERAL")
+  stock       Int            @default(0)
+  activo      Boolean        @default(true)
+  destacado   Boolean        @default(false)
   sedeId      String?
-  sede        Sede?    @relation(fields: [sedeId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  orderItems ProductOrder[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  orderItems  ProductOrder[]
+  sede        Sede?          @relation(fields: [sedeId], references: [id])
 }
 
 model PlanOrder {
   id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
   userId     String
   planId     String
-  sedeId     String
   paymentId  String?
   quantity   Int      @default(1)
-  unitPrice  Float
+  sedeId     String
   totalPrice Float
-  status     String   @default("PENDING") // PENDING, VERIFIED, CANCELLED
-  createdAt  DateTime @default(now())
+  unitPrice  Float
   updatedAt  DateTime @updatedAt
-
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan    Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
-  sede    Sede     @relation(fields: [sedeId], references: [id], onDelete: SetNull)
-  payment Payment? @relation(fields: [paymentId], references: [id])
+  status     String   @default("PENDING")
+  payment    Payment? @relation(fields: [paymentId], references: [id])
+  plan       Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  sede       Sede     @relation(fields: [sedeId], references: [id], onDelete: SetNull)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ProductOrder {
-  id             String   @id @default(cuid())
-  userId         String
-  productId      String
-  sedeId         String
-  paymentId      String?
-  quantity       Int
-  unitPrice      Float
-  totalPrice     Float
-  status         String   @default("PENDING") // PENDING, PACKED, SHIPPED, DELIVERED, CANCELLED
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
-  // Shipping information
-  shippingAddress String?  // Full address
-  shippingCity    String?  // City
-  shippingState   String?  // Department/State
-  shippingPhone   String?  // Contact phone
-  shippingNotes   String?  // Additional notes
-  postalCode      String?  // Postal code
-
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Producto @relation(fields: [productId], references: [id], onDelete: Cascade)
-  sede    Sede     @relation(fields: [sedeId], references: [id], onDelete: SetNull)
-  payment Payment? @relation(fields: [paymentId], references: [id])
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  userId          String
+  paymentId       String?
+  productId       String
+  quantity        Int
+  sedeId          String
+  totalPrice      Float
+  unitPrice       Float
+  updatedAt       DateTime @updatedAt
+  status          String   @default("PENDING")
+  postalCode      String?
+  shippingAddress String?
+  shippingCity    String?
+  shippingNotes   String?
+  shippingPhone   String?
+  shippingState   String?
+  payment         Payment? @relation(fields: [paymentId], references: [id])
+  product         Producto @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sede            Sede     @relation(fields: [sedeId], references: [id], onDelete: SetNull)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Payment {
-  id              String   @id @default(cuid())
-  sedeId          String
+  id              String         @id @default(cuid())
   amount          Float
-  paymentMethod   String
-  status          String   @default("PENDING") // PENDING, COMPLETED, FAILED
-  transactionId   String   @unique
+  createdAt       DateTime       @default(now())
   gatewayResponse Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  paymentMethod   String
+  sedeId          String
+  transactionId   String         @unique
+  updatedAt       DateTime       @updatedAt
+  status          String         @default("PENDING")
+  sede            Sede           @relation(fields: [sedeId], references: [id])
+  planOrders      PlanOrder[]
+  productOrders   ProductOrder[]
+}
 
-  sede          Sede           @relation(fields: [sedeId], references: [id])
-  planOrders    PlanOrder[]
-  productOrders ProductOrder[]
+enum Role {
+  CLIENTE
+  ADMIN
 }

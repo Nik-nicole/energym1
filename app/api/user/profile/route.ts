@@ -3,7 +3,8 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/db";
+import SafeQuery from "@/lib/db-safe-query";
+import { prisma } from "@/lib/prisma";
 
 // GET - Obtener perfil del usuario
 export async function GET(request: NextRequest) {
@@ -17,19 +18,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      include: { 
-        sede: {
-          select: { id: true, nombre: true }
-        },
-        userPlans: {
-          include: {
-            plan: true,
+    const user = await SafeQuery.query(
+      () => prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { 
+          sede: {
+            select: { id: true, nombre: true }
+          },
+          userPlans: {
+            include: {
+              plan: true,
+            },
           },
         },
-      },
-    });
+      }),
+      'user.profile.get'
+    );
 
     if (!user) {
       return NextResponse.json(
@@ -71,12 +75,15 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verificar que el email no esté en uso por otro usuario
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        email,
-        id: { not: session.user.id }
-      },
-    });
+    const existingUser = await SafeQuery.query(
+      () => prisma.user.findFirst({
+        where: {
+          email,
+          id: { not: session.user.id }
+        },
+      }),
+      'user.profile.emailCheck'
+    );
 
     if (existingUser) {
       return NextResponse.json(
@@ -87,9 +94,12 @@ export async function PUT(request: NextRequest) {
 
     // Verificar que la sede existe si se proporciona
     if (sedeId) {
-      const sede = await prisma.sede.findUnique({
-        where: { id: sedeId }
-      });
+      const sede = await SafeQuery.query(
+        () => prisma.sede.findUnique({
+          where: { id: sedeId }
+        }),
+        'user.profile.sedeCheck'
+      );
 
       if (!sede) {
         return NextResponse.json(
@@ -99,25 +109,28 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        firstName,
-        lastName: lastName || null,
-        email,
-        sedeId: sedeId || null,
-      },
-      include: {
-        sede: {
-          select: { id: true, nombre: true }
+    const updatedUser = await SafeQuery.query(
+      () => prisma.user.update({
+        where: { id: session.user.id },
+        data: {
+          firstName,
+          lastName: lastName || null,
+          email,
+          sedeId: sedeId || null,
         },
-        userPlans: {
-          include: {
-            plan: true,
+        include: {
+          sede: {
+            select: { id: true, nombre: true }
+          },
+          userPlans: {
+            include: {
+              plan: true,
+            },
           },
         },
-      },
-    });
+      }),
+      'user.profile.update'
+    );
 
     return NextResponse.json({
       success: true,

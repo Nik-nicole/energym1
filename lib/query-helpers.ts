@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { PrismaWrapper } from './connection-wrapper';
 
 // Helper functions para reutilizar consultas comunes y evitar saturación
 
@@ -6,59 +7,68 @@ import { prisma } from './prisma';
 export const userQueries = {
   // Obtener usuario por email con campos básicos
   async byEmail(email: string) {
-    return await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        sedeId: true,
-        image: true,
-      },
-    });
+    return await PrismaWrapper.execute(
+      () => prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          sedeId: true,
+          image: true,
+        },
+      }),
+      3 // 3 retries
+    );
   },
 
   // Obtener usuario por ID con campos básicos
   async byId(id: string) {
-    return await prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        sedeId: true,
-        image: true,
-      },
-    });
+    return await PrismaWrapper.execute(
+      () => prisma.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          sedeId: true,
+          image: true,
+        },
+      }),
+      3
+    );
   },
 
   // Obtener usuario con su sede
   async withSede(email: string) {
-    return await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        isActive: true,
-        sedeId: true,
-        image: true,
-        sede: {
-          select: {
-            id: true,
-            nombre: true,
+    return await PrismaWrapper.execute(
+      () => prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          isActive: true,
+          sedeId: true,
+          image: true,
+          sede: {
+            select: {
+              id: true,
+              nombre: true,
+            },
           },
         },
-      },
-    });
+      }),
+      3
+    );
   },
 };
 
@@ -66,66 +76,75 @@ export const userQueries = {
 export const productQueries = {
   // Obtener producto por ID para verificación
   async byId(id: string) {
-    return await prisma.producto.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        nombre: true,
-        precio: true,
-        stock: true,
-        activo: true,
-        sedeId: true,
-      },
-    });
+    return await PrismaWrapper.execute(
+      () => prisma.producto.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          nombre: true,
+          precio: true,
+          stock: true,
+          activo: true,
+          sedeId: true,
+        },
+      }),
+      3
+    );
   },
 
   // Obtener producto con detalles completos
   async withDetails(id: string) {
-    return await prisma.producto.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        nombre: true,
-        descripcion: true,
-        precio: true,
-        imagen: true,
-        categoria: true,
-        stock: true,
-        activo: true,
-        destacado: true,
-        sedeId: true,
-        sede: {
-          select: {
-            id: true,
-            nombre: true,
+    return await PrismaWrapper.execute(
+      () => prisma.producto.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          nombre: true,
+          descripcion: true,
+          precio: true,
+          imagen: true,
+          categoria: true,
+          stock: true,
+          activo: true,
+          destacado: true,
+          sedeId: true,
+          sede: {
+            select: {
+              id: true,
+              nombre: true,
+            },
           },
         },
-      },
-    });
+      }),
+      3
+    );
   },
 
   // Obtener productos destacados
   async featured() {
-    return await prisma.producto.findMany({
-      where: { activo: true },
-      select: {
-        id: true,
-        nombre: true,
-        precio: true,
-        imagen: true,
-        categoria: true,
-        destacado: true,
-        stock: true,
-        sede: {
-          select: {
-            id: true,
-            nombre: true,
+    return await PrismaWrapper.execute(
+      () => prisma.producto.findMany({
+        where: { activo: true },
+        select: {
+          id: true,
+          nombre: true,
+          precio: true,
+          imagen: true,
+          categoria: true,
+          destacado: true,
+          stock: true,
+          sede: {
+            select: {
+              id: true,
+              nombre: true,
+            },
           },
         },
-      },
-      orderBy: { destacado: "desc" },
-      take: 8,
-    });
+        orderBy: { destacado: "desc" },
+        take: 8,
+      }),
+      3
+    );
   },
 };
 
