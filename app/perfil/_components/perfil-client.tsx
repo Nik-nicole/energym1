@@ -7,95 +7,28 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { PlanCards } from "@/components/ui/plan-cards";
-import { UserOrdersModal } from "@/components/user-orders-modal";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface PerfilClientProps {
-  user: {
-    id: string;
-    firstName: string;
-    lastName: string | null;
-    email: string;
-    role: string;
-    createdAt: Date;
-    image?: string | null;
-    sede: { id: string; nombre: string; direccion: string } | null;
-    userPlans?: Array<{
-      id: string;
-      userId: string;
-      planId: string;
-      isActive: boolean;
-      startDate: Date;
-      endDate: Date | null;
-      plan: {
-        id: string;
-        nombre: string;
-        precio: number;
-        descripcion: string;
-        beneficios: string[];
-        duracion: string;
-        tipo: string;
-        esVip: boolean;
-        destacado: boolean;
-        activo: boolean;
-      };
-    }>;
-  } | null;
-  planes: {
-    id: string;
-    nombre: string;
-    precio: number;
-    descripcion: string;
-    beneficios: string[];
-    duracion: string;
-    tipo: string;
-    esVip: boolean;
-    destacado: boolean;
-    activo: boolean;
-    sedes?: Array<{
-      id: string;
-      sede: {
-        id: string;
-        nombre: string;
-      };
-    }>;
-  }[];
-  orders: {
-    id: string;
-    orderNumber: string;
-    totalAmount: number;
-    status: string;
-    paymentStatus: string;
-    createdAt: Date;
-    items: {
-      id: string;
-      quantity: number;
-      unitPrice: number;
-      totalPrice: number;
-      planId?: string | null;
-      productId?: string | null;
-      plan?: {
-        id: string;
-        nombre: string;
-        precio: number;
-        descripcion: string;
-        beneficios: string[];
-        duracion: string;
-        esVip: boolean;
-      } | null;
-      product?: {
-        id: string;
-        nombre: string;
-        imagen?: string | null;
-      } | null;
-    }[];
-  }[];
+  user: any;
+  planes: any[];
+  orders: any[];
 }
 
 export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
@@ -115,51 +48,6 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
       year: "numeric",
     });
   };
-
-  const isAdmin = user?.role === "ADMIN";
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
-    email: user?.email || "",
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [bannerGradient, setBannerGradient] = useState("from-[#040AE0] via-[#D604E0] to-[#040AE0]");
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showOrdersModal, setShowOrdersModal] = useState(false);
-
-  // Función para recargar datos del usuario
-  const reloadUserData = async () => {
-    try {
-      const response = await fetch('/api/user/profile');
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Datos recargados:", data.user);
-        // Aquí podrías actualizar el estado del usuario si fuera necesario
-        // Por ahora, recargamos la página para asegurar que todo se actualice
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error("Error recargando datos:", error);
-    }
-  };
-
-  const scrollToPlans = () => {
-    const plansTitle = document.querySelector('[data-plans-title]');
-    plansTitle?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  };
-
-  // Opciones de gradientes para el banner
-  const gradientOptions = [
-    { name: "Azul a Rosa", value: "from-[#040AE0] via-[#D604E0] to-[#040AE0]" },
-    { name: "Morado a Azul", value: "from-[#8B5CF6] via-[#3B82F6] to-[#8B5CF6]" },
-    { name: "Verde a Azul", value: "from-[#10B981] via-[#3B82F6] to-[#10B981]" },
-    { name: "Naranja a Rosa", value: "from-[#F97316] via-[#EC4899] to-[#F97316]" },
-    { name: "Rojo a Amarillo", value: "from-[#EF4444] via-[#F59E0B] to-[#EF4444]" },
-    { name: "Cian a Verde", value: "from-[#06B6D4] via-[#10B981] to-[#06B6D4]" },
-  ];
 
   // Verificar si el usuario tiene un plan activo (basado en UserPlan activos)
   console.log("Usuario:", user);
@@ -199,126 +87,22 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
 
   console.log("¿Es VIP por lógica mejorada?:", isVipPlan);
 
-  const handleProfileUpdate = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editFormData),
-      });
-
-      if (response.ok) {
-        toast.success('Perfil actualizado exitosamente');
-        setIsEditingProfile(false);
-        // Recargar la página para mostrar los cambios
-        window.location.reload();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Error al actualizar perfil');
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Error al actualizar perfil');
-    } finally {
-      setIsLoading(false);
-    }
+  const scrollToPlans = () => {
+    const plansTitle = document.querySelector('[data-plans-title]');
+    plansTitle?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  const handleCancelEdit = () => {
-    setEditFormData({
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
-      email: user?.email || "",
-    });
-    setIsEditingProfile(false);
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validar tipo de archivo
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Solo se permiten imágenes JPG, PNG y WebP');
-      return;
-    }
-
-    // Validar tamaño (3MB)
-    if (file.size > 3 * 1024 * 1024) {
-      alert('La imagen no puede pesar más de 3MB');
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/user/profile-image', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Actualizar la imagen en la interfaz
-        window.location.reload(); // Recargar para mostrar la nueva imagen
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Error al subir la imagen');
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Error al subir la imagen');
-    }
-  };
-
-  
-  
   return (
     <div className="flex-1 min-h-screen bg-zinc-950 pb-8">
-      {/* BANNER SUPERIOR - LLEGA DE LADO A LADO */}
-      <div className={`relative h-[210px] bg-gradient-to-br ${bannerGradient} w-full`}>
+      {/* BANNER SUPERIOR */}
+      <div className="relative h-[210px] bg-gradient-to-br from-[#040AE0] via-[#D604E0] to-[#040AE0] w-full">
         {/* Botón de editar perfil */}
         <button 
-          onClick={() => setIsEditingProfile(true)}
+          onClick={() => console.log("Editar perfil")}
           className="absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-all"
         >
           <Edit className="w-5 h-5 text-white" />
         </button>
-        
-        {/* Botón de cambiar color del banner */}
-        <button 
-          onClick={() => setShowColorPicker(!showColorPicker)}
-          className="absolute top-4 right-16 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-all"
-        >
-          <Palette className="w-5 h-5 text-white" />
-        </button>
-
-        {/* Selector de colores */}
-        {showColorPicker && (
-          <div className="absolute top-16 right-4 bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-xl z-10">
-            <p className="text-white text-sm font-medium mb-3">Color del Banner</p>
-            <div className="grid grid-cols-2 gap-2">
-              {gradientOptions.map((gradient) => (
-                <button
-                  key={gradient.value}
-                  onClick={() => {
-                    setBannerGradient(gradient.value);
-                    setShowColorPicker(false);
-                  }}
-                  className={`h-12 rounded-lg bg-gradient-to-br ${gradient.value} border-2 ${
-                    bannerGradient === gradient.value ? 'border-white' : 'border-transparent'
-                  } transition-all`}
-                  title={gradient.name}
-                />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="max-w-5xl mx-auto px-4">
@@ -326,7 +110,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
         <div className="relative -mt-16 mb-6">
           {/* Coronita para usuarios VIP - fuera del contenedor */}
           {hasActivePlan && isVipPlan && (
-            <div className="absolute -top-4 left-1/2 -translate-x-17 z-20">
+            <div className="absolute -top-4 right-1/6 translate-x-8 z-20">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-full blur-sm opacity-50"></div>
                 <div className="relative bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-full p-1.5 shadow-lg">
@@ -351,7 +135,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
           </div>
           
           <button
-            onClick={() => document.getElementById('profile-image-input')?.click()}
+            onClick={() => console.log("Subir imagen")}
             className="absolute bottom-0 right-1/2 translate-x-16 p-2 bg-[#0047AB] hover:bg-[#0047AB]/80 rounded-full transition-colors"
           >
             <Camera className="w-4 h-4 text-white" />
@@ -360,7 +144,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
             id="profile-image-input"
             type="file"
             accept="image/jpeg,image/jpg,image/png,image/webp"
-            onChange={handleImageUpload}
+            onChange={() => console.log("Imagen cambiada")}
             className="hidden"
           />
         </div>
@@ -423,29 +207,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
           </div>
         </div>
 
-        {/* BOTONES DE ACCIÓN */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <button
-            onClick={() => setIsEditingProfile(true)}
-            className="px-6 py-3 bg-white text-zinc-900 font-medium rounded-xl hover:bg-gray-100 transition-all text-sm"
-          >
-            Editar Perfil
-          </button>
-          <button
-            onClick={() => window.location.href = '/tienda'}
-            className="px-6 py-3 bg-zinc-900 border border-zinc-800 text-white font-medium rounded-xl hover:bg-zinc-800 transition-all text-sm"
-          >
-            Tienda
-          </button>
-          <button
-            onClick={() => setShowOrdersModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-[#D604E0] to-[#040AE0] text-white font-medium rounded-xl hover:opacity-90 transition-all text-sm"
-          >
-            Ver Órdenes de Productos
-          </button>
-        </div>
-
-        {/* TARJETA DEL PLAN ACTIVO O SELECCIÓN DE PLAN */}
+        {/* TARJETA DEL PLAN ACTIVO */}
         {hasActivePlan ? (
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-8">
             {/* Header minimalista con toque fucsia */}
@@ -529,163 +291,7 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
             activePlan={activePlan}
           />
         </div>
-
-        {/* SECCIÓN DE HISTORIAL DE COMPRAS */}
-        <div className="mt-12">
-          <h3 className="text-lg font-light text-zinc-400 mb-6">Historial de Compras</h3>
-          {orders.length > 0 ? (
-            <div className="space-y-3">
-              {orders.map((order) => (
-                <motion.div
-                  key={order.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-zinc-900/50 border border-zinc-800/50 rounded-lg p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-zinc-800/50 rounded-full flex items-center justify-center">
-                        {order.items[0]?.plan ? (
-                          <Crown className="w-4 h-4 text-fuchsia-400/70" />
-                        ) : (
-                          <ShoppingBag className="w-4 h-4 text-zinc-400/70" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-zinc-300">
-                          {order.items[0]?.plan ? `Plan: ${order.items[0].plan.nombre}` : order.orderNumber}
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          {formatDate(order.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-light text-zinc-300">
-                        {formatPrice(order.totalAmount)}
-                      </p>
-                      <div className="flex items-center gap-2 justify-end mt-1">
-                        <span className={`px-2 py-1 rounded-full text-xs font-light ${
-                          order.paymentStatus === "PAID" 
-                            ? "bg-fuchsia-500/10 text-fuchsia-400/80" 
-                            : "bg-zinc-700/50 text-zinc-400"
-                        }`}>
-                          {order.paymentStatus === "PAID" ? "Pagado" : "Pendiente"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-8 text-center">
-              <Package className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-              <h3 className="text-lg font-light text-zinc-400 mb-2">No tienes compras aún</h3>
-              <p className="text-zinc-500 text-sm mb-6">
-                Visita nuestro marketplace para encontrar los mejores productos y suplementos.
-              </p>
-              <Link
-                href="/marketplace"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-800/50 border border-zinc-700/50 text-zinc-300 rounded-lg hover:bg-zinc-800/70 transition-all text-sm"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                Ir al Marketplace
-              </Link>
-            </div>
-          )}
-        </div>
       </div>
-
-      {/* Modal de Edición de Perfil */}
-      {isEditingProfile && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-md w-full">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Editar Perfil</h3>
-              <button
-                onClick={handleCancelEdit}
-                className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Nombre
-                </label>
-                <input
-                  type="text"
-                  value={editFormData.firstName}
-                  onChange={(e) => setEditFormData({ ...editFormData, firstName: e.target.value })}
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-[#D604E0] transition-colors"
-                  placeholder="Tu nombre"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Apellido
-                </label>
-                <input
-                  type="text"
-                  value={editFormData.lastName}
-                  onChange={(e) => setEditFormData({ ...editFormData, lastName: e.target.value })}
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-[#D604E0] transition-colors"
-                  placeholder="Tu apellido"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={editFormData.email}
-                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                  className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-[#D604E0] transition-colors"
-                  placeholder="tu@email.com"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleCancelEdit}
-                className="flex-1 px-4 py-2 bg-zinc-800 text-gray-400 rounded-lg hover:bg-zinc-700 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleProfileUpdate}
-                disabled={isLoading}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-[#040AE0] to-[#D604E0] text-white rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    Guardar Cambios
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* User Orders Modal */}
-      <UserOrdersModal 
-        open={showOrdersModal} 
-        onOpenChange={setShowOrdersModal} 
-      />
     </div>
   );
 }

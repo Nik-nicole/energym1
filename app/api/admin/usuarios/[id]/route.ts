@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import bcrypt from "bcryptjs";
+import { UserService } from "@/lib/services/user.service";
 
 export async function PUT(
   request: NextRequest,
@@ -16,71 +15,9 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const {
-      firstName,
-      lastName,
-      email,
-      password,
-      role,
-      sedeId,
-      isActive,
-    } = body;
-
-    if (!firstName || !email) {
-      return NextResponse.json(
-        { error: "Faltan campos requeridos" },
-        { status: 400 }
-      );
-    }
-
-    // Check if email is already taken by another user
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        email,
-        id: { not: params.id },
-      },
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "El email ya está en uso" },
-        { status: 400 }
-      );
-    }
-
-    const updateData: any = {
-      firstName,
-      lastName,
-      email,
-      role: role || "CLIENTE",
-      sedeId: sedeId || null,
-    };
-
-    // Only update password if provided
-    if (password && password.trim() !== "") {
-      updateData.password = await bcrypt.hash(password, 12);
-    }
-
-    const user = await prisma.user.update({
-      where: { id: params.id },
-      data: updateData,
-      include: {
-        sede: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
-        _count: {
-          select: {
-            planOrders: true,
-            productOrders: true,
-          },
-        },
-      },
-    });
-
-    return NextResponse.json(user);
+    const result = await UserService.updateUser(params.id, body);
+    
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error updating user:", error);
     return NextResponse.json(
@@ -104,28 +41,11 @@ export async function PATCH(
     const body = await request.json();
     const { isActive } = body;
 
-    const user = await prisma.user.update({
-      where: { id: params.id },
-      data: {
-        isActive,
-      },
-      include: {
-        sede: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
-        _count: {
-          select: {
-            planOrders: true,
-            productOrders: true,
-          },
-        },
-      },
-    });
-
-    return NextResponse.json(user);
+    const result = isActive 
+      ? await UserService.activateUser(params.id)
+      : await UserService.deactivateUser(params.id);
+    
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error toggling user active status:", error);
     return NextResponse.json(

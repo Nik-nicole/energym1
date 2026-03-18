@@ -1,4 +1,5 @@
 import { sedeQueries, planQueries, productQueries, noticiaQueries } from "@/lib/query-helpers";
+import { serializeData } from "@/lib/utils/serialize";
 import { Header } from "@/components/ui/header";
 import { Footer } from "@/components/ui/footer";
 import { HeroSection } from "./_components/hero-section";
@@ -32,10 +33,10 @@ async function getData() {
 async function getSafeData() {
   const { sedes, planes, productos, noticias } = await getData();
   return {
-    sedes: JSON.parse(JSON.stringify(sedes)),
-    planes: JSON.parse(JSON.stringify(planes)),
-    productos: JSON.parse(JSON.stringify(productos)),
-    noticias: JSON.parse(JSON.stringify(noticias)),
+    sedes: serializeData(sedes),
+    planes: serializeData(planes),
+    productos: serializeData(productos),
+    noticias: serializeData(noticias),
   };
 }
 
@@ -48,7 +49,7 @@ export default async function HomePage() {
       <HeroSection />
       <SedesSection sedes={sedes} />
       <PlanesWrapper planes={planes} />
-      <HomeStoreSection productos={productos as any} />
+      <HomeStoreSection productos={productos} />
       <NoticiasSection noticias={noticias} />
       <CTASection />
       <Footer />

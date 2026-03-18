@@ -257,6 +257,7 @@ export const sedeQueries = {
         email: true,
         imagen: true,
         horario: true,
+        activo: true,
       },
     });
   },
