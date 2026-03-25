@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user) {
+      console.error("Upload: No autorizado - sesión inválida");
       return NextResponse.json(
         { error: "No autorizado" },
         { status: 401 }
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar si es admin
     if (session.user.role !== "ADMIN") {
+      console.error("Upload: No autorizado - usuario no es admin:", session.user.role);
       return NextResponse.json(
         { error: "Solo administradores pueden subir imágenes" },
         { status: 403 }
@@ -28,6 +30,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
 
     if (!file) {
+      console.error("Upload: No se proporcionó archivo");
       return NextResponse.json(
         { error: "No se proporcionó ningún archivo" },
         { status: 400 }
@@ -37,24 +40,37 @@ export async function POST(request: NextRequest) {
     // Validar tipo de archivo
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
+      console.error("Upload: Tipo de archivo no permitido:", file.type);
       return NextResponse.json(
         { error: "Tipo de archivo no permitido. Solo JPG, PNG y WebP" },
         { status: 400 }
       );
     }
 
-    // Validar tamaño (5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validar tamaño (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      console.error("Upload: Archivo demasiado grande:", file.size);
       return NextResponse.json(
-        { error: "El archivo es demasiado grande. Máximo 5MB" },
+        { error: "El archivo es demasiado grande. Máximo 10MB" },
         { status: 400 }
       );
     }
 
     console.log("Upload recibido:", file.name, file.type, file.size);
 
+    // Verificar configuración de Cloudinary
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error("Upload: Configuración de Cloudinary incompleta");
+      return NextResponse.json(
+        { error: "Error de configuración del servidor" },
+        { status: 500 }
+      );
+    }
+
     // Subir imagen a Cloudinary
     const result = await uploadImage(file, 'fitzone/sedes');
+    
+    console.log("Upload exitoso:", result.public_id, result.secure_url);
 
     return NextResponse.json({
       success: true,
@@ -66,7 +82,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error uploading image:", error);
     return NextResponse.json(
-      { error: "Error al subir la imagen" },
+      { error: "Error al subir la imagen", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

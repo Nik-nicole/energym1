@@ -66,13 +66,50 @@ export class SedeService {
 
   static async deleteSede(sedeId: string) {
     return await PrismaWrapper.execute(
-      () => prisma.sede.update({
-        where: { id: sedeId },
-        data: {
-          activo: false,
-          updatedAt: new Date()
-        }
-      }),
+      async () => {
+        // Ejecutar todas las operaciones en una transacción
+        return await prisma.$transaction(async (tx) => {
+          // 1. Eliminar usuarios asociados a la sede
+          await tx.user.deleteMany({
+            where: { sedeId }
+          });
+
+          // 2. Eliminar productos de la sede
+          await tx.producto.deleteMany({
+            where: { sedeId }
+          });
+
+          // 3. Eliminar noticias de la sede
+          await tx.noticia.deleteMany({
+            where: { sedeId }
+          });
+
+          // 4. Eliminar planes asociados a la sede
+          await tx.planSede.deleteMany({
+            where: { sedeId }
+          });
+
+          // 5. Eliminar órdenes de planes de la sede
+          await tx.planOrder.deleteMany({
+            where: { sedeId }
+          });
+
+          // 6. Eliminar órdenes de productos de la sede
+          await tx.productOrder.deleteMany({
+            where: { sedeId }
+          });
+
+          // 7. Eliminar pagos de la sede
+          await tx.payment.deleteMany({
+            where: { sedeId }
+          });
+
+          // 8. Finalmente eliminar la sede
+          return await tx.sede.delete({
+            where: { id: sedeId }
+          });
+        });
+      },
       3
     );
   }

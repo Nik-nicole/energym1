@@ -26,20 +26,20 @@ export async function GET(request: NextRequest) {
         totalPlans,
         totalProducts,
         totalNoticias
-      ] = await PrismaWrapper.batch([
+      ] = await Promise.all([
         // Get user
-        () => prisma.user.findUnique({
+        prisma.user.findUnique({
           where: { email: session.user.email }
         }),
         // Get product orders
-        () => prisma.productOrder.findMany({
+        prisma.productOrder.findMany({
           select: {
             status: true,
             totalPrice: true,
           },
         }),
         // Get plan orders
-        () => prisma.planOrder.findMany({
+        prisma.planOrder.findMany({
           select: {
             status: true,
             totalPrice: true,
@@ -51,15 +51,15 @@ export async function GET(request: NextRequest) {
           },
         }),
         // Get user counts
-        () => prisma.user.count(),
-        () => prisma.user.count({
+        prisma.user.count(),
+        prisma.user.count({
           where: { isActive: true }
         }),
         // Get entity counts
-        () => prisma.sede.count(),
-        () => prisma.plan.count(),
-        () => prisma.producto.count(),
-        () => prisma.noticia.count()
+        prisma.sede.count(),
+        prisma.plan.count(),
+        prisma.producto.count(),
+        prisma.noticia.count()
       ]);
 
       if (!user) {

@@ -13,7 +13,7 @@ interface Sede {
   direccion: string;
   ciudad: string;
   horario: string;
-  imagen: string | null;
+  imagenes: string[];
 }
 
 export function SedesSection({ sedes }: { sedes: Sede[] }) {

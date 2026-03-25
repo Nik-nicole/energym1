@@ -1,9 +1,12 @@
 "use client";
 
+import { useState, useEffect, useCallback } from 'react';
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { MapPin, Phone, Mail, Clock, ArrowLeft, Check, Zap } from "lucide-react";
+import { MapPin, Phone, Mail, Clock, ArrowLeft, Check, Zap, ChevronLeft, ChevronRight } from "lucide-react";
+import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 import { NoticiaCard } from "@/components/ui/noticia-card";
 
 interface SedeDetailProps {
@@ -15,7 +18,7 @@ interface SedeDetailProps {
     telefono: string;
     email: string | null;
     descripcion: string;
-    imagen: string | null;
+    imagenes: string[];
     latitud: number | null;
     longitud: number | null;
     horario: string;
@@ -42,6 +45,55 @@ interface SedeDetailProps {
 }
 
 export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    { 
+      align: 'start',
+      skipSnaps: false,
+      dragFree: true,
+      containScroll: 'trimSnaps',
+      loop: true
+    },
+    [Autoplay({ delay: 4000, stopOnInteraction: false })]
+  );
+  
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+
+  const onNavButtonClick = useCallback(
+    (index: number) => {
+      if (!emblaApi) return;
+      emblaApi.scrollTo(index);
+    },
+    [emblaApi]
+  );
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    onSelect();
+    setScrollSnaps(emblaApi.scrollSnapList());
+    emblaApi.on('select', onSelect);
+    emblaApi.on('reInit', onSelect);
+
+    return () => {
+      emblaApi.off('select', onSelect);
+      emblaApi.off('reInit', onSelect);
+    };
+  }, [emblaApi, onSelect]);
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
   // Usar coordenadas si existen, si no usar la dirección
   const mapSrc = sede?.latitud && sede?.longitud 
     ? `https://www.google.com/maps?q=${sede.latitud},${sede.longitud}&z=15&output=embed`
@@ -61,14 +113,67 @@ export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
     <>
       {/* Hero */}
       <section className="relative h-[60vh] min-h-[400px]">
-        <Image
-          src={sede?.imagen ?? "https://cdn.abacus.ai/images/d9570e29-20cc-4090-b76d-62f460a6b818.png"}
-          alt={sede?.nombre ?? "Sede"}
-          fill
-          className="object-cover"
-          priority
-        />
-        <div className="absolute inset-0 hero-gradient" />
+        {/* Carrusel de imágenes */}
+        <div className="relative w-full h-full">
+          <div className="overflow-hidden h-full" ref={emblaRef}>
+            <div className="flex h-full">
+              {(sede?.imagenes ?? []).map((imagen, index) => (
+                <div key={index} className="flex-[0_0_100%] min-w-0 relative h-full">
+                  <Image
+                    src={imagen}
+                    alt={`${sede?.nombre ?? "Sede"} - Imagen ${index + 1}`}
+                    fill
+                    sizes="100vw"
+                    style={{
+                      objectFit: 'cover',
+                      height: '100%'
+                    }}
+                    priority
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Botones de navegación del carrusel */}
+          {(sede?.imagenes?.length || 0) > 1 && (
+            <>
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm border border-white/20 text-white rounded-full p-3 hover:bg-black/70 transition-colors z-10"
+                onClick={scrollPrev}
+                aria-label="Previous image"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm border border-white/20 text-white rounded-full p-3 hover:bg-black/70 transition-colors z-10"
+                onClick={scrollNext}
+                aria-label="Next image"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </>
+          )}
+
+          {/* Indicador de imágenes */}
+          {(sede?.imagenes?.length || 0) > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-full">
+              {(sede?.imagenes ?? []).map((_, index) => (
+                <div
+                  key={index}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    index === selectedIndex ? 'bg-white' : 'bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Gradiente overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        </div>
+
+        {/* Info de la sede sobre la imagen */}
         <div className="absolute inset-0 flex items-end">
           <div className="max-w-[1200px] mx-auto px-4 pb-12 w-full">
             <motion.div

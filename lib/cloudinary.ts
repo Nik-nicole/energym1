@@ -24,7 +24,7 @@ export async function uploadImage(file: File, folder: string = 'fitzone/marketpl
           folder,
           resource_type: 'image',
           allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-          max_file_size: 5000000, // 5MB
+          max_file_size: 10000000, // 10MB
           transformation: [
             { width: 800, height: 600, crop: 'limit', quality: 'auto' },
             { fetch_format: 'auto' }

@@ -34,7 +34,7 @@ model Sede {
   telefono         String
   email            String?
   descripcion      String
-  imagen           String?
+  imagenes         String[]
   latitud          Float?
   longitud         Float?
   horario          String

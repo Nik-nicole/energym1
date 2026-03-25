@@ -25,19 +25,32 @@ export async function DELETE(
 
     const { orderId } = params;
 
-    // Obtener la orden para verificar que existe
-    const existingOrder = await prisma.order.findUnique({
-      where: { id: orderId },
-    });
+    // Try to find the order in both PlanOrder and ProductOrder tables
+    const [existingPlanOrder, existingProductOrder] = await Promise.all([
+      prisma.planOrder.findUnique({
+        where: { id: orderId },
+      }),
+      prisma.productOrder.findUnique({
+        where: { id: orderId },
+      })
+    ]);
+
+    const existingOrder = existingPlanOrder || existingProductOrder;
 
     if (!existingOrder) {
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
-    // Eliminar la orden (esto eliminará en cascada los items y pagos relacionados)
-    await prisma.order.delete({
-      where: { id: orderId },
-    });
+    // Delete the order from the appropriate table
+    if (existingPlanOrder) {
+      await prisma.planOrder.delete({
+        where: { id: orderId },
+      });
+    } else {
+      await prisma.productOrder.delete({
+        where: { id: orderId },
+      });
+    }
 
     return NextResponse.json({
       success: true,

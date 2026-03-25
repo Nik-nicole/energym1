@@ -490,9 +490,9 @@ export function OrderDetailModal({
                     <Step key={index} completed={item.status === "completed"}>
                       <StepLabel
                         StepIconComponent={item.status === "cancelled" ? () => (
-                          <StepIcon sx={{ color: '#EF4444' }}>
+                          <div style={{ color: '#EF4444' }}>
                             <X />
-                          </StepIcon>
+                          </div>
                         ) : undefined}
                         sx={{
                           '& .MuiStepLabel-label': {

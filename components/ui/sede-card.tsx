@@ -13,17 +13,35 @@ interface SedeCardProps {
     direccion: string;
     ciudad: string;
     horario: string;
-    imagen: string | null;
+    imagenes: string[];
   };
   index: number;
 }
 
 export function SedeCard({ sede, index }: SedeCardProps) {
   const [showMap, setShowMap] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   // Generar URL de Google Maps usando la dirección
   const mapUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(sede?.direccion + ', ' + sede?.ciudad)}`;
   const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sede?.direccion + ', ' + sede?.ciudad)}`;
+
+  // Función para cambiar a la siguiente imagen
+  const nextImage = () => {
+    if (sede?.imagenes && sede.imagenes.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % sede.imagenes.length);
+    }
+  };
+
+  // Función para cambiar a la imagen anterior
+  const prevImage = () => {
+    if (sede?.imagenes && sede.imagenes.length > 0) {
+      setCurrentImageIndex((prev) => (prev - 1 + sede.imagenes.length) % sede.imagenes.length);
+    }
+  };
+
+  // Obtener la imagen actual
+  const currentImage = sede?.imagenes?.[currentImageIndex] || "https://cdn.abacus.ai/images/d9570e29-20cc-4090-b76d-62f460a6b818.png";
 
   return (
     <motion.div
@@ -50,12 +68,59 @@ export function SedeCard({ sede, index }: SedeCardProps) {
                 title={`Mapa de ${sede?.nombre ?? "Sede"}`}
               />
             ) : (
-              <Image
-                src={sede?.imagen ?? "https://cdn.abacus.ai/images/d9570e29-20cc-4090-b76d-62f460a6b818.png"}
-                alt={sede?.nombre ?? "Sede"}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-500"
-              />
+              <div className="relative w-full h-full">
+                <Image
+                  src={currentImage}
+                  alt={sede?.nombre ?? "Sede"}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                
+                {/* Controles del carrusel si hay múltiples imágenes */}
+                {sede?.imagenes && sede.imagenes.length > 1 && (
+                  <>
+                    {/* Botones anterior/siguiente */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        prevImage();
+                      }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm text-white rounded-full p-2 hover:bg-black/70 transition-colors z-10"
+                      title="Imagen anterior"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        nextImage();
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm text-white rounded-full p-2 hover:bg-black/70 transition-colors z-10"
+                      title="Siguiente imagen"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {/* Indicador de imágenes */}
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
+                      {sede.imagenes.map((_, index) => (
+                        <div
+                          key={index}
+                          className={`w-1.5 h-1.5 rounded-full transition-all ${
+                            index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             

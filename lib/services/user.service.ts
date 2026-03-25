@@ -1,4 +1,5 @@
 import { prisma } from '../prisma';
+import { Role } from '@prisma/client';
 import { userQueries } from '../query-helpers';
 import { PrismaWrapper } from '../connection-wrapper';
 
@@ -246,7 +247,7 @@ export class UserService {
       () => prisma.user.create({
         data: {
           ...data,
-          role: data.role || 'USER',
+          role: data.role || 'CLIENTE',
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date()

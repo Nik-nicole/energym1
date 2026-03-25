@@ -66,7 +66,11 @@ export async function POST(request: NextRequest) {
         quantity: firstItem.quantity,
         unitPrice: firstItem.unitPrice,
         totalPrice: totalAmount,
-        status: 'PENDING' // Estado inicial, se actualiza después del pago
+        status: 'PENDING', // Estado inicial, se actualiza después del pago
+        shippingAddress: shippingAddress.address || '',
+        shippingCity: shippingAddress.city || '',
+        shippingPhone: shippingAddress.phone || '',
+        shippingNotes: shippingAddress.notes || ''
       },
       include: {
         product: true,
