@@ -51,9 +51,10 @@ export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
       skipSnaps: false,
       dragFree: true,
       containScroll: 'trimSnaps',
-      loop: true
+      loop: true,
+      duration: 80
     },
-    [Autoplay({ delay: 4000, stopOnInteraction: false })]
+    [Autoplay({ delay: 4000, stopOnInteraction: false, rootNode: (emblaRoot) => emblaRoot.parentElement })]
   );
   
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -123,12 +124,10 @@ export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
                     src={imagen}
                     alt={`${sede?.nombre ?? "Sede"} - Imagen ${index + 1}`}
                     fill
+                    quality={100}
                     sizes="100vw"
-                    style={{
-                      objectFit: 'cover',
-                      height: '100%'
-                    }}
-                    priority
+                    className="object-cover object-center"
+                    priority={index === 0}
                   />
                 </div>
               ))}
@@ -169,8 +168,8 @@ export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
             </div>
           )}
 
-          {/* Gradiente overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          {/* Gradiente overlay - de abajo hacia arriba más pronunciado para legibilidad del texto */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
         </div>
 
         {/* Info de la sede sobre la imagen */}

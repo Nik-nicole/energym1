@@ -23,9 +23,11 @@ export function SedesSection({ sedes }: { sedes: Sede[] }) {
       skipSnaps: false,
       dragFree: true,
       containScroll: 'trimSnaps',
-      loop: true
+      loop: true,
+      duration: 60,
+      dragVelocity: 0.8
     },
-    [Autoplay({ delay: 4000, stopOnInteraction: false })]
+    [Autoplay({ delay: 4000, stopOnInteraction: false, rootNode: (emblaRoot) => emblaRoot.parentElement })]
   );
   
   const [selectedIndex, setSelectedIndex] = useState(0);

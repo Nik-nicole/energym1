@@ -18,9 +18,9 @@ const getDatabaseUrl = () => {
       url.searchParams.set('sslmode', 'require');
     }
     
-    // Add connection pool parameters if not already present
+    // Add connection pool parameters if not already present - REDUCED for Supabase free tier
     if (!url.searchParams.has('connection_limit')) {
-      url.searchParams.set('connection_limit', '10');
+      url.searchParams.set('connection_limit', '3');
     }
     
     if (!url.searchParams.has('pool_timeout')) {
@@ -34,8 +34,8 @@ const getDatabaseUrl = () => {
     return url.toString();
   }
   
-  // Fallback for other database providers
-  const poolParams = "connection_limit=10&pool_timeout=20&connect_timeout=10";
+  // Fallback for other database providers - REDUCED pool size
+  const poolParams = "connection_limit=3&pool_timeout=20&connect_timeout=10";
   const separator = dbUrl.includes("?") ? "&" : "?";
   
   return dbUrl.includes("connection_limit") ? dbUrl : `${dbUrl}${separator}${poolParams}`;
