@@ -91,3 +91,18 @@ body {
     max-width: 70rem !important;
   }
 }
+
+/* Force white text in news content - overrides editor inline styles */
+.noticia-content,
+.noticia-content *,
+.noticia-content p,
+.noticia-content span,
+.noticia-content div,
+.noticia-content h1,
+.noticia-content h2,
+.noticia-content h3,
+.noticia-content h4,
+.noticia-content h5,
+.noticia-content h6 {
+  color: white !important;
+}

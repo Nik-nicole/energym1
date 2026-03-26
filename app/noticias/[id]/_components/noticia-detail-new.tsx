@@ -7,12 +7,18 @@ import Image from "next/image"
 import { NoticiaWithSede } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 
+import { useState, useEffect } from "react"
+
 interface NoticiaDetailProps {
   noticia: NoticiaWithSede
 }
 
 export function NoticiaDetail({ noticia }: NoticiaDetailProps) {
-  const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+  const [shareUrl, setShareUrl] = useState('')
+  
+  useEffect(() => {
+    setShareUrl(window.location.href)
+  }, [])
 
   const handleShare = async (platform?: string) => {
     const url = shareUrl
@@ -46,7 +52,15 @@ export function NoticiaDetail({ noticia }: NoticiaDetailProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
+    <>
+      <style>{`
+        .noticia-content, .noticia-content *, .noticia-content p, .noticia-content span, 
+        .noticia-content div, .noticia-content h1, .noticia-content h2, .noticia-content h3, 
+        .noticia-content h4, .noticia-content h5, .noticia-content h6 {
+          color: white !important;
+        }
+      `}</style>
+      <div className="min-h-screen bg-[#0A0A0A]">
       {/* Banner Image at the very top */}
       {noticia.imagen && (
         <motion.div
@@ -154,7 +168,7 @@ export function NoticiaDetail({ noticia }: NoticiaDetailProps) {
                 {noticia.resumen && (
                   <div className="mb-8">
                     <h2 className="text-2xl font-bold text-white mb-4">Resumen</h2>
-                    <p className="text-lg text-gray-300 leading-relaxed">
+                    <p className="text-lg text-white leading-relaxed">
                       {noticia.resumen}
                     </p>
                   </div>
@@ -164,7 +178,7 @@ export function NoticiaDetail({ noticia }: NoticiaDetailProps) {
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-white mb-4">Artículo completo</h2>
                   <div 
-                    className="text-gray-300 leading-relaxed space-y-4"
+                    className="noticia-content text-white leading-relaxed space-y-4"
                     dangerouslySetInnerHTML={{ __html: noticia.contenido }}
                   />
                 </div>
@@ -265,5 +279,6 @@ export function NoticiaDetail({ noticia }: NoticiaDetailProps) {
         </motion.div>
       </div>
     </div>
+    </>
   )
 }
