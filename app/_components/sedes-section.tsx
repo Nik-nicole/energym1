@@ -17,6 +17,7 @@ interface Sede {
 }
 
 export function SedesSection({ sedes }: { sedes: Sede[] }) {
+  const [mounted, setMounted] = useState(false);
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { 
       align: 'start',
@@ -32,6 +33,10 @@ export function SedesSection({ sedes }: { sedes: Sede[] }) {
   
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const onNavButtonClick = useCallback(
     (index: number) => {
@@ -105,7 +110,7 @@ export function SedesSection({ sedes }: { sedes: Sede[] }) {
           </div>
 
           {/* Navigation Buttons */}
-          {(sedes?.length || 0) > 1 && (
+          {mounted && (sedes?.length || 0) > 1 && (
             <>
               <button
                 className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-[#141414]/80 backdrop-blur-sm border border-[#1E1E1E] text-white rounded-full p-2 hover:bg-[#D604E0]/20 transition-colors z-10"
@@ -123,10 +128,11 @@ export function SedesSection({ sedes }: { sedes: Sede[] }) {
               </button>
             </>
           )}
+
         </div>
 
         {/* Dots Navigation */}
-        {(sedes?.length || 0) > 1 && (
+        {mounted && (sedes?.length || 0) > 1 && (
           <div className="flex justify-center gap-2 mt-8">
             {scrollSnaps.map((_, index) => (
               <button

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, X, Save, Palette, FileText, AlertCircle } from "lucide-react";
+import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, ChevronLeft, ChevronRight, X, Save, Palette, FileText, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -87,9 +87,85 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
 
   console.log("¿Es VIP por lógica mejorada?:", isVipPlan);
 
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/user/profile-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al subir imagen');
+      }
+
+      toast.success('Imagen de perfil actualizada');
+      // Recargar página para mostrar nueva imagen
+      window.location.reload();
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al subir imagen');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const scrollToPlans = () => {
     const plansTitle = document.querySelector('[data-plans-title]');
     plansTitle?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const [currentOrderPage, setCurrentOrderPage] = useState(1);
+  const ordersPerPage = 5;
+
+  // Paginación de órdenes
+  const totalOrderPages = Math.ceil((orders?.length || 0) / ordersPerPage);
+  const paginatedOrders = orders?.slice(
+    (currentOrderPage - 1) * ordersPerPage,
+    currentOrderPage * ordersPerPage
+  ) || [];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PAID':
+      case 'COMPLETED':
+        return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'PENDING':
+        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'CANCELLED':
+        return 'bg-red-500/20 text-red-400 border-red-500/30';
+      default:
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'PAID':
+      case 'COMPLETED':
+        return 'Pagado';
+      case 'PENDING':
+        return 'Pendiente';
+      case 'CANCELLED':
+        return 'Cancelado';
+      default:
+        return status;
+    }
   };
 
   return (
@@ -107,20 +183,20 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
 
       <div className="max-w-5xl mx-auto px-4">
         {/* FOTO DE PERFIL */}
-        <div className="relative -mt-16 mb-6">
-          {/* Coronita para usuarios VIP - fuera del contenedor */}
+        <div className="relative -mt-16 mb-6 w-32 h-32 mx-auto">
+          {/* Coronita para usuarios VIP - fuera del div de la imagen, encima */}
           {hasActivePlan && isVipPlan && (
-            <div className="absolute -top-4 right-1/6 translate-x-8 z-20">
+            <div className="absolute -top-1 right-0 z-30">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-full blur-sm opacity-50"></div>
-                <div className="relative bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-full p-1.5 shadow-lg">
+                <div className="relative bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-full p-1.5 shadow-lg border-2 border-zinc-950">
                   <Crown className="w-4 h-4 text-white" />
                 </div>
               </div>
             </div>
           )}
           
-          <div className="w-32 h-32 bg-zinc-800 rounded-full border-4 border-zinc-950 shadow-xl overflow-hidden mx-auto relative">
+          <div className="w-full h-full bg-zinc-800 rounded-full border-4 border-zinc-950 shadow-xl overflow-hidden relative">
             {user?.image ? (
               <img
                 src={user.image}
@@ -135,16 +211,21 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
           </div>
           
           <button
-            onClick={() => console.log("Subir imagen")}
-            className="absolute bottom-0 right-1/2 translate-x-16 p-2 bg-[#0047AB] hover:bg-[#0047AB]/80 rounded-full transition-colors"
+            onClick={handleImageClick}
+            disabled={uploadingImage}
+            className="absolute bottom-0 right-1/2 translate-x-16 p-2 bg-[#0047AB] hover:bg-[#0047AB]/80 disabled:bg-gray-600 rounded-full transition-colors"
           >
-            <Camera className="w-4 h-4 text-white" />
+            {uploadingImage ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Camera className="w-4 h-4 text-white" />
+            )}
           </button>
           <input
-            id="profile-image-input"
+            ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/jpg,image/png,image/webp"
-            onChange={() => console.log("Imagen cambiada")}
+            onChange={handleImageUpload}
             className="hidden"
           />
         </div>
@@ -279,6 +360,99 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
               <Sparkles className="w-4 h-4" />
               Ver Planes Disponibles
             </button>
+          </div>
+        )}
+
+        {/* HISTORIAL DE COMPRAS */}
+        {(orders?.length || 0) > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                <ShoppingBag className="w-6 h-6 text-[#D604E0]" />
+                Historial de Compras
+              </h3>
+              <span className="text-gray-400 text-sm">
+                {orders?.length || 0} {orders?.length === 1 ? 'compra' : 'compras'} en total
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {paginatedOrders.map((order: any) => (
+                <div
+                  key={order.id}
+                  className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-zinc-800 rounded-lg flex items-center justify-center">
+                        {order.items?.[0]?.plan ? (
+                          <Crown className="w-6 h-6 text-[#D604E0]" />
+                        ) : (
+                          <Package className="w-6 h-6 text-[#040AE0]" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">
+                          {order.items?.[0]?.product?.nombre || order.items?.[0]?.plan?.nombre || 'Compra'}
+                        </p>
+                        <p className="text-gray-400 text-sm">
+                          Orden #{order.orderNumber}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 md:text-right">
+                      <div>
+                        <p className="text-white font-bold">
+                          {formatPrice(order.totalAmount || 0)}
+                        </p>
+                        <p className="text-gray-400 text-sm">
+                          {formatDate(order.createdAt)}
+                        </p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
+                        {getStatusText(order.status)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Paginación */}
+            {totalOrderPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-6">
+                <button
+                  onClick={() => setCurrentOrderPage(p => Math.max(1, p - 1))}
+                  disabled={currentOrderPage === 1}
+                  className="p-2 rounded-lg bg-zinc-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-700 transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                {Array.from({ length: totalOrderPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentOrderPage(page)}
+                    className={`w-10 h-10 rounded-lg font-medium transition-colors ${
+                      currentOrderPage === page
+                        ? 'bg-[#D604E0] text-white'
+                        : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentOrderPage(p => Math.min(totalOrderPages, p + 1))}
+                  disabled={currentOrderPage === totalOrderPages}
+                  className="p-2 rounded-lg bg-zinc-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-700 transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
         )}
 
