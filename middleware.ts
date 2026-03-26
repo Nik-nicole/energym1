@@ -1,50 +1,33 @@
-import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default withAuth(
-  function middleware(req) {
-    const token = req.nextauth.token;
-    const isAdmin = token?.role === "ADMIN";
-    const pathname = req.nextUrl.pathname;
+// Middleware simplificado - solo verifica cookie de sesión
+export function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  
+  // Verificar cookie de sesión de NextAuth
+  const sessionCookie = request.cookies.get("next-auth.session-token") || 
+                        request.cookies.get("__Secure-next-auth.session-token");
+  
+  console.log("[Middleware] Path:", pathname);
+  console.log("[Middleware] Cookie exists:", !!sessionCookie);
 
-    // Si está intentando acceder a rutas de admin
-    if (pathname.startsWith("/admin")) {
-      // Si no está autenticado o no es admin, redirigir al login
-      if (!token || !isAdmin) {
-        const loginUrl = new URL("/login", req.url);
-        loginUrl.searchParams.set("error", "AccessDenied");
-        loginUrl.searchParams.set("message", !token ? "Debes iniciar sesión" : "Acceso denegado: solo administradores");
-        return NextResponse.redirect(loginUrl);
-      }
+  // Solo verificar si hay cookie para rutas /admin
+  if (pathname.startsWith("/admin")) {
+    if (!sessionCookie) {
+      console.log("[Middleware] No session cookie, redirecting to login");
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("error", "AccessDenied");
+      loginUrl.searchParams.set("message", "Debes iniciar sesión");
+      return NextResponse.redirect(loginUrl);
     }
-
-    // Para logout, no hacer verificaciones adicionales
-    if (pathname === "/api/auth/signout") {
-      return NextResponse.next();
-    }
-
-    return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: ({ token }) => {
-        // Permitir acceso a todas las rutas, el middleware manejará la lógica
-        return true;
-      },
-    },
+    // Si hay cookie, dejar pasar - la verificación de ADMIN se hace en la página
+    console.log("[Middleware] Session cookie exists, allowing");
   }
-);
+
+  return NextResponse.next();
+}
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes except auth)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public (public files)
-     */
-    "/((?!api|_next/static|_next/image|favicon.ico|public).*)",
-  ],
+  matcher: ["/admin/:path*"],
 };

@@ -1,7 +1,7 @@
 import prisma from "@/lib/db";
 import { AdminLayout } from "./_components/admin-layout";
 import { AdminDashboard } from "./_components/admin-dashboard";
-import { SimpleValidationTest } from "./_components/simple-validation-test";
+import { AuthGuard } from "@/components/auth-guard";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -89,8 +89,10 @@ export default async function AdminPage() {
   const data = await getSafeDashboardData();
 
   return (
-    <AdminLayout>
-      <AdminDashboard stats={data?.stats || defaultStats} recentUsers={data?.recentUsers || []} />
-    </AdminLayout>
+    <AuthGuard requireAdmin={true}>
+      <AdminLayout>
+        <AdminDashboard stats={data?.stats || defaultStats} recentUsers={data?.recentUsers || []} />
+      </AdminLayout>
+    </AuthGuard>
   );
 }

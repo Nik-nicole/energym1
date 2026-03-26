@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, Loader2, AlertCircle } from "lucide-react";
+import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 export function LoginForm() {
   const router = useRouter();
@@ -12,6 +12,7 @@ export function LoginForm() {
   const { data: session } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -99,13 +100,21 @@ export function LoginForm() {
           <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             id="password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full pl-12 pr-4 py-3 bg-[#141414] border border-white/10 rounded-lg focus:border-[#D604E0] focus:ring-1 focus:ring-[#D604E0] outline-none transition-colors text-white"
+            className="w-full pl-12 pr-12 py-3 bg-[#141414] border border-white/10 rounded-lg focus:border-[#D604E0] focus:ring-1 focus:ring-[#D604E0] outline-none transition-colors text-white"
             placeholder="••••••••"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+            tabIndex={-1}
+          >
+            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
         </div>
       </div>
 
