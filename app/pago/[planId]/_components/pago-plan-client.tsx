@@ -43,7 +43,8 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/payments/simulate", {
+      // Llamar al endpoint de Bold para generar el pago
+      const response = await fetch("/api/payments/bold/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -53,20 +54,32 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.paymentUrl) {
-          window.location.href = data.paymentUrl;
-        } else {
-          alert("No se recibió la URL de pago");
-        }
-      } else {
-        const error = await response.json();
-        alert(error.error || "Error al preparar el pago");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al preparar el pago");
       }
+
+      const { paymentUrl, planOrderId } = data;
+
+      // Guardar el planOrderId en sessionStorage para el callback
+      sessionStorage.setItem("currentPlanOrderId", planOrderId);
+
+      console.log("[Bold] Payment URL recibida:", paymentUrl);
+      
+      // Abrir pasarela de pago de Bold en nueva pestaña
+      const newWindow = window.open(paymentUrl, '_blank');
+      
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        // Popup bloqueado - mostrar mensaje al usuario
+        alert('Por favor permite las ventanas emergentes para continuar con el pago, o haz clic derecho en el botón y selecciona "Abrir enlace en nueva pestaña"');
+        setLoading(false);
+        return;
+      }
+
     } catch (error) {
-      alert("Error al procesar el pago");
-    } finally {
+      console.error("[Bold] Error al procesar el pago:", error);
+      alert(error instanceof Error ? error.message : "Error al procesar el pago");
       setLoading(false);
     }
   };

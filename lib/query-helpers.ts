@@ -128,6 +128,7 @@ export const productQueries = {
         select: {
           id: true,
           nombre: true,
+          descripcion: true,
           precio: true,
           imagen: true,
           categoria: true,
@@ -237,6 +238,7 @@ export const sedeQueries = {
         id: true,
         nombre: true,
         direccion: true,
+        ciudad: true,
         telefono: true,
         email: true,
         imagenes: true,
@@ -254,6 +256,7 @@ export const sedeQueries = {
         id: true,
         nombre: true,
         direccion: true,
+        ciudad: true,
         telefono: true,
         email: true,
         imagenes: true,
@@ -360,6 +363,7 @@ export const noticiaQueries = {
         imagen: true,
         fechaPublicacion: true,
         destacado: true,
+        esPromocion: true,
         sede: {
           select: {
             nombre: true,

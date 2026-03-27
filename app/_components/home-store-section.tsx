@@ -9,14 +9,14 @@ interface Producto {
   nombre: string;
   descripcion: string;
   precio: number;
-  imagen?: string;
+  imagen: string | null;
   categoria: string;
   stock: number;
   destacado: boolean;
   sede: {
     id: string;
     nombre: string;
-  };
+  } | null;
 }
 
 interface HomeStoreSectionProps {
@@ -120,7 +120,7 @@ export function HomeStoreSection({ productos }: HomeStoreSectionProps) {
                       </span>
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3 h-3 text-gray-400" />
-                        <span className="text-xs text-gray-400">{producto.sede.nombre}</span>
+                        <span className="text-xs text-gray-400">{producto.sede?.nombre || "Todas las sedes"}</span>
                       </div>
                     </div>
 

@@ -25,24 +25,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Buscar la orden
-    const order = await prisma.order.findUnique({
+    // Buscar el pago con sus órdenes relacionadas
+    const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
-        items: true,
-        user: true,
+        planOrders: { include: { user: true } },
+        productOrders: { include: { user: true } },
       },
     });
 
-    if (!order) {
+    if (!payment) {
       return NextResponse.json(
-        { error: "Orden no encontrada" },
+        { error: "Pago no encontrado" },
         { status: 404 }
       );
     }
 
-    // Verificar que la orden pertenece al usuario
-    if (order.userId !== session.user.id) {
+    // Verificar que el pago pertenece al usuario
+    const allOrders = [...payment.planOrders, ...payment.productOrders];
+    const userOwnsPayment = allOrders.some(order => order.userId === session.user.id);
+    
+    if (!userOwnsPayment) {
       return NextResponse.json(
         { error: "No autorizado" },
         { status: 401 }
@@ -54,30 +57,49 @@ export async function POST(request: NextRequest) {
     const paymentSuccessful = true;
 
     if (paymentSuccessful) {
-      // Actualizar el estado de la orden
-      const updatedOrder = await prisma.order.update({
+      // Actualizar el estado del pago
+      const updatedPayment = await prisma.payment.update({
         where: { id: paymentId },
         data: {
-          status: "CONFIRMED",
-          paymentStatus: "PAID",
+          status: "PAID",
         },
       });
 
-      // Aquí podrías enviar email de confirmación, notificaciones, etc.
+      // Actualizar el estado de las órdenes relacionadas
+      if (payment.planOrders.length > 0) {
+        await prisma.planOrder.updateMany({
+          where: { paymentId: paymentId },
+          data: { status: "CONFIRMED" },
+        });
+      }
+      
+      if (payment.productOrders.length > 0) {
+        await prisma.productOrder.updateMany({
+          where: { paymentId: paymentId },
+          data: { status: "CONFIRMED" },
+        });
+      }
 
       return NextResponse.json({
         success: true,
-        order: updatedOrder,
+        payment: updatedPayment,
         message: "Pago procesado exitosamente",
       });
     } else {
       // Si el pago falla
-      await prisma.order.update({
+      await prisma.payment.update({
         where: { id: paymentId },
-        data: {
-          status: "CANCELLED",
-          paymentStatus: "FAILED",
-        },
+        data: { status: "FAILED" },
+      });
+
+      await prisma.planOrder.updateMany({
+        where: { paymentId: paymentId },
+        data: { status: "CANCELLED" },
+      });
+      
+      await prisma.productOrder.updateMany({
+        where: { paymentId: paymentId },
+        data: { status: "CANCELLED" },
       });
 
       return NextResponse.json(

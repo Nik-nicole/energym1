@@ -25,34 +25,43 @@ export async function GET(
 
     const { paymentId } = params;
 
-    // Buscar el pago
+    // Buscar el pago con sus órdenes relacionadas
     const payment = await prisma.payment.findFirst({
       where: {
         id: paymentId,
-        order: {
-          userId: user.id,
-        },
+        OR: [
+          { planOrders: { some: { userId: user.id } } },
+          { productOrders: { some: { userId: user.id } } },
+        ],
       },
       include: {
-        order: {
+        planOrders: {
           include: {
-            items: {
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    nombre: true,
-                    imagen: true,
-                  },
-                },
-              },
-            },
-            user: {
+            plan: {
               select: {
-                firstName: true,
-                lastName: true,
+                id: true,
+                nombre: true,
               },
             },
+          },
+        },
+        productOrders: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                nombre: true,
+                imagen: true,
+              },
+            },
+          },
+        },
+        sede: {
+          select: {
+            nombre: true,
+            direccion: true,
+            ciudad: true,
+            telefono: true,
           },
         },
       },
@@ -63,6 +72,8 @@ export async function GET(
     }
 
     // Formatear los datos para el frontend
+    const primaryOrder = payment.productOrders[0] || payment.planOrders[0];
+    
     const paymentData = {
       id: payment.id,
       transactionId: payment.transactionId,
@@ -70,25 +81,25 @@ export async function GET(
       status: payment.status,
       paymentMethod: payment.paymentMethod,
       createdAt: payment.createdAt,
-      order: {
-        id: payment.order.id,
-        orderNumber: payment.order.orderNumber,
-        totalAmount: payment.order.totalAmount,
-        status: payment.order.status,
-        paymentStatus: payment.order.paymentStatus,
-        items: payment.order.items.map(item => ({
-          id: item.id,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
-          product: item.product,
-        })),
-      },
+      productOrders: payment.productOrders.map(item => ({
+        id: item.id,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        product: item.product,
+      })),
+      planOrders: payment.planOrders.map(item => ({
+        id: item.id,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        plan: item.plan,
+      })),
       shippingAddress: {
-        name: `${payment.order.user.firstName} ${payment.order.user.lastName || ""}`,
-        address: (payment.order.shippingAddress as any)?.address || "",
-        city: (payment.order.shippingAddress as any)?.city || "",
-        phone: (payment.order.shippingAddress as any)?.phone || "",
+        name: user.firstName + " " + (user.lastName || ""),
+        address: primaryOrder?.shippingAddress || "",
+        city: primaryOrder?.shippingCity || "",
+        phone: primaryOrder?.shippingPhone || "",
       },
     };
 
