@@ -27,7 +27,6 @@ interface PlanCardProps {
     destacado: boolean;
     activo: boolean;
     sedes?: Array<{
-      id: string;
       sede: {
         id: string;
         nombre: string;
@@ -66,9 +65,10 @@ export function PlanCard({ plan, index, hasActivePlan, activePlan }: PlanCardPro
     // Si el usuario no tiene sede asignada, puede comprar cualquier plan
     if (!session.user.sedeId) return true;
     
-    // Verificar si el plan está disponible en la sede del usuario
-    if (!plan.sedes || plan.sedes.length === 0) return true;
+    // Si el plan no tiene sedes asignadas, no está disponible
+    if (!plan.sedes || plan.sedes.length === 0) return false;
     
+    // Verificar si el plan está disponible en la sede del usuario
     return plan.sedes.some(sede => sede.sede.id === session.user.sedeId);
   };
 

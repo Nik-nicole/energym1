@@ -255,15 +255,30 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       console.error("Error creating user:", error);
       
       let errorMessage = "Error al crear usuario";
+      let errorDetails = "";
       
       if (error instanceof Error) {
         if (error.message.includes("ya existe")) {
-          errorMessage = "El email ya está registrado. Por favor usa otro email.";
+          errorMessage = "El email ya está registrado";
+          errorDetails = "Por favor usa otro email o verifica si el usuario ya existe en el sistema.";
+        } else if (error.message.includes("contraseña")) {
+          errorMessage = "Error en la contraseña";
+          errorDetails = "La contraseña debe tener al menos 6 caracteres.";
+        } else if (error.message.includes("email")) {
+          errorMessage = "Email inválido";
+          errorDetails = "Por favor ingresa un email válido.";
+        } else if (error.message.includes("sede")) {
+          errorMessage = "Error con la sede";
+          errorDetails = "La sede seleccionada no es válida o no está disponible.";
         } else {
-          errorMessage = error.message;
+          errorMessage = "Error al crear usuario";
+          errorDetails = error.message;
         }
       }
       
+      // Mostrar modal de validación en lugar de solo toast
+      setValidationMessage(`${errorMessage}${errorDetails ? `\n\n${errorDetails}` : ""}`);
+      setShowValidationModal(true);
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

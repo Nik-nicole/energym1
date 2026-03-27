@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -25,6 +25,8 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
   const router = useRouter();
   
   const [loading, setLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
+  const popupRef = useRef<Window | null>(null);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -33,6 +35,25 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
       minimumFractionDigits: 0,
     }).format(price);
   };
+
+  // Detectar cuando el usuario regresa del popup de pago
+  useEffect(() => {
+    if (paymentStatus !== 'processing' || !popupRef.current) return;
+
+    const interval = setInterval(() => {
+      if (popupRef.current?.closed) {
+        clearInterval(interval);
+        setPaymentStatus('completed');
+        setLoading(false);
+        // Redirigir a la página principal después de 2 segundos
+        setTimeout(() => {
+          router.push('/');
+        }, 2000);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [paymentStatus, router]);
 
   const handleProceedToPayment = async () => {
     if (!session) {
@@ -67,13 +88,17 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
 
       console.log("[Bold] Payment URL recibida:", paymentUrl);
       
+      setPaymentStatus('processing');
+      
       // Abrir pasarela de pago de Bold en nueva pestaña
       const newWindow = window.open(paymentUrl, '_blank');
+      popupRef.current = newWindow;
       
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
         // Popup bloqueado - mostrar mensaje al usuario
         alert('Por favor permite las ventanas emergentes para continuar con el pago, o haz clic derecho en el botón y selecciona "Abrir enlace en nueva pestaña"');
         setLoading(false);
+        setPaymentStatus('idle');
         return;
       }
 
@@ -157,10 +182,15 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
                   
                   <button
                     onClick={handleProceedToPayment}
-                    disabled={loading}
+                    disabled={loading || paymentStatus === 'completed'}
                     className="w-full py-4 gradient-bg rounded-2xl font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {loading ? (
+                    {paymentStatus === 'completed' ? (
+                      <>
+                        <Check className="w-5 h-5" />
+                        Pago completado - Redirigiendo...
+                      </>
+                    ) : loading ? (
                       "Preparando pago..."
                     ) : (
                       <>

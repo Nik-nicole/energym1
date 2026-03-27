@@ -16,6 +16,12 @@ interface Plan {
   esVip: boolean;
   destacado: boolean;
   activo: boolean;
+  sedes?: Array<{
+    sede: {
+      id: string;
+      nombre: string;
+    };
+  }>;
 }
 
 interface PlanesSectionProps {

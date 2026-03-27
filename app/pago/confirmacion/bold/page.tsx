@@ -10,15 +10,15 @@ export const dynamic = "force-dynamic";
 export default async function BoldConfirmacionPage({
   searchParams,
 }: {
-  searchParams: {
+  searchParams: Promise<{
     planOrderId?: string;
     transaction_id?: string;
     status?: string;
     bold_reference?: string;
     reference?: string;
-  };
+  }>;
 }) {
-  const { planOrderId, transaction_id, status, bold_reference, reference } = searchParams;
+  const { planOrderId, transaction_id, status, bold_reference, reference } = await searchParams;
 
   if (!planOrderId) {
     redirect("/perfil");
