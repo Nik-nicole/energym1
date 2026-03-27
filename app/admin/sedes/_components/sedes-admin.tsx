@@ -733,7 +733,7 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                           <CreditCard className="h-4 w-4" />
                           <div>
                             <div className="font-medium">{gateway.nombre}</div>
-                            <div className="text-xs text-[#A0A0A0]">{gateway.tipo} - {gateway.cuentaBanco}</div>
+                            <div className="text-xs text-[#A0A0A0]">{gateway.tipo}</div>
                           </div>
                         </div>
                       </SelectItem>
@@ -1341,8 +1341,8 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
                       <div className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
                         <div>
-                          <div className="font-medium">{gateway.nombre}</div>
-                          <div className="text-xs text-[#A0A0A0]">{gateway.tipo} - {gateway.cuentaBanco}</div>
+                          <div className="font-medium">{gateway.cuentaBanco}</div>
+                          <div className="text-xs text-[#A0A0A0]">{gateway.tipo}</div>
                         </div>
                       </div>
                     </SelectItem>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { CreditCard, User, Mail, Calendar, Shield, Check, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Shield, Check, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 interface Plan {
@@ -25,12 +25,6 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
   const router = useRouter();
   
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    cardName: "",
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-  });
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -40,9 +34,7 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
     }).format(price);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleProceedToPayment = async () => {
     if (!session) {
       router.push("/login");
       return;
@@ -51,36 +43,32 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/payments/create", {
+      const response = await fetch("/api/payments/simulate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           planId: plan.id,
-          amount: plan.precio,
-          paymentMethod: "CREDIT_CARD",
-          cardName: formData.cardName,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        router.push(`/pago/confirmacion/${data.paymentId}`);
+        if (data.paymentUrl) {
+          window.location.href = data.paymentUrl;
+        } else {
+          alert("No se recibió la URL de pago");
+        }
       } else {
         const error = await response.json();
-        alert(error.error || "Error al procesar el pago");
+        alert(error.error || "Error al preparar el pago");
       }
     } catch (error) {
       alert("Error al procesar el pago");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   return (
@@ -141,93 +129,39 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
                 </div>
               </div>
 
-              {/* Formulario de Pago */}
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Nombre en la tarjeta
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="cardName"
-                      value={formData.cardName}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
-                      placeholder="Juan Pérez"
-                      required
-                    />
+              {/* Botón de Pago con Bold */}
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-2xl p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                      <ExternalLink className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium">Pago seguro con Bold</h3>
+                      <p className="text-gray-400 text-sm">Serás redirigido a la pasarela de pago</p>
+                    </div>
                   </div>
+                  
+                  <button
+                    onClick={handleProceedToPayment}
+                    disabled={loading}
+                    className="w-full py-4 gradient-bg rounded-2xl font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      "Preparando pago..."
+                    ) : (
+                      <>
+                        <ExternalLink className="w-5 h-5" />
+                        Pagar {formatPrice(plan.precio * 1.19)}
+                      </>
+                    )}
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Número de tarjeta
-                  </label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="cardNumber"
-                      value={formData.cardNumber}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
-                      required
-                    />
-                  </div>
+                <div className="text-center text-gray-400 text-sm">
+                  <p>Al continuar, serás redirigido a Bold para completar tu pago de forma segura.</p>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Fecha de vencimiento
-                    </label>
-                    <input
-                      type="text"
-                      name="expiryDate"
-                      value={formData.expiryDate}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
-                      placeholder="MM/YY"
-                      maxLength={5}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      CVV
-                    </label>
-                    <input
-                      type="text"
-                      name="cvv"
-                      value={formData.cvv}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.05] rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all"
-                      placeholder="123"
-                      maxLength={3}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-4 gradient-bg rounded-2xl font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    "Procesando..."
-                  ) : (
-                    <>
-                      <Check className="w-5 h-5" />
-                      Pagar {formatPrice(plan.precio)}
-                    </>
-                  )}
-                </button>
-              </form>
+              </div>
             </div>
           </motion.div>
 
