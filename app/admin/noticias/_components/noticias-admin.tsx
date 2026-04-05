@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -146,10 +147,10 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
   };
 
   // Create noticia function
-  const handleCreate = async () => {
+  const handleCreate = async (data: NoticiaFormData) => {
     setIsLoading(true);
     try {
-      let imageUrl = formData.imagen;
+      let imageUrl = data.imagen;
 
       // Upload image if exists
       if (imagenFile) {
@@ -173,13 +174,15 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          ...formData, 
+          ...data, 
           imagen: imageUrl,
-          contenido: contentBlocks 
         }),
       });
 
-      if (!response.ok) throw new Error("Error al crear noticia");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Error desconocido" }));
+        throw new Error(errorData.error || "Error al crear noticia");
+      }
 
       const newNoticia = await response.json();
       setNoticiasList([newNoticia, ...noticiasList]);
@@ -187,7 +190,10 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
       resetForm();
       toast.success("Noticia creada exitosamente");
     } catch (error) {
-      toast.error("Error al crear noticia");
+      console.error("Error creating noticia:", error);
+      toast.error("Error al crear noticia", {
+        description: error instanceof Error ? error.message : "Verifica los datos e intenta nuevamente",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -213,7 +219,10 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
         body: JSON.stringify({ ...data, imagen: imageUrl }),
       });
 
-      if (!response.ok) throw new Error("Error al actualizar noticia");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Error desconocido" }));
+        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+      }
 
       const updatedNoticia = await response.json();
       setNoticiasList(noticiasList.map((n) => (n.id === updatedNoticia.id ? updatedNoticia : n)));
@@ -221,7 +230,10 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
       setEditingNoticia(null);
       toast.success("Noticia actualizada exitosamente");
     } catch (error) {
-      toast.error("Error al actualizar noticia");
+      console.error("Error updating noticia:", error);
+      toast.error("Error al actualizar noticia", {
+        description: error instanceof Error ? error.message : "Verifica los datos e intenta nuevamente",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -272,6 +284,9 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
           <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
             <DialogHeader>
               <DialogTitle className="gradient-text">Crear Nueva Noticia</DialogTitle>
+              <DialogDescription className="text-[#A0A0A0]">
+                Completa los campos para crear una nueva noticia o promoción.
+              </DialogDescription>
             </DialogHeader>
             
             <EnhancedNoticiaForm
@@ -291,6 +306,9 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
           <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto bg-[#141414] border-[#1E1E1E]">
             <DialogHeader>
               <DialogTitle className="gradient-text">Editar Noticia</DialogTitle>
+              <DialogDescription className="text-[#A0A0A0]">
+                Modifica los campos de la noticia existente.
+              </DialogDescription>
             </DialogHeader>
             {editingNoticia && (
               <EnhancedNoticiaForm
@@ -308,98 +326,84 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
         </Dialog>
       </div>
 
-      {/* Noticias List */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {/* Noticias List - Diseño Horizontal (2-3 por fila) */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         {noticiasList.map((noticia) => (
-          <Card key={noticia.id} className="bg-[#1A1A1A] border-[#2A2A2A] hover:border-[#D604E0]/50 transition-all duration-300 overflow-hidden rounded-xl">
-            {/* Header con imagen y badge */}
-            <div className="relative">
-              <div className="h-48 overflow-hidden">
-                {noticia.imagen ? (
-                  <img
-                    src={noticia.imagen}
-                    alt={noticia.titulo}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#D604E0]/20 to-[#3B82F6]/20 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-6xl font-bold text-white mb-2">DAYS</div>
-                      <div className="w-16 h-16 bg-white/20 rounded-lg flex items-center justify-center">
-                        <div className="w-12 h-12 bg-white/30 rounded flex items-center justify-center">
-                          <div className="text-2xl text-white">👥</div>
-                        </div>
-                      </div>
+          <Card key={noticia.id} className="bg-[#1A1A1A] border-[#2A2A2A] hover:border-[#D604E0]/50 transition-all duration-300 overflow-hidden rounded-2xl">
+            <div className="flex flex-col sm:flex-row">
+              {/* Imagen Izquierda (40%) */}
+              <div className="w-full sm:w-2/5 relative p-4 flex-shrink-0">
+                <div className="h-48 sm:h-full w-full rounded-xl overflow-hidden relative bg-[#0A0A0A] shadow-inner">
+                  {noticia.imagen ? (
+                    <img
+                      src={noticia.imagen}
+                      alt={noticia.titulo}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1E1E1E] to-[#0A0A0A]">
+                      <ImageIcon className="w-12 h-12 text-[#333]" />
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-              
-              {/* Badge de tipo */}
-              <div className="absolute top-3 right-3">
-                <div className="px-3 py-1 rounded-full text-xs font-semibold bg-[#D604E0] text-white">
-                  {noticia.esPromocion ? 'PROMOCIÓN' : noticia.destacado ? 'DESTACADO' : 'NOTICIA'}
+
+              {/* Contenido Derecha (60%) */}
+              <div className="w-full sm:w-3/5 p-6 flex flex-col">
+                {/* Badge de sede arriba derecha */}
+                <div className="flex justify-end mb-3">
+                  <span className="text-xs font-semibold tracking-wider text-[#D604E0] bg-[#D604E0]/10 px-3 py-1 rounded-full border border-[#D604E0]/20 uppercase">
+                    {noticia.sede?.nombre || "General"}
+                  </span>
+                </div>
+
+                {/* Título */}
+                <h3 className="text-2xl font-bold text-white mb-2 leading-tight">
+                  {noticia.esPromocion ? 'NUEVA SEDE' : noticia.titulo}
+                </h3>
+
+                {/* Descripción */}
+                <p className="text-sm text-gray-400 line-clamp-2 mb-4 flex-grow">
+                  {noticia.esPromocion ? 'Agregamos una nueva sede' : noticia.resumen || 'Sin descripción'}
+                </p>
+
+                {/* Iconos y fecha */}
+                <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
+                  <div className="flex gap-5 text-gray-500">
+                    <MessageCircle className="w-5 h-5" />
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs text-gray-600 font-medium">
+                    {new Date(noticia.fechaPublicacion).toLocaleDateString('es-CO', { 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })}
+                  </span>
+                </div>
+
+                {/* Botones de acción */}
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(noticia)}
+                    className="flex-1 border-[#D604E0]/50 text-[#D604E0] hover:bg-[#D604E0] hover:text-white transition-all duration-200"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(noticia.id)}
+                    className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar
+                  </Button>
                 </div>
               </div>
             </div>
-
-            <CardContent className="p-6">
-              {/* Título y descripción */}
-              <div className="mb-4">
-                <h3 className="text-2xl font-bold text-[#D604E0] mb-2">
-                  {noticia.esPromocion ? 'NUEVA SEDE' : noticia.titulo}
-                </h3>
-                <p className="text-sm text-gray-400">
-                  {noticia.esPromocion ? 'Agregamos una nueva sede' : noticia.resumen || 'Sin descripción'}
-                </p>
-              </div>
-
-              {/* Separador */}
-              <div className="border-t border-gray-700 my-4"></div>
-
-              {/* Fecha e interacciones */}
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-400">
-                  {new Date(noticia.fechaPublicacion).toLocaleDateString("es-CO", { 
-                    day: 'numeric', 
-                    month: 'long' 
-                  })}
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors cursor-pointer">
-                    <Heart className="h-4 w-4" />
-                  </div>
-                  <div className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors cursor-pointer">
-                    <MessageCircle className="h-4 w-4" />
-                  </div>
-                  <div className="flex items-center gap-1 text-gray-400 hover:text-white transition-colors cursor-pointer">
-                    <Share2 className="h-4 w-4" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Botones de acción */}
-              <div className="flex gap-2 mt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEdit(noticia)}
-                  className="flex-1 border-[#D604E0]/50 text-[#D604E0] hover:bg-[#D604E0] hover:text-white transition-all duration-200"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDelete(noticia.id)}
-                  className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Eliminar
-                </Button>
-              </div>
-            </CardContent>
           </Card>
         ))}
       </div>

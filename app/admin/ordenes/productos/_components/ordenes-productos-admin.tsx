@@ -89,7 +89,7 @@ interface Sede {
 interface ProductOrder {
   id: string;
   userId: string;
-  productId: string;
+  productId: string | null;
   sedeId: string;
   quantity: number;
   unitPrice: number;
@@ -98,9 +98,16 @@ interface ProductOrder {
   createdAt: Date;
   updatedAt: Date;
   user: User;
-  product: Product;
+  product: Product | null;
   sede: Sede;
   payment?: Payment;
+  items?: {
+    id: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    product: Product;
+  }[];
 }
 
 interface OrdenesProductosAdminProps {
@@ -204,11 +211,29 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
         email: order.user.email,
         phone: "No disponible"
       },
-      product: {
+      product: order.items && order.items.length > 0 ? {
+        name: `${order.items.length} productos`,
+        category: "Varios",
+        description: order.items.map(i => `${i.product.nombre} (x${i.quantity})`).join(', '),
+        image: order.items[0]?.product.imagen || "",
+        quantity: order.items.reduce((sum, i) => sum + i.quantity, 0),
+        unitPrice: formatCurrency(order.unitPrice),
+        subtotal: formatCurrency(order.items.reduce((sum, i) => sum + (i.unitPrice * i.quantity), 0)),
+        total: formatCurrency(order.totalPrice)
+      } : order.product ? {
         name: order.product.nombre,
         category: order.product.categoria,
         description: order.product.descripcion || "Producto de alta calidad",
         image: order.product.imagen || "",
+        quantity: order.quantity,
+        unitPrice: formatCurrency(order.unitPrice),
+        subtotal: formatCurrency(order.unitPrice * order.quantity),
+        total: formatCurrency(order.totalPrice)
+      } : {
+        name: "Producto no disponible",
+        category: "-",
+        description: "-",
+        image: "",
         quantity: order.quantity,
         unitPrice: formatCurrency(order.unitPrice),
         subtotal: formatCurrency(order.unitPrice * order.quantity),
@@ -243,6 +268,9 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
     switch (status) {
       case "PENDING":
         return <div className="w-3 h-3 rounded-full bg-gray-500" />;
+      case "PAID":
+      case "CONFIRMED":
+        return <div className="w-3 h-3 rounded-full bg-green-500" />;
       case "PACKED":
         return <div className="w-3 h-3 rounded-full bg-green-500" />;
       case "SHIPPED":
@@ -258,20 +286,50 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
 
   // Función para obtener el color del punto según el estado de la orden
   const getStatusIndicatorForOrder = (order: ProductOrder, columnIndex: number) => {
+    // Solo renderizar en cliente
+    if (!mounted) {
+      return <div className="w-3 h-3 rounded-full bg-gray-500 mx-auto" />;
+    }
+    
     if (order.status === "CANCELLED") {
       return <div className="w-3 h-3 rounded-full bg-red-500 mx-auto" />;
     }
     
+    // Estados que indican que la orden está pagada
+    const paidStatuses = ["PAID", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"];
+    const isPaid = paidStatuses.includes(order.status);
+    
     // Lógica específica para cada columna
     switch (columnIndex) {
       case 0: // Pagado
-        return getStatusIndicator(order.status !== "PENDING" ? "DELIVERED" : "PENDING");
+        return (
+          <div 
+            className="w-3 h-3 rounded-full mx-auto" 
+            style={{ backgroundColor: isPaid ? '#22C55E' : '#6B7280' }}
+            title={`Status: ${order.status}, isPaid: ${isPaid}`}
+          />
+        );
       case 1: // Verificado
-        return getStatusIndicator(["PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? "DELIVERED" : "PENDING");
+        return (
+          <div 
+            className="w-3 h-3 rounded-full mx-auto" 
+            style={{ backgroundColor: ["PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? '#22C55E' : '#6B7280' }}
+          />
+        );
       case 2: // Empacado
-        return getStatusIndicator(["PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? "DELIVERED" : "PENDING");
+        return (
+          <div 
+            className="w-3 h-3 rounded-full mx-auto" 
+            style={{ backgroundColor: ["PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? '#22C55E' : '#6B7280' }}
+          />
+        );
       case 3: // Enviado
-        return getStatusIndicator(["SHIPPED", "DELIVERED"].includes(order.status) ? "DELIVERED" : "PENDING");
+        return (
+          <div 
+            className="w-3 h-3 rounded-full mx-auto" 
+            style={{ backgroundColor: ["SHIPPED", "DELIVERED"].includes(order.status) ? '#22C55E' : '#6B7280' }}
+          />
+        );
       default:
         return <div className="w-3 h-3 rounded-full bg-gray-500 mx-auto" />;
     }
@@ -332,11 +390,12 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
   useEffect(() => {
     const filtered = productOrders.filter((order) => {
       const searchLower = searchTerm.toLowerCase();
+      const productNames = order.items?.map(i => i.product.nombre).join(' ') || order.product?.nombre || '';
       return (
         order.user.firstName.toLowerCase().includes(searchLower) ||
         order.user.lastName?.toLowerCase().includes(searchLower) ||
         order.user.email.toLowerCase().includes(searchLower) ||
-        order.product.nombre.toLowerCase().includes(searchLower) ||
+        productNames.toLowerCase().includes(searchLower) ||
         order.sede.nombre.toLowerCase().includes(searchLower) ||
         order.id.toLowerCase().includes(searchLower)
       );
@@ -382,11 +441,12 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
     if (searchTerm) {
       filtered = filtered.filter((order) => {
         const searchLower = searchTerm.toLowerCase();
+        const productNames = order.items?.map(i => i.product.nombre).join(' ') || order.product?.nombre || '';
         return (
           order.user.firstName.toLowerCase().includes(searchLower) ||
           order.user.lastName?.toLowerCase().includes(searchLower) ||
           order.user.email.toLowerCase().includes(searchLower) ||
-          order.product.nombre.toLowerCase().includes(searchLower) ||
+          productNames.toLowerCase().includes(searchLower) ||
           order.sede.nombre.toLowerCase().includes(searchLower) ||
           order.id.toLowerCase().includes(searchLower)
         );
@@ -642,9 +702,24 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
                         </div>
                       </TableCell>
                       <TableCell className="text-[#F8F8F8]">
-                        <div className="max-w-32">
-                          <p className="font-medium truncate">{order.product.nombre}</p>
-                          <p className="text-xs text-[#A0A0A0] truncate">{order.product.categoria}</p>
+                        <div className="max-w-40">
+                          {order.items && order.items.length > 0 ? (
+                            <div className="space-y-1">
+                              {order.items.map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-1">
+                                  <span className="font-medium truncate text-sm">{item.product.nombre}</span>
+                                  <span className="text-xs text-[#A0A0A0]">x{item.quantity}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : order.product ? (
+                            <div>
+                              <p className="font-medium truncate">{order.product.nombre}</p>
+                              <p className="text-xs text-[#A0A0A0] truncate">{order.product.categoria}</p>
+                            </div>
+                          ) : (
+                            <span className="text-[#A0A0A0] text-sm">-</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-[#F8F8F8] text-center font-medium">
@@ -713,7 +788,11 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#A0A0A0]">Producto:</span>
-                      <span className="text-white">{selectedOrder.product.nombre}</span>
+                      <span className="text-white">
+                        {selectedOrder.items && selectedOrder.items.length > 0 
+                          ? `${selectedOrder.items.length} productos`
+                          : selectedOrder.product?.nombre || 'N/A'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#A0A0A0]">Total:</span>

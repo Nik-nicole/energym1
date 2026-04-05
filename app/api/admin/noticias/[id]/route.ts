@@ -35,11 +35,16 @@ export async function PUT(
       );
     }
 
+    // Convertir contenido a JSON string si es un array
+    const contenidoFinal = Array.isArray(contenido) 
+      ? JSON.stringify(contenido) 
+      : contenido;
+
     const noticia = await prisma.noticia.update({
       where: { id: params.id },
       data: {
         titulo,
-        contenido,
+        contenido: contenidoFinal,
         resumen,
         imagen,
         sedeId: sedeId || null,

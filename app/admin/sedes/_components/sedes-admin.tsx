@@ -511,27 +511,40 @@ export function SedesAdmin({ sedes }: SedesAdminProps) {
       const imagenesUrls = (formData.imagenes || []).filter((url) => !url.startsWith('blob:'));
       console.log('Imágenes finales (solo Cloudinary):', imagenesUrls);
 
+      const payload = {
+        ...formData,
+        imagenes: imagenesUrls,
+        horario: horarioString,
+      };
+      
+      console.log('[Sede Update] Enviando payload:', JSON.stringify(payload, null, 2));
+
       const response = await fetch(`/api/admin/sedes/${editingSede.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          imagenes: imagenesUrls,
-          horario: horarioString,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error("Error al actualizar sede");
+      console.log('[Sede Update] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Sede Update] Error response:', errorText);
+        throw new Error("Error al actualizar sede");
+      }
 
       const updatedSede = await response.json();
+      console.log('[Sede Update] Sede actualizada:', updatedSede);
+      
       setSedesList(sedesList.map((s) => (s.id === updatedSede.id ? updatedSede : s)));
       setIsEditDialogOpen(false);
       setEditingSede(null);
       resetForm();
       toast.success("Sede actualizada exitosamente");
     } catch (error) {
+      console.error('[Sede Update] Error:', error);
       toast.error("Error al actualizar sede");
     } finally {
       setIsLoading(false);

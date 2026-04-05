@@ -95,10 +95,8 @@ export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
     if (emblaApi) emblaApi.scrollNext();
   }, [emblaApi]);
 
-  // Usar coordenadas si existen, si no usar la dirección
-  const mapSrc = sede?.latitud && sede?.longitud 
-    ? `https://www.google.com/maps?q=${sede.latitud},${sede.longitud}&z=15&output=embed`
-    : `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(sede?.direccion + ', ' + sede?.ciudad)}`;
+  // Usar siempre la dirección + ciudad para el mapa (igual que en el admin)
+  const mapSrc = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(sede?.direccion + ', ' + sede?.ciudad)}`;
   
   const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sede?.direccion + ', ' + sede?.ciudad)}`;
 
@@ -181,11 +179,11 @@ export function SedeDetailClient({ sede, planes, noticias }: SedeDetailProps) {
               transition={{ duration: 0.5 }}
             >
               <Link
-                href="/#sedes"
+                href="/"
                 className="inline-flex items-center gap-2 text-gray-300 hover:text-white mb-4 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Volver a sedes
+                Volver al inicio
               </Link>
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
                 {sede?.nombre ?? ""}

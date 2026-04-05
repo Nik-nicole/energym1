@@ -80,6 +80,16 @@ interface OrderData {
     unitPrice: string
     subtotal: string
     total: string
+    items?: {
+      name: string
+      description: string
+      category: string
+      image: string
+      quantity: number
+      unitPrice: string
+      subtotal: string
+      total: string
+    }[]
   }
   location: {
     name: string
@@ -459,16 +469,16 @@ export function OrderDetailModal({
                     '& .MuiStepIcon-root': {
                       color: '#2A2A2A',
                       '&.Mui-active': {
-                        color: '#D604E0',
+                        color: '#22C55E',
                       },
                       '&.Mui-completed': {
-                        color: '#D604E0',
+                        color: '#22C55E',
                       },
                     },
                     '& .MuiStepLabel-label': {
                       color: '#A0A0A0',
                       '&.Mui-active': {
-                        color: '#D604E0',
+                        color: '#22C55E',
                         fontWeight: 'bold',
                       },
                       '&.Mui-completed': {
@@ -479,10 +489,10 @@ export function OrderDetailModal({
                       borderColor: '#2A2A2A',
                     },
                     '& .MuiStepConnector-active .MuiStepConnector-line': {
-                      borderColor: '#D604E0',
+                      borderColor: '#22C55E',
                     },
                     '& .MuiStepConnector-completed .MuiStepConnector-line': {
-                      borderColor: '#D604E0',
+                      borderColor: '#22C55E',
                     },
                   }}
                 >
@@ -533,27 +543,63 @@ export function OrderDetailModal({
                   
                   {/* Product Info */}
                   <div className="flex flex-col gap-2 pt-3 border-t border-[#2A2A2A]">
-                    <span className="text-xs text-[#D604E0] font-medium">Producto</span>
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-16 size-16 rounded-lg bg-[#0A0A0A] flex items-center justify-center shrink-0 overflow-hidden border border-[#2A2A2A]">
-                        <img
-                          src={order.product.image}
-                          alt={order.product.name}
-                          className="size-full object-cover"
-                        />
+                    <span className="text-xs text-[#D604E0] font-medium">
+                      {order.product.items && order.product.items.length > 1 ? `${order.product.items.length} Productos` : "Producto"}
+                    </span>
+                    
+                    {/* Multiple products */}
+                    {order.product.items && order.product.items.length > 0 ? (
+                      <div className="flex flex-col gap-3">
+                        {order.product.items.map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-3 pb-3 border-b border-[#2A2A2A] last:border-0">
+                            <div className="w-16 h-16 rounded-lg bg-[#0A0A0A] flex items-center justify-center shrink-0 overflow-hidden border border-[#2A2A2A]">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="size-full object-cover"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1 flex-1 min-w-0">
+                              <span className="text-sm font-semibold text-white">{item.name}</span>
+                              <span className="text-xs text-[#D604E0] font-medium">{item.category}</span>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="text-xs text-[#A0A0A0]">Cant: {item.quantity}</span>
+                                <span className="text-xs text-white">{item.unitPrice} c/u</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2 border-t border-[#2A2A2A]">
+                          <InfoRow label="Total Cantidad" value={String(order.product.quantity)} />
+                          <InfoRow label="Subtotal" value={order.product.subtotal} />
+                          <InfoRow label="Total" value={order.product.total} highlight />
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-1 flex-1 min-w-0">
-                        <span className="text-sm font-semibold text-white">{order.product.name}</span>
-                        <span className="text-xs text-[#D604E0] font-medium">{order.product.category}</span>
-                        <span className="text-[11px] text-[#A0A0A0]">{order.product.description}</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2">
-                      <InfoRow label="Cantidad" value={String(order.product.quantity)} />
-                      <InfoRow label="Precio Unit." value={order.product.unitPrice} />
-                      <InfoRow label="Subtotal" value={order.product.subtotal} />
-                      <InfoRow label="Total" value={order.product.total} highlight />
-                    </div>
+                    ) : (
+                      /* Single product fallback */
+                      <>
+                        <div className="flex items-start gap-3">
+                          <div className="w-16 h-16 size-16 rounded-lg bg-[#0A0A0A] flex items-center justify-center shrink-0 overflow-hidden border border-[#2A2A2A]">
+                            <img
+                              src={order.product.image}
+                              alt={order.product.name}
+                              className="size-full object-cover"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1 flex-1 min-w-0">
+                            <span className="text-sm font-semibold text-white">{order.product.name}</span>
+                            <span className="text-xs text-[#D604E0] font-medium">{order.product.category}</span>
+                            <span className="text-[11px] text-[#A0A0A0]">{order.product.description}</span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2">
+                          <InfoRow label="Cantidad" value={String(order.product.quantity)} />
+                          <InfoRow label="Precio Unit." value={order.product.unitPrice} />
+                          <InfoRow label="Subtotal" value={order.product.subtotal} />
+                          <InfoRow label="Total" value={order.product.total} highlight />
+                        </div>
+                      </>
+                    )}
                   </div>
                   
                   {/* Payment Info */}

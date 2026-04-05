@@ -33,13 +33,16 @@ import {
   AlignRight,
   AlignJustify,
   Image,
+  ImageIcon,
   Eye,
   Save,
   Send,
   Plus,
   Trash2,
   Palette,
-  Upload
+  Upload,
+  MessageCircle,
+  Share2
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -102,6 +105,7 @@ export function EnhancedNoticiaForm({
   const [selectedBlock, setSelectedBlock] = useState<string | null>(null);
   const [imagenFile, setImagenFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [errors, setErrors] = useState<{titulo?: string; contenido?: string}>({});
 
   // Initialize form with noticia data if editing
   useEffect(() => {
@@ -218,11 +222,30 @@ export function EnhancedNoticiaForm({
   };
 
   const handleSubmit = () => {
+    const newErrors: {titulo?: string; contenido?: string} = {};
+    
     if (!formData.titulo.trim()) {
-      toast.error("El título es requerido");
-      return;
+      newErrors.titulo = "Por favor ingresa un título para la noticia";
     }
 
+    if (!contentBlocks || contentBlocks.length === 0) {
+      newErrors.contenido = "Por favor agrega al menos un bloque de contenido (título, párrafo o imagen)";
+    } else {
+      const hasContent = contentBlocks.some(block => 
+        block.content?.trim() || (block.type === 'imagen' && block.imageSettings?.url)
+      );
+      
+      if (!hasContent) {
+        newErrors.contenido = "Por favor agrega texto o imágenes a los bloques de contenido";
+      }
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      return;
+    }
+    
     const submitData = {
       ...formData,
       contenido: contentBlocks
@@ -232,33 +255,72 @@ export function EnhancedNoticiaForm({
   };
 
   const renderPreview = () => {
+    const sedeNombre = sedes.find(s => s.id === formData.sedeId)?.nombre || "General";
+    
     return (
-      <div className="space-y-4 max-w-4xl mx-auto">
-        {/* Title */}
-        <h1 className="text-3xl font-bold text-white mb-4">
-          {formData.titulo || "Título de la noticia"}
-        </h1>
-
-        {/* Summary */}
-        {formData.resumen && (
-          <div className="text-gray-300 text-lg mb-6 italic">
-            {formData.resumen}
+      <div className="max-w-4xl mx-auto">
+        {/* Card Horizontal - Igual al frontend */}
+        <div className="relative flex flex-col sm:flex-row bg-[#1A1A1A] rounded-2xl overflow-hidden shadow-xl border border-white/5 hover:border-[#D604E0]/30 transition-all duration-300 group">
+          {/* Imagen Izquierda (40%) */}
+          <div className="w-full sm:w-2/5 relative p-4 flex-shrink-0">
+            <div className="h-48 sm:h-full w-full rounded-xl overflow-hidden relative bg-[#0A0A0A] shadow-inner">
+              {formData.imagen ? (
+                <img
+                  src={formData.imagen}
+                  alt={formData.titulo}
+                  className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1E1E1E] to-[#0A0A0A]">
+                  <ImageIcon className="w-12 h-12 text-[#333]" />
+                </div>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Main Image */}
-        {formData.imagen && (
-          <div className="mb-6">
-            <img 
-              src={formData.imagen} 
-              alt={formData.titulo}
-              className="w-full h-64 object-cover rounded-lg"
-            />
+          {/* Contenido Derecha */}
+          <div className="w-full sm:w-3/5 p-6 flex flex-col relative">
+            {/* Etiqueta Superior Derecha */}
+            <div className="flex justify-end mb-3">
+              <span className="text-xs font-semibold tracking-wider text-[#D604E0] bg-[#D604E0]/10 px-3 py-1 rounded-full border border-[#D604E0]/20 uppercase">
+                {sedeNombre}
+              </span>
+            </div>
+
+            {/* Título */}
+            <h3 className="text-2xl font-bold text-white mb-3 line-clamp-2 leading-tight group-hover:text-[#D604E0] transition-colors">
+              {formData.titulo || "Título de la noticia"}
+            </h3>
+
+            {/* Descripción */}
+            <p className="text-sm text-gray-400 line-clamp-3 mb-6 flex-grow leading-relaxed">
+              {formData.resumen || "Sin descripción"}
+            </p>
+
+            {/* Iconos de Acción */}
+            <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
+              <div className="flex gap-5 text-gray-500">
+                <button className="group/icon flex items-center gap-1 hover:text-[#040AE0] transition-colors">
+                  <MessageCircle className="w-5 h-5" />
+                </button>
+                <button className="group/icon flex items-center gap-1 hover:text-white transition-colors">
+                  <Share2 className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <span className="text-xs text-gray-600 font-medium">
+                {new Date().toLocaleDateString('es-CO', { 
+                  month: 'short', 
+                  day: 'numeric' 
+                })}
+              </span>
+            </div>
           </div>
-        )}
+        </div>
 
-        {/* Content Blocks */}
-        <div className="space-y-4">
+        {/* Contenido Completo (Bloques) */}
+        <div className="mt-8 space-y-4">
+          <h4 className="text-lg font-semibold text-white mb-4">Contenido completo:</h4>
           {contentBlocks.map((block) => {
             const alignmentClass = {
               'left': 'text-left',
@@ -299,11 +361,11 @@ export function EnhancedNoticiaForm({
 
             if (block.type === 'imagen' && block.imageSettings?.url) {
               return (
-                <div key={block.id} className={`mb-4 ${alignmentClass}`}>
+                <div key={block.id} className={`my-4 ${alignmentClass}`}>
                   <img 
                     src={block.imageSettings.url} 
                     alt={block.imageSettings.alt || "Imagen"}
-                    className="max-w-full h-auto rounded-lg"
+                    className="max-w-full h-auto rounded-lg max-h-64 object-cover"
                   />
                 </div>
               );
@@ -311,23 +373,6 @@ export function EnhancedNoticiaForm({
 
             return null;
           })}
-        </div>
-
-        {/* Metadata */}
-        <div className="mt-8 pt-4 border-t border-gray-700">
-          <div className="flex flex-wrap gap-2">
-            {formData.esPromocion && (
-              <Badge className="bg-[#D604E0] text-white">Promoción</Badge>
-            )}
-            {formData.destacado && (
-              <Badge className="bg-yellow-500 text-white">Destacado</Badge>
-            )}
-            {formData.sedeId && (
-              <Badge variant="outline" className="border-gray-600 text-gray-300">
-                {sedes.find(s => s.id === formData.sedeId)?.nombre}
-              </Badge>
-            )}
-          </div>
         </div>
       </div>
     );
@@ -357,7 +402,10 @@ export function EnhancedNoticiaForm({
             Cancelar
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={() => {
+              console.log("[DEBUG] Button clicked! isLoading:", isLoading);
+              handleSubmit();
+            }}
             disabled={isLoading}
             className="bg-[#D604E0] hover:bg-[#D604E0]/90 text-white"
           >
@@ -385,10 +433,16 @@ export function EnhancedNoticiaForm({
             <CardContent>
               <Input
                 value={formData.titulo}
-                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, titulo: e.target.value });
+                  if (errors.titulo) setErrors({ ...errors, titulo: undefined });
+                }}
                 placeholder="Crea un título atractivo para tu noticia"
-                className="bg-[#2A2A2A] border-[#3A3A3A] text-white placeholder-gray-500"
+                className={`bg-[#2A2A2A] border-[#3A3A3A] text-white placeholder-gray-500 ${errors.titulo ? 'border-red-500' : ''}`}
               />
+              {errors.titulo && (
+                <p className="text-red-500 text-sm mt-2">{errors.titulo}</p>
+              )}
               <p className="text-sm text-gray-400 mt-2">
                 Ej: "Nuevos horarios de verano en todas nuestras sedes"
               </p>
@@ -411,11 +465,14 @@ export function EnhancedNoticiaForm({
           </Card>
 
           {/* Content Blocks */}
-          <Card className="bg-[#1A1A1A] border-[#2A2A2A]">
+          <Card className={`bg-[#1A1A1A] border-[#2A2A2A] ${errors.contenido ? 'border-red-500' : ''}`}>
             <CardHeader>
-              <CardTitle className="text-white">Contenido</CardTitle>
+              <CardTitle className="text-white">Contenido *</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {errors.contenido && (
+                <p className="text-red-500 text-sm">{errors.contenido}</p>
+              )}
               {/* Add Content Buttons */}
               <div className="flex flex-wrap gap-2">
                 <Button

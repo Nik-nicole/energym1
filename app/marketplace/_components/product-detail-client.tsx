@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ShoppingBag, MapPin, Package, Plus, Minus, ArrowLeft, Star, Truck, Shield, RefreshCw, ChevronRight } from "lucide-react";
+import { ShoppingBag, MapPin, Package, Plus, Minus, ArrowLeft, Star, Truck, Shield, RefreshCw, ChevronRight, ExternalLink } from "lucide-react";
 import { useCart } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -277,6 +277,20 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
                   <ShoppingBag className="w-5 h-5 mr-2" />
                   {product.stock > 0 ? "Agregar al Carrito" : "Agotado"}
                 </Button>
+                
+                <Link href={`/pago/producto/${product.id}`} className="flex-1">
+                  <Button
+                    disabled={product.stock === 0}
+                    className={`w-full py-4 rounded-xl font-medium transition-all ${
+                      product.stock > 0
+                        ? "gradient-bg hover:opacity-90 text-white"
+                        : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                    }`}
+                  >
+                    <ExternalLink className="w-5 h-5 mr-2" />
+                    {product.stock > 0 ? "Comprar Ahora" : "Agotado"}
+                  </Button>
+                </Link>
               </div>
             </div>
 

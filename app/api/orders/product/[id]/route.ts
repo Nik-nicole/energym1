@@ -34,6 +34,11 @@ export async function GET(
       include: {
         user: true,
         product: true,
+        items: {
+          include: {
+            product: true
+          }
+        },
         sede: {
           include: {
             paymentGateway: true
@@ -41,6 +46,19 @@ export async function GET(
         },
         payment: true
       }
+    });
+    
+    console.log(`[API Order] Orden encontrada:`, {
+      id: productOrder?.id,
+      status: productOrder?.status,
+      paymentId: productOrder?.paymentId,
+      hasPayment: !!productOrder?.payment,
+      paymentData: productOrder?.payment ? {
+        id: productOrder.payment.id,
+        method: productOrder.payment.paymentMethod,
+        status: productOrder.payment.status,
+        amount: productOrder.payment.amount
+      } : null
     });
 
     if (!productOrder) {
@@ -53,11 +71,22 @@ export async function GET(
     }
 
     // Crear timeline basado en el status
+    // Estados: PENDING → PAID → VERIFIED → PACKED → SHIPPED → DELIVERED
+    const getTimelineStatus = (stepIndex: number, currentStatus: string) => {
+      const statusOrder = ["PENDING", "PAID", "VERIFIED", "PACKED", "SHIPPED", "DELIVERED"];
+      const currentIndex = statusOrder.indexOf(currentStatus);
+      
+      if (currentStatus === "CANCELLED") return "cancelled";
+      if (stepIndex < currentIndex) return "completed";
+      if (stepIndex === currentIndex) return "current";
+      return "pending";
+    };
+
     const timeline = [
-      { label: "Orden Pagada", status: ["PAID", "VERIFIED", "PACKED", "SHIPPED"].includes(productOrder.status) ? "completed" : productOrder.status === "PAID" ? "current" : "pending", date: productOrder.createdAt.toLocaleDateString() },
-      { label: "Verificada", status: ["VERIFIED", "PACKED", "SHIPPED"].includes(productOrder.status) ? "completed" : productOrder.status === "VERIFIED" ? "current" : "pending", date: "" },
-      { label: "Empacada", status: ["PACKED", "SHIPPED"].includes(productOrder.status) ? "completed" : productOrder.status === "PACKED" ? "current" : "pending", date: "" },
-      { label: "Enviada", status: productOrder.status === "SHIPPED" ? "current" : productOrder.status === "SHIPPED" ? "completed" : "pending", date: "" }
+      { label: "Orden Pagada", status: getTimelineStatus(1, productOrder.status), date: productOrder.createdAt.toLocaleDateString() },
+      { label: "Verificada", status: getTimelineStatus(2, productOrder.status), date: "" },
+      { label: "Empacada", status: getTimelineStatus(3, productOrder.status), date: "" },
+      { label: "Enviada", status: getTimelineStatus(4, productOrder.status), date: "" }
     ];
 
     // Si está cancelado, mostrar todos como cancelados con X roja
@@ -86,7 +115,28 @@ export async function GET(
           address: productOrder.shippingAddress || "No especificada",
           city: productOrder.shippingCity || "No especificada"
         },
-        product: {
+        product: productOrder.items && productOrder.items.length > 0 ? {
+          items: productOrder.items.map(item => ({
+            name: item.product.nombre,
+            description: item.product.descripcion,
+            category: item.product.categoria,
+            image: item.product.imagen || "/placeholder-product.jpg",
+            quantity: item.quantity,
+            unitPrice: `$${item.unitPrice.toFixed(2)}`,
+            subtotal: `$${(item.unitPrice * item.quantity).toFixed(2)}`,
+            total: `$${item.totalPrice.toFixed(2)}`
+          })),
+          // Legacy single product support
+          name: productOrder.product?.nombre || productOrder.items[0]?.product.nombre,
+          description: productOrder.product?.descripcion || productOrder.items[0]?.product.descripcion,
+          category: productOrder.product?.categoria || productOrder.items[0]?.product.categoria,
+          image: productOrder.product?.imagen || productOrder.items[0]?.product.imagen || "/placeholder-product.jpg",
+          quantity: productOrder.items.reduce((sum, item) => sum + item.quantity, 0),
+          unitPrice: `$${productOrder.unitPrice?.toFixed(2) || productOrder.items[0]?.unitPrice.toFixed(2)}`,
+          subtotal: `$${productOrder.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0).toFixed(2)}`,
+          total: `$${productOrder.totalPrice.toFixed(2)}`
+        } : {
+          // Single product fallback
           name: productOrder.product.nombre,
           description: productOrder.product.descripcion,
           category: productOrder.product.categoria,
@@ -94,7 +144,8 @@ export async function GET(
           quantity: productOrder.quantity,
           unitPrice: `$${productOrder.unitPrice.toFixed(2)}`,
           subtotal: `$${(productOrder.unitPrice * productOrder.quantity).toFixed(2)}`,
-          total: `$${productOrder.totalPrice.toFixed(2)}`
+          total: `$${productOrder.totalPrice.toFixed(2)}`,
+          items: []
         },
         location: {
           name: productOrder.sede.nombre,

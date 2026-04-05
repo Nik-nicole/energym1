@@ -78,6 +78,24 @@ export async function GET(request: NextRequest) {
             createdAt: true,
           },
         },
+        items: {
+          select: {
+            id: true,
+            quantity: true,
+            unitPrice: true,
+            totalPrice: true,
+            product: {
+              select: {
+                id: true,
+                nombre: true,
+                categoria: true,
+                precio: true,
+                imagen: true,
+                descripcion: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: 50,

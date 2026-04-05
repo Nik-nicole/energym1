@@ -80,10 +80,10 @@ export function NoticiaDetail({ noticia }: NoticiaDetailProps) {
       <div className="min-h-screen bg-[#0A0A0A]">
       {/* Header con navegación */}
       <div className="container mx-auto px-4 py-8">
-        <Link href="/noticias">
+        <Link href="/">
           <Button variant="ghost" className="text-gray-400 hover:text-white mb-8">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver a noticias
+            Volver al inicio
           </Button>
         </Link>
       </div>
@@ -227,10 +227,10 @@ export function NoticiaDetail({ noticia }: NoticiaDetailProps) {
           {/* Navegación */}
           <div className="mt-16 pt-8 border-t border-white/10">
             <div className="flex flex-col sm:flex-row gap-4 justify-between">
-              <Link href="/noticias">
+              <Link href="/">
                 <Button variant="outline" className="border-[#D604E0] text-[#D604E0] hover:bg-[#D604E0] hover:text-white">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Ver más noticias
+                  Volver al inicio
                 </Button>
               </Link>
               

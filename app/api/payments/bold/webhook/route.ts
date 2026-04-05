@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Buscar la orden por reference (nuestra referencia está en metadata)
-    const planOrder = await prisma.planOrder.findFirst({
+    // Buscar la orden por reference - puede ser PlanOrder o ProductOrder
+    let planOrder = await prisma.planOrder.findFirst({
       where: {
         status: "PENDING",
         createdAt: {
@@ -52,99 +52,172 @@ export async function POST(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+    // Si no es un plan, buscar orden de producto
+    let productOrder = null;
     if (!planOrder) {
+      productOrder = await prisma.productOrder.findFirst({
+        where: {
+          status: "PENDING",
+          createdAt: {
+            gte: new Date(Date.now() - 60 * 60 * 1000),
+          },
+        },
+        include: { product: true, user: true },
+        orderBy: { createdAt: "desc" },
+      });
+    }
+
+    if (!planOrder && !productOrder) {
       console.log("[Bold Webhook] Orden no encontrada para reference:", reference);
       return NextResponse.json(
-        { error: "Orden no encontrada" }, 
+        { error: "Orden no encontrada" },
         { status: 404 }
       );
     }
 
     // Procesar según el estado del pago
     if (status === "APPROVED") {
-      // Transacción atómica para actualizar todo
-      await prisma.$transaction(async (tx) => {
-        // 1. Crear el registro de pago
-        const payment = await tx.payment.create({
-          data: {
-            sedeId: planOrder.sedeId,
-            amount: planOrder.totalPrice,
-            paymentMethod: "BOLD",
-            status: "PAID",
-            transactionId: transaction_id || `BOLD-${Date.now()}`,
-            gatewayResponse: payload,
-          },
-        });
+      // Es un pago de PRODUCTO
+      if (productOrder) {
+        await prisma.$transaction(async (tx) => {
+          // 1. Crear el registro de pago
+          const payment = await tx.payment.create({
+            data: {
+              sedeId: productOrder!.sedeId,
+              amount: productOrder!.totalPrice,
+              paymentMethod: "BOLD",
+              status: "PAID",
+              transactionId: transaction_id || `BOLD-PROD-${Date.now()}`,
+              gatewayResponse: payload,
+            },
+          });
 
-        // 2. Actualizar la orden
-        await tx.planOrder.update({
-          where: { id: planOrder.id },
-          data: {
-            status: "CONFIRMED",
+          // 2. Actualizar la orden de producto
+          await tx.productOrder.update({
+            where: { id: productOrder!.id },
+            data: {
+              status: "CONFIRMED",
+              paymentId: payment.id,
+            },
+          });
+
+          // 3. Descontar stock del producto principal
+          await tx.producto.update({
+            where: { id: productOrder!.productId },
+            data: {
+              stock: {
+                decrement: productOrder!.quantity,
+              },
+            },
+          });
+
+          console.log("[Bold Webhook] Pago de producto procesado:", {
             paymentId: payment.id,
-          },
+            productOrderId: productOrder!.id,
+            productId: productOrder!.productId,
+            quantity: productOrder!.quantity,
+          });
         });
 
-        // 3. Calcular fechas del plan
-        const startDate = new Date();
-        const endDate = new Date();
-        const duracion = planOrder.plan.duracion.toLowerCase();
+        return NextResponse.json({ success: true, type: "product" });
+      }
 
-        if (duracion.includes("mes")) {
-          const meses = parseInt(duracion) || 1;
-          endDate.setMonth(endDate.getMonth() + meses);
-        } else if (duracion.includes("año") || duracion.includes("year")) {
-          endDate.setFullYear(endDate.getFullYear() + 1);
-        } else {
-          endDate.setMonth(endDate.getMonth() + 1);
-        }
+      // Es un pago de PLAN
+      if (planOrder) {
+        await prisma.$transaction(async (tx) => {
+          // 1. Crear el registro de pago
+          const payment = await tx.payment.create({
+            data: {
+              sedeId: planOrder.sedeId,
+              amount: planOrder.totalPrice,
+              paymentMethod: "BOLD",
+              status: "PAID",
+              transactionId: transaction_id || `BOLD-${Date.now()}`,
+              gatewayResponse: payload,
+            },
+          });
 
-        // 4. Activar el plan para el usuario
-        await tx.userPlan.upsert({
-          where: {
-            userId_planId: {
+          // 2. Actualizar la orden
+          await tx.planOrder.update({
+            where: { id: planOrder.id },
+            data: {
+              status: "CONFIRMED",
+              paymentId: payment.id,
+            },
+          });
+
+          // 3. Calcular fechas del plan
+          const startDate = new Date();
+          const endDate = new Date();
+          const duracion = planOrder.plan.duracion.toLowerCase();
+
+          if (duracion.includes("mes")) {
+            const meses = parseInt(duracion) || 1;
+            endDate.setMonth(endDate.getMonth() + meses);
+          } else if (duracion.includes("año") || duracion.includes("year")) {
+            endDate.setFullYear(endDate.getFullYear() + 1);
+          } else {
+            endDate.setMonth(endDate.getMonth() + 1);
+          }
+
+          // 4. Activar el plan para el usuario
+          await tx.userPlan.upsert({
+            where: {
+              userId_planId: {
+                userId: planOrder.userId,
+                planId: planOrder.planId,
+              },
+            },
+            update: {
+              isActive: true,
+              startDate,
+              endDate,
+              paymentId: payment.id,
+            },
+            create: {
               userId: planOrder.userId,
               planId: planOrder.planId,
+              startDate,
+              endDate,
+              isActive: true,
+              paymentId: payment.id,
             },
-          },
-          update: {
-            isActive: true,
-            startDate,
-            endDate,
+          });
+
+          console.log("[Bold Webhook] Pago de plan procesado:", {
             paymentId: payment.id,
-          },
-          create: {
-            userId: planOrder.userId,
-            planId: planOrder.planId,
-            startDate,
-            endDate,
-            isActive: true,
-            paymentId: payment.id,
-          },
+            planOrderId: planOrder!.id,
+            userId: planOrder!.userId,
+          });
         });
 
-        console.log("[Bold Webhook] Pago procesado exitosamente:", {
-          paymentId: payment.id,
+        return NextResponse.json({ success: true, type: "plan" });
+      }
+    }
+    
+    // Pago rechazado - actualizar orden según el tipo
+    if (status === "REJECTED" || status === "DECLINED") {
+      if (productOrder) {
+        await prisma.productOrder.update({
+          where: { id: productOrder.id },
+          data: { status: "CANCELLED" },
+        });
+        console.log("[Bold Webhook] Pago de producto rechazado:", {
+          productOrderId: productOrder.id,
+          reference,
+        });
+      }
+      
+      if (planOrder) {
+        await prisma.planOrder.update({
+          where: { id: planOrder.id },
+          data: { status: "CANCELLED" },
+        });
+        console.log("[Bold Webhook] Pago de plan rechazado:", {
           planOrderId: planOrder.id,
-          userId: planOrder.userId,
+          reference,
         });
-      });
-
-      return NextResponse.json({ success: true });
-
-    } else if (status === "REJECTED" || status === "DECLINED") {
-      // Pago rechazado - actualizar orden
-      await prisma.planOrder.update({
-        where: { id: planOrder.id },
-        data: {
-          status: "CANCELLED",
-        },
-      });
-
-      console.log("[Bold Webhook] Pago rechazado:", {
-        planOrderId: planOrder.id,
-        reference,
-      });
+      }
 
       return NextResponse.json({ success: true });
     }

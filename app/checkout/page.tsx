@@ -63,7 +63,7 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      // Crear orden
+      // Crear orden y obtener link de pago de Bold
       const response = await fetch("/api/orders/create", {
         method: "POST",
         headers: {
@@ -77,7 +77,7 @@ export default function CheckoutPage() {
           })),
           totalAmount: total,
           shippingAddress,
-          paymentMethod: "WOMPI"
+          paymentMethod: "BOLD"
         }),
       });
       
@@ -86,16 +86,21 @@ export default function CheckoutPage() {
         throw new Error(errorData.error || "Error creating order");
       }
 
-      const { order } = await response.json();
+      const data = await response.json();
+      const { paymentUrl, productOrderId } = data;
+
+      // Guardar el productOrderId en sessionStorage
+      sessionStorage.setItem("currentProductOrderId", productOrderId);
 
       // Limpiar carrito
       clearCart();
 
-      // Esperar un momento para que el estado se actualice
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Redirigir a página de pago
-      router.push(`/payment/${order.id}`);
+      // Redirigir al link de pago de Bold
+      if (paymentUrl) {
+        window.open(paymentUrl, '_blank');
+      } else {
+        throw new Error("No se recibió link de pago");
+      }
     } catch (error) {
       console.error("Checkout error:", error);
       alert("Error al procesar el pedido. Por favor intenta nuevamente.");
@@ -120,11 +125,11 @@ export default function CheckoutPage() {
           {/* Header */}
           <div className="mb-8">
             <Link
-              href="/marketplace"
+              href="/"
               className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-4"
             >
               <ArrowLeft className="w-4 h-4" />
-              Volver al Marketplace
+              Volver al inicio
             </Link>
             <h1 className="text-3xl font-bold text-white mb-2">Checkout</h1>
             <p className="text-gray-400">Revisa tu pedido y completa tus datos</p>
