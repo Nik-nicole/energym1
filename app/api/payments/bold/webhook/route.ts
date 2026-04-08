@@ -11,7 +11,12 @@ import prisma from "@/lib/db";
 // Para producción, la API Key de webhook debería venir de variable de entorno
 const BOLD_WEBHOOK_SECRET = process.env.BOLD_WEBHOOK_SECRET || "";
 
+function safeString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 export async function POST(request: NextRequest) {
+  const receivedAt = new Date().toISOString();
   try {
     const body = await request.text();
     const signature = request.headers.get("x-bold-signature") || "";
@@ -22,57 +27,61 @@ export async function POST(request: NextRequest) {
     //   return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
     // }
 
-    const payload = JSON.parse(body);
+    const payload = JSON.parse(body) as any;
     console.log("[Bold Webhook] Payload recibido:", payload);
 
-    const { 
-      reference, 
-      status, 
-      transaction_id,
-      metadata 
-    } = payload;
+    // Soportar ambos formatos:
+    // 1) { event, data: { id, reference, amount, status, transaction_id, customer_data, shipping_address } }
+    // 2) { reference, status, transaction_id, ... }
+    const event = payload?.event as string | undefined;
+    const data = payload?.data ?? payload;
 
-    // Validar campos requeridos
-    if (!reference || !status) {
-      return NextResponse.json(
-        { error: "Payload incompleto" }, 
-        { status: 400 }
-      );
+    const reference = safeString(data?.reference || payload?.reference);
+    const status = safeString(data?.status || payload?.status);
+    const transactionId = safeString(data?.transaction_id || payload?.transaction_id || data?.id);
+
+    const customerName = safeString(data?.customer_data?.full_name);
+    const customerEmail = safeString(data?.customer_data?.email);
+    const shippingAddress = safeString(data?.shipping_address?.address);
+    const shippingCity = safeString(data?.shipping_address?.city);
+    const shippingCountry = safeString(data?.shipping_address?.country);
+    const shippingPhone = safeString(data?.customer_data?.phone);
+
+    // Solo procesar eventos de éxito si vienen en el formato {event: ...}
+    if (event && event !== "payment.success" && event !== "payment.succeeded") {
+      console.log("[Bold Webhook] Evento ignorado:", event);
+      return NextResponse.json({ received: true, ignored: true }, { status: 200 });
     }
 
-    // Buscar la orden por reference - puede ser PlanOrder o ProductOrder
-    let planOrder = await prisma.planOrder.findFirst({
-      where: {
-        status: "PENDING",
-        createdAt: {
-          gte: new Date(Date.now() - 60 * 60 * 1000), // Última hora
-        },
-      },
-      include: { plan: true, user: true },
-      orderBy: { createdAt: "desc" },
+    // Validación mínima
+    if (!reference || !status) {
+      console.log("[Bold Webhook] Payload incompleto (reference/status)");
+      return NextResponse.json({ received: true, processed: false }, { status: 200 });
+    }
+
+    // Buscar orden de producto por reference (guardado como boldReference)
+    const productOrder = await (prisma as any).productOrder.findUnique({
+      where: { boldReference: reference },
+      include: { product: true, user: true },
     });
 
-    // Si no es un plan, buscar orden de producto
-    let productOrder = null;
-    if (!planOrder) {
-      productOrder = await prisma.productOrder.findFirst({
-        where: {
-          status: "PENDING",
-          createdAt: {
-            gte: new Date(Date.now() - 60 * 60 * 1000),
+    // PlanOrder: este proyecto no guarda reference, así que por ahora lo dejamos como estaba (best-effort)
+    const planOrder = !productOrder
+      ? await prisma.planOrder.findFirst({
+          where: {
+            status: "PENDING",
+            createdAt: {
+              gte: new Date(Date.now() - 60 * 60 * 1000),
+            },
           },
-        },
-        include: { product: true, user: true },
-        orderBy: { createdAt: "desc" },
-      });
-    }
+          include: { plan: true, user: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : null;
 
-    if (!planOrder && !productOrder) {
+    if (!productOrder && !planOrder) {
       console.log("[Bold Webhook] Orden no encontrada para reference:", reference);
-      return NextResponse.json(
-        { error: "Orden no encontrada" },
-        { status: 404 }
-      );
+      return NextResponse.json({ received: true, processed: false }, { status: 200 });
     }
 
     // Procesar según el estado del pago
@@ -80,6 +89,15 @@ export async function POST(request: NextRequest) {
       // Es un pago de PRODUCTO
       if (productOrder) {
         await prisma.$transaction(async (tx) => {
+          // Deduplicación: si ya tiene paymentId, no reprocesar
+          if (productOrder.paymentId) {
+            console.log("[Bold Webhook] Orden ya procesada (paymentId existe):", {
+              productOrderId: productOrder.id,
+              paymentId: productOrder.paymentId,
+            });
+            return;
+          }
+
           // 1. Crear el registro de pago
           const payment = await tx.payment.create({
             data: {
@@ -87,21 +105,34 @@ export async function POST(request: NextRequest) {
               amount: productOrder!.totalPrice,
               paymentMethod: "BOLD",
               status: "PAID",
-              transactionId: transaction_id || `BOLD-PROD-${Date.now()}`,
+              transactionId: transactionId || `BOLD-PROD-${Date.now()}`,
               gatewayResponse: payload,
             },
           });
 
           // 2. Actualizar la orden de producto
-          await tx.productOrder.update({
+          await (tx as any).productOrder.update({
             where: { id: productOrder!.id },
             data: {
               status: "CONFIRMED",
               paymentId: payment.id,
+              customerName: customerName || (productOrder as any).customerName,
+              customerEmail: customerEmail || (productOrder as any).customerEmail,
+              shippingAddress: shippingAddress || productOrder.shippingAddress,
+              shippingCity: shippingCity || productOrder.shippingCity,
+              shippingCountry: shippingCountry || (productOrder as any).shippingCountry,
+              shippingPhone: shippingPhone || productOrder.shippingPhone,
             },
           });
 
           // 3. Descontar stock del producto principal
+          if (!productOrder!.productId) {
+            console.warn("[Bold Webhook] productId vacío, no se descuenta stock:", {
+              productOrderId: productOrder!.id,
+            });
+            return;
+          }
+
           await tx.producto.update({
             where: { id: productOrder!.productId },
             data: {
@@ -119,12 +150,20 @@ export async function POST(request: NextRequest) {
           });
         });
 
-        return NextResponse.json({ success: true, type: "product" });
+        return NextResponse.json({ success: true, type: "product" }, { status: 200 });
       }
 
       // Es un pago de PLAN
       if (planOrder) {
         await prisma.$transaction(async (tx) => {
+          if (planOrder.paymentId) {
+            console.log("[Bold Webhook] PlanOrder ya procesada (paymentId existe):", {
+              planOrderId: planOrder.id,
+              paymentId: planOrder.paymentId,
+            });
+            return;
+          }
+
           // 1. Crear el registro de pago
           const payment = await tx.payment.create({
             data: {
@@ -132,7 +171,7 @@ export async function POST(request: NextRequest) {
               amount: planOrder.totalPrice,
               paymentMethod: "BOLD",
               status: "PAID",
-              transactionId: transaction_id || `BOLD-${Date.now()}`,
+              transactionId: transactionId || `BOLD-${Date.now()}`,
               gatewayResponse: payload,
             },
           });
@@ -191,7 +230,7 @@ export async function POST(request: NextRequest) {
           });
         });
 
-        return NextResponse.json({ success: true, type: "plan" });
+        return NextResponse.json({ success: true, type: "plan" }, { status: 200 });
       }
     }
     
@@ -219,18 +258,16 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }, { status: 200 });
     }
 
     // Otros estados (PENDING, etc.)
-    return NextResponse.json({ success: true, status: "ignored" });
+    return NextResponse.json({ success: true, status: "ignored" }, { status: 200 });
 
   } catch (error) {
     console.error("[Bold Webhook] Error:", error);
-    return NextResponse.json(
-      { error: "Error procesando webhook" },
-      { status: 500 }
-    );
+    // Siempre 200 para evitar reintentos
+    return NextResponse.json({ received: true, processed: false }, { status: 200 });
   }
 }
 

@@ -179,10 +179,10 @@ export function MarketplaceSidebarFixed({ productos }: MarketplaceClientProps) {
                 {/* Categorías */}
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-3">Categorías</label>
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setSelectedCategoria("all")}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                      className={`text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                         selectedCategoria === "all"
                           ? "bg-[#040AE0] text-white"
                           : "text-gray-400 hover:text-white hover:bg-white/5"
@@ -194,7 +194,7 @@ export function MarketplaceSidebarFixed({ productos }: MarketplaceClientProps) {
                       <button
                         key={categoria}
                         onClick={() => setSelectedCategoria(categoria)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                        className={`text-left px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                           selectedCategoria === categoria
                             ? "bg-[#040AE0] text-white"
                             : "text-gray-400 hover:text-white hover:bg-white/5"
@@ -208,28 +208,34 @@ export function MarketplaceSidebarFixed({ productos }: MarketplaceClientProps) {
 
                 {/* Rango de precio */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Rango de precio</label>
-                  <div className="space-y-3">
-                    <div className="text-xs text-gray-500 text-center">
+                  <label className="block text-sm font-medium text-gray-400 mb-3">Rango de precio</label>
+                  <div className="space-y-4">
+                    <div className="text-sm text-gray-300 text-center font-medium">
                       {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
                     </div>
-                    <div className="space-y-2">
-                      <input
-                        type="range"
-                        min={priceRangeLimits.min}
-                        max={priceRangeLimits.max}
-                        value={priceRange[0]}
-                        onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
-                        className="w-full accent-[#040AE0]"
-                      />
-                      <input
-                        type="range"
-                        min={priceRangeLimits.min}
-                        max={priceRangeLimits.max}
-                        value={priceRange[1]}
-                        onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-                        className="w-full accent-[#D604E0]"
-                      />
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Mínimo</label>
+                        <input
+                          type="range"
+                          min={priceRangeLimits.min}
+                          max={priceRangeLimits.max}
+                          value={priceRange[0]}
+                          onChange={(e) => setPriceRange([parseInt(e.target.value), priceRange[1]])}
+                          className="w-full h-2 accent-[#040AE0] rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Máximo</label>
+                        <input
+                          type="range"
+                          min={priceRangeLimits.min}
+                          max={priceRangeLimits.max}
+                          value={priceRange[1]}
+                          onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
+                          className="w-full h-2 accent-[#D604E0] rounded-lg"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

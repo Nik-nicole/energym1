@@ -42,7 +42,11 @@ import {
   Palette,
   Upload,
   MessageCircle,
-  Share2
+  Share2,
+  ArrowLeft,
+  MapPin,
+  Calendar,
+  Tag
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -258,122 +262,216 @@ export function EnhancedNoticiaForm({
     const sedeNombre = sedes.find(s => s.id === formData.sedeId)?.nombre || "General";
     
     return (
-      <div className="max-w-4xl mx-auto">
-        {/* Card Horizontal - Igual al frontend */}
-        <div className="relative flex flex-col sm:flex-row bg-[#1A1A1A] rounded-2xl overflow-hidden shadow-xl border border-white/5 hover:border-[#D604E0]/30 transition-all duration-300 group">
-          {/* Imagen Izquierda (40%) */}
-          <div className="w-full sm:w-2/5 relative p-4 flex-shrink-0">
-            <div className="h-48 sm:h-full w-full rounded-xl overflow-hidden relative bg-[#0A0A0A] shadow-inner">
-              {formData.imagen ? (
-                <img
-                  src={formData.imagen}
-                  alt={formData.titulo}
-                  className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1E1E1E] to-[#0A0A0A]">
-                  <ImageIcon className="w-12 h-12 text-[#333]" />
-                </div>
-              )}
-            </div>
-          </div>
+      <div className="max-w-4xl mx-auto bg-[#0A0A0A] min-h-[80vh]">
+        <style>{`
+          .preview-content, .preview-content *, .preview-content p, .preview-content span, 
+          .preview-content div, .preview-content h1, .preview-content h2, .preview-content h3, 
+          .preview-content h4, .preview-content h5, .preview-content h6 {
+            color: white !important;
+          }
+        `}</style>
+        
+        {/* Header */}
+        <div className="mb-8">
+          <button className="text-gray-400 hover:text-white mb-8 flex items-center gap-2 cursor-default">
+            <ArrowLeft className="w-4 h-4" />
+            Volver al inicio
+          </button>
+        </div>
 
-          {/* Contenido Derecha */}
-          <div className="w-full sm:w-3/5 p-6 flex flex-col relative">
-            {/* Etiqueta Superior Derecha */}
-            <div className="flex justify-end mb-3">
-              <span className="text-xs font-semibold tracking-wider text-[#D604E0] bg-[#D604E0]/10 px-3 py-1 rounded-full border border-[#D604E0]/20 uppercase">
-                {sedeNombre}
+        {/* Hero Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-12"
+        >
+          {/* Meta información */}
+          <div className="flex flex-wrap items-center gap-4 mb-6 text-sm">
+            {formData.esPromocion && (
+              <span className="bg-[#D604E0] text-white font-bold px-4 py-2 rounded-full">
+                PROMOCIÓN
               </span>
-            </div>
-
-            {/* Título */}
-            <h3 className="text-2xl font-bold text-white mb-3 line-clamp-2 leading-tight group-hover:text-[#D604E0] transition-colors">
-              {formData.titulo || "Título de la noticia"}
-            </h3>
-
-            {/* Descripción */}
-            <p className="text-sm text-gray-400 line-clamp-3 mb-6 flex-grow leading-relaxed">
-              {formData.resumen || "Sin descripción"}
-            </p>
-
-            {/* Iconos de Acción */}
-            <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
-              <div className="flex gap-5 text-gray-500">
-                <button className="group/icon flex items-center gap-1 hover:text-[#040AE0] transition-colors">
-                  <MessageCircle className="w-5 h-5" />
-                </button>
-                <button className="group/icon flex items-center gap-1 hover:text-white transition-colors">
-                  <Share2 className="w-5 h-5" />
-                </button>
+            )}
+            
+            {formData.sedeId && (
+              <div className="flex items-center gap-2 text-gray-400">
+                <MapPin className="w-4 h-4" />
+                <span>{sedeNombre}</span>
               </div>
-              
-              <span className="text-xs text-gray-600 font-medium">
+            )}
+            
+            <div className="flex items-center gap-2 text-gray-400">
+              <Calendar className="w-4 h-4" />
+              <span>
                 {new Date().toLocaleDateString('es-CO', { 
-                  month: 'short', 
-                  day: 'numeric' 
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
                 })}
               </span>
             </div>
           </div>
-        </div>
 
-        {/* Contenido Completo (Bloques) */}
-        <div className="mt-8 space-y-4">
-          <h4 className="text-lg font-semibold text-white mb-4">Contenido completo:</h4>
-          {contentBlocks.map((block) => {
-            const alignmentClass = {
-              'left': 'text-left',
-              'center': 'text-center',
-              'right': 'text-right',
-              'justify': 'text-justify'
-            }[block.estilo.alineacion] || 'text-left';
+          {/* Título */}
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-8 leading-tight">
+            {formData.titulo || "Título de la noticia"}
+          </h1>
 
-            const sizeClass = {
-              'pequeño': 'text-sm',
-              'mediano': 'text-base',
-              'grande': 'text-xl'
-            }[block.estilo.tamaño] || 'text-base';
+          {/* Acciones sociales */}
+          <div className="flex items-center gap-4 mb-8">
+            <button className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors cursor-default">
+              <Share2 className="w-5 h-5" />
+              <span>Compartir</span>
+            </button>
+          </div>
+        </motion.div>
 
-            if (block.type === 'titulo') {
-              return (
-                <h2 key={block.id} className={`text-2xl font-bold text-white ${alignmentClass} ${sizeClass}`}>
-                  {block.content || "Título"}
-                </h2>
-              );
-            }
+        {/* Imagen banner */}
+        {formData.imagen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mb-12"
+          >
+            <div className="relative w-full h-[300px] md:h-[350px] rounded-2xl overflow-hidden">
+              <img
+                src={formData.imagen}
+                alt={formData.titulo}
+                className="object-cover w-full h-full"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+            </div>
+          </motion.div>
+        )}
 
-            if (block.type === 'subtitulo') {
-              return (
-                <h3 key={block.id} className={`text-xl font-semibold text-gray-200 ${alignmentClass} ${sizeClass}`}>
-                  {block.content || "Subtítulo"}
-                </h3>
-              );
-            }
+        {/* Contenido */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          {/* Resumen */}
+          {formData.resumen && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-white mb-4">Resumen</h2>
+              <p className="text-lg text-white leading-relaxed">
+                {formData.resumen}
+              </p>
+            </div>
+          )}
 
-            if (block.type === 'parrafo') {
-              return (
-                <p key={block.id} className={`text-gray-300 leading-relaxed ${alignmentClass} ${sizeClass}`}>
-                  {block.content || "Párrafo de texto..."}
-                </p>
-              );
-            }
+          {/* Contenido completo - Bloques */}
+          <div className="prose prose-invert prose-lg max-w-none">
+            <h2 className="text-2xl font-bold text-white mb-6">Artículo completo</h2>
+            <div className="preview-content text-white leading-relaxed space-y-6">
+              {contentBlocks.length > 0 ? (
+                contentBlocks.map((block) => {
+                  const alignmentClass = {
+                    'left': 'text-left',
+                    'center': 'text-center',
+                    'right': 'text-right',
+                    'justify': 'text-justify'
+                  }[block.estilo.alineacion] || 'text-left';
 
-            if (block.type === 'imagen' && block.imageSettings?.url) {
-              return (
-                <div key={block.id} className={`my-4 ${alignmentClass}`}>
-                  <img 
-                    src={block.imageSettings.url} 
-                    alt={block.imageSettings.alt || "Imagen"}
-                    className="max-w-full h-auto rounded-lg max-h-64 object-cover"
-                  />
-                </div>
-              );
-            }
+                  const sizeClass = {
+                    'pequeño': 'text-sm',
+                    'mediano': 'text-base',
+                    'grande': 'text-xl'
+                  }[block.estilo.tamaño] || 'text-base';
 
-            return null;
-          })}
-        </div>
+                  if (block.type === 'titulo') {
+                    return (
+                      <h2 key={block.id} className={`text-3xl font-bold text-white ${alignmentClass} ${sizeClass} my-4`}>
+                        {block.content || "Título"}
+                      </h2>
+                    );
+                  }
+
+                  if (block.type === 'subtitulo') {
+                    return (
+                      <h3 key={block.id} className={`text-2xl font-semibold text-gray-200 ${alignmentClass} ${sizeClass} my-4`}>
+                        {block.content || "Subtítulo"}
+                      </h3>
+                    );
+                  }
+
+                  if (block.type === 'parrafo') {
+                    return (
+                      <p key={block.id} className={`text-white leading-relaxed ${alignmentClass} ${sizeClass} my-4`}>
+                        {block.content || "Párrafo de texto..."}
+                      </p>
+                    );
+                  }
+
+                  if (block.type === 'imagen' && block.imageSettings?.url) {
+                    return (
+                      <div key={block.id} className={`my-6 ${alignmentClass}`}>
+                        <img 
+                          src={block.imageSettings.url} 
+                          alt={block.imageSettings.alt || "Imagen"}
+                          className="max-w-full h-auto rounded-2xl max-h-[400px] object-cover"
+                        />
+                        {block.imageSettings.alt && (
+                          <p className="text-sm text-gray-400 mt-2 text-center">{block.imageSettings.alt}</p>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })
+              ) : (
+                <p className="text-gray-400 italic">No hay contenido aún. Agrega bloques de contenido en el formulario.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Fechas de promoción */}
+          {formData.esPromocion && (formData.fechaInicio || formData.fechaFin) && (
+            <div className="mt-12 p-6 bg-[#1A1A1A] rounded-2xl border border-[#D604E0]/30">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Tag className="w-5 h-5 text-[#D604E0]" />
+                Vigencia de la promoción
+              </h3>
+              <div className="grid md:grid-cols-2 gap-4 text-gray-300">
+                {formData.fechaInicio && (
+                  <div>
+                    <span className="text-sm text-gray-500">Fecha de inicio:</span>
+                    <p className="font-medium">
+                      {new Date(formData.fechaInicio).toLocaleDateString('es-CO', { 
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                )}
+                {formData.fechaFin && (
+                  <div>
+                    <span className="text-sm text-gray-500">Fecha de fin:</span>
+                    <p className="font-medium">
+                      {new Date(formData.fechaFin).toLocaleDateString('es-CO', { 
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Navegación */}
+          <div className="mt-16 pt-8 border-t border-white/10">
+            <button className="border border-[#D604E0] text-[#D604E0] hover:bg-[#D604E0] hover:text-white px-4 py-2 rounded-lg flex items-center gap-2 cursor-default">
+              <ArrowLeft className="w-4 h-4" />
+              Volver al inicio
+            </button>
+          </div>
+        </motion.div>
       </div>
     );
   };

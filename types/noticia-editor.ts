@@ -27,7 +27,7 @@ export interface NoticiaFormData {
   fechaFin?: string;
   sedeId?: string;
   contenido: ContentBlock[];
-  activo?: boolean;
-  destacado?: boolean;
+  activo: boolean;
+  destacado: boolean;
   imagenPosicion?: string;
 }

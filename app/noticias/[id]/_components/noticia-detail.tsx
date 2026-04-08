@@ -9,6 +9,21 @@ import { Button } from "@/components/ui/button"
 
 import { useState, useEffect } from "react"
 
+interface ContentBlock {
+  id: string;
+  type: 'titulo' | 'subtitulo' | 'parrafo' | 'imagen';
+  content: string;
+  estilo: {
+    alineacion: 'left' | 'center' | 'right' | 'justify';
+    color: string;
+    tamaño: 'pequeño' | 'mediano' | 'grande';
+  };
+  imageSettings?: {
+    url: string;
+    alt: string;
+  };
+}
+
 interface NoticiaDetailProps {
   noticia: NoticiaWithSede
 }
@@ -67,6 +82,114 @@ export function NoticiaDetail({ noticia }: NoticiaDetailProps) {
       }
     }
   }
+
+  // Función para parsear y renderizar el contenido
+  const renderContenido = () => {
+    console.log('[DEBUG] Contenido recibido:', noticia.contenido);
+    console.log('[DEBUG] Tipo:', typeof noticia.contenido);
+    
+    if (!noticia.contenido || noticia.contenido.trim() === '') {
+      console.log('[DEBUG] Contenido vacío');
+      return <p className="text-gray-400 italic">No hay contenido disponible.</p>;
+    }
+
+    // Verificar si parece JSON (empieza con [ o {)
+    const trimmed = noticia.contenido.trim();
+    const isJson = trimmed.startsWith('[') || trimmed.startsWith('{');
+    
+    console.log('[DEBUG] ¿Es JSON?', isJson, '- Primeros 50 chars:', trimmed.substring(0, 50));
+    
+    if (!isJson) {
+      console.log('[DEBUG] Mostrando como HTML');
+      // Es HTML plano, mostrar directamente
+      return (
+        <div 
+          className="noticia-content text-white leading-relaxed space-y-4"
+          dangerouslySetInnerHTML={{ __html: noticia.contenido }}
+        />
+      );
+    }
+
+    // Intentar parsear como JSON (bloques de contenido)
+    try {
+      const parsed = JSON.parse(trimmed);
+      console.log('[DEBUG] JSON parseado:', parsed);
+      
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        console.log('[DEBUG] Array vacío o no es array');
+        return <p className="text-gray-400 italic">No hay contenido disponible.</p>;
+      }
+
+      console.log('[DEBUG] Renderizando', parsed.length, 'bloques');
+      // Renderizar bloques
+      return (
+        <div className="noticia-content text-white leading-relaxed space-y-6">
+          {parsed.map((block: ContentBlock) => {
+            const alignmentClass = {
+              'left': 'text-left',
+              'center': 'text-center',
+              'right': 'text-right',
+              'justify': 'text-justify'
+            }[block.estilo?.alineacion || 'left'];
+
+            const sizeClass = {
+              'pequeño': 'text-sm',
+              'mediano': 'text-base',
+              'grande': 'text-xl'
+            }[block.estilo?.tamaño || 'mediano'];
+
+            if (block.type === 'titulo') {
+              return (
+                <h2 key={block.id} className={`text-3xl font-bold text-white ${alignmentClass} ${sizeClass} my-4`}>
+                  {block.content}
+                </h2>
+              );
+            }
+
+            if (block.type === 'subtitulo') {
+              return (
+                <h3 key={block.id} className={`text-2xl font-semibold text-gray-200 ${alignmentClass} ${sizeClass} my-4`}>
+                  {block.content}
+                </h3>
+              );
+            }
+
+            if (block.type === 'parrafo') {
+              return (
+                <p key={block.id} className={`text-white leading-relaxed ${alignmentClass} ${sizeClass} my-4`}>
+                  {block.content}
+                </p>
+              );
+            }
+
+            if (block.type === 'imagen' && block.imageSettings?.url) {
+              return (
+                <div key={block.id} className={`my-6 ${alignmentClass}`}>
+                  <img 
+                    src={block.imageSettings.url} 
+                    alt={block.imageSettings.alt || "Imagen"}
+                    className="max-w-full h-auto rounded-2xl max-h-[400px] object-cover"
+                  />
+                  {block.imageSettings.alt && (
+                    <p className="text-sm text-gray-400 mt-2 text-center">{block.imageSettings.alt}</p>
+                  )}
+                </div>
+              );
+            }
+
+            return null;
+          })}
+        </div>
+      );
+    } catch (e) {
+      // Si falla el parseo, mostrar el contenido como texto plano
+      return (
+        <div className="noticia-content text-white leading-relaxed space-y-4">
+          <p>{noticia.contenido}</p>
+        </div>
+      );
+    }
+  };
 
   return (
     <>
@@ -182,10 +305,7 @@ export function NoticiaDetail({ noticia }: NoticiaDetailProps) {
           {/* Contenido completo */}
           <div className="prose prose-invert prose-lg max-w-none">
             <h2 className="text-2xl font-bold text-white mb-6">Artículo completo</h2>
-            <div 
-              className="noticia-content text-white leading-relaxed space-y-4"
-              dangerouslySetInnerHTML={{ __html: noticia.contenido }}
-            />
+            {renderContenido()}
           </div>
 
           {/* Fechas de promoción */}

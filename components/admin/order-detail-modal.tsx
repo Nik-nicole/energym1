@@ -605,7 +605,6 @@ export function OrderDetailModal({
                   {/* Payment Info */}
                   <div className="flex flex-col gap-2 pt-3 border-t border-[#2A2A2A]">
                     <span className="text-xs text-[#D604E0] font-medium">Informacion de Pago</span>
-                    <InfoRow label="Metodo" value={order.payment?.method || "-"} />
                     <InfoRow label="Estado" value={order.payment?.status || "-"} />
                     <InfoRow label="Monto" value={order.payment?.amount || "-"} highlight />
                     <InfoRow label="Cuenta de Pago" value={order.location?.paymentAccount || "-"} highlight mono />

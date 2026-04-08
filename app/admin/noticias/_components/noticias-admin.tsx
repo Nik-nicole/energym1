@@ -290,6 +290,7 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
             </DialogHeader>
             
             <EnhancedNoticiaForm
+              key="create-form"
               sedes={sedes}
               onSubmit={handleCreate}
               onCancel={() => {
@@ -312,6 +313,7 @@ export function NoticiasAdmin({ noticias, sedes }: NoticiasAdminProps) {
             </DialogHeader>
             {editingNoticia && (
               <EnhancedNoticiaForm
+                key={`edit-form-${editingNoticia.id}`}
                 noticia={editingNoticia}
                 sedes={sedes}
                 onSubmit={handleUpdate}

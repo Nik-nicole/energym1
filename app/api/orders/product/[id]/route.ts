@@ -48,6 +48,18 @@ export async function GET(
       }
     });
     
+    console.log(`[API Order] Orden encontrada (RAW):`, JSON.stringify({
+      id: productOrder?.id,
+      status: productOrder?.status,
+      paymentId: productOrder?.paymentId,
+      boldReference: (productOrder as any)?.boldReference,
+      customerName: (productOrder as any)?.customerName,
+      customerEmail: (productOrder as any)?.customerEmail,
+      shippingPhone: productOrder?.shippingPhone,
+      shippingAddress: productOrder?.shippingAddress,
+      shippingCity: productOrder?.shippingCity,
+    }, null, 2));
+
     console.log(`[API Order] Orden encontrada:`, {
       id: productOrder?.id,
       status: productOrder?.status,
@@ -96,12 +108,22 @@ export async function GET(
       });
     }
 
+// Función para formatear moneda en pesos colombianos
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
     return NextResponse.json({
       success: true,
       order: {
         id: productOrder.id,
         date: productOrder.createdAt.toLocaleDateString(),
-        total: `$${productOrder.totalPrice.toFixed(2)}`,
+        total: formatCurrency(productOrder.totalPrice),
         status: productOrder.status === "PAID" ? "Orden Pagada" : 
                 productOrder.status === "VERIFIED" ? "Verificada" :
                 productOrder.status === "PACKED" ? "Empacada" :
@@ -109,8 +131,8 @@ export async function GET(
                 productOrder.status === "CANCELLED" ? "Cancelada" : "Orden Pagada",
         timeline: timeline,
         client: {
-          name: `${productOrder.user.firstName} ${productOrder.user.lastName || ''}`,
-          email: productOrder.user.email,
+          name: (productOrder as any).customerName || `${productOrder.user.firstName} ${productOrder.user.lastName || ''}`,
+          email: (productOrder as any).customerEmail || productOrder.user.email,
           phone: productOrder.shippingPhone || "No especificado",
           address: productOrder.shippingAddress || "No especificada",
           city: productOrder.shippingCity || "No especificada"
@@ -122,9 +144,9 @@ export async function GET(
             category: item.product.categoria,
             image: item.product.imagen || "/placeholder-product.jpg",
             quantity: item.quantity,
-            unitPrice: `$${item.unitPrice.toFixed(2)}`,
-            subtotal: `$${(item.unitPrice * item.quantity).toFixed(2)}`,
-            total: `$${item.totalPrice.toFixed(2)}`
+            unitPrice: formatCurrency(item.unitPrice),
+            subtotal: formatCurrency(item.unitPrice * item.quantity),
+            total: formatCurrency(item.totalPrice)
           })),
           // Legacy single product support
           name: productOrder.product?.nombre || productOrder.items[0]?.product.nombre,
@@ -132,9 +154,9 @@ export async function GET(
           category: productOrder.product?.categoria || productOrder.items[0]?.product.categoria,
           image: productOrder.product?.imagen || productOrder.items[0]?.product.imagen || "/placeholder-product.jpg",
           quantity: productOrder.items.reduce((sum, item) => sum + item.quantity, 0),
-          unitPrice: `$${productOrder.unitPrice?.toFixed(2) || productOrder.items[0]?.unitPrice.toFixed(2)}`,
-          subtotal: `$${productOrder.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0).toFixed(2)}`,
-          total: `$${productOrder.totalPrice.toFixed(2)}`
+          unitPrice: formatCurrency(productOrder.unitPrice || productOrder.items[0]?.unitPrice),
+          subtotal: formatCurrency(productOrder.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)),
+          total: formatCurrency(productOrder.totalPrice)
         } : {
           // Single product fallback
           name: productOrder.product.nombre,
@@ -142,9 +164,9 @@ export async function GET(
           category: productOrder.product.categoria,
           image: productOrder.product.imagen || "/placeholder-product.jpg",
           quantity: productOrder.quantity,
-          unitPrice: `$${productOrder.unitPrice.toFixed(2)}`,
-          subtotal: `$${(productOrder.unitPrice * productOrder.quantity).toFixed(2)}`,
-          total: `$${productOrder.totalPrice.toFixed(2)}`,
+          unitPrice: formatCurrency(productOrder.unitPrice),
+          subtotal: formatCurrency(productOrder.unitPrice * productOrder.quantity),
+          total: formatCurrency(productOrder.totalPrice),
           items: []
         },
         location: {
@@ -153,14 +175,14 @@ export async function GET(
           city: productOrder.sede.ciudad,
           phone: productOrder.sede.telefono,
           email: productOrder.sede.email,
-          paymentAccount: productOrder.sede.paymentGateway?.cuentaBanco || "No especificada"
+          paymentAccount: productOrder.sede.paymentGateway?.nombre || productOrder.sede.paymentGateway?.cuentaBanco || "No especificada"
         },
         payment: productOrder.payment ? {
           method: productOrder.payment.paymentMethod,
           status: productOrder.payment.status === "COMPLETED" ? "Pagado" : 
                   productOrder.payment.status === "PENDING" ? "Pendiente" : 
                   productOrder.payment.status === "FAILED" ? "Fallido" : "Desconocido",
-          amount: `$${productOrder.payment.amount.toFixed(2)}`,
+          amount: formatCurrency(productOrder.payment.amount),
           date: productOrder.payment.createdAt.toLocaleDateString(),
           transactionId: productOrder.payment.transactionId
         } : null,

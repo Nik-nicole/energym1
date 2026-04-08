@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Dumbbell, MapPin, Phone, Mail } from "lucide-react";
+import { MapPin, Phone, Mail } from "lucide-react";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -8,34 +9,26 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           <div>
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <Dumbbell className="w-8 h-8 text-[#D604E0]" />
-              <span className="text-2xl font-bold gradient-text">FitZone</span>
+              <Image 
+                src="/logo_Energym.png" 
+                alt="Energym Logo" 
+                width={128} 
+                height={128}
+                className="w-32 h-32"
+              />
             </Link>
             <p className="text-gray-400 text-sm">
-              La cadena de gimnasios líder en Bogotá. Transforma tu vida con nosotros.
+              Transforma tu vida con nosotros.
             </p>
           </div>
 
           <div>
-            <h4 className="font-semibold text-white mb-4">Nuestras Sedes</h4>
+            <h4 className="font-semibold text-white mb-4">Nuestras Redes Sociales</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/sedes/sede-norte" className="text-gray-400 hover:text-[#D604E0] transition-colors text-sm flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  FitZone Norte
-                </Link>
-              </li>
-              <li>
-                <Link href="/sedes/sede-centro" className="text-gray-400 hover:text-[#D604E0] transition-colors text-sm flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  FitZone Centro
-                </Link>
-              </li>
-              <li>
-                <Link href="/sedes/sede-sur" className="text-gray-400 hover:text-[#D604E0] transition-colors text-sm flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  FitZone Sur
-                </Link>
+                <a href="https://instagram.com/energym_trainer" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#D604E0] transition-colors text-sm">
+                  Instagram: @energym_trainer
+                </a>
               </li>
             </ul>
           </div>
@@ -49,14 +42,14 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2 text-gray-400 text-sm">
                 <Mail className="w-4 h-4 text-[#040AE0]" />
-                info@fitzone.com
+                info@energym.com
               </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-white/10 pt-8 text-center text-gray-500 text-sm">
-          <p>© 2026 FitZone. Todos los derechos reservados.</p>
+          <p>© 2026 Energym. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>

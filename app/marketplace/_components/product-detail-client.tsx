@@ -205,37 +205,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
               </p>
             </div>
 
-            {/* Beneficios */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#040AE0]/10 rounded-lg flex items-center justify-center">
-                  <Truck className="w-5 h-5 text-[#040AE0]" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">Envío rápido</p>
-                  <p className="text-gray-400 text-sm">2-3 días hábiles</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#D604E0]/10 rounded-lg flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-[#D604E0]" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">Garantía</p>
-                  <p className="text-gray-400 text-sm">30 días</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#040AE0]/10 rounded-lg flex items-center justify-center">
-                  <RefreshCw className="w-5 h-5 text-[#040AE0]" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">Devoluciones</p>
-                  <p className="text-gray-400 text-sm">Fáciles y rápidas</p>
-                </div>
-              </div>
-            </div>
-
+            
             {/* Selector de cantidad y botón de compra */}
             <div className="space-y-4">
               <div>

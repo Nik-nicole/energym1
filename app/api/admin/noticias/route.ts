@@ -98,8 +98,8 @@ export async function POST(request: NextRequest) {
         esPromocion,
         fechaInicio: esPromocion && fechaInicio ? new Date(fechaInicio) : null,
         fechaFin: esPromocion && fechaFin ? new Date(fechaFin) : null,
-        activo,
-        destacado,
+        activo: activo ?? true,
+        destacado: destacado ?? false,
       },
       include: {
         sede: {

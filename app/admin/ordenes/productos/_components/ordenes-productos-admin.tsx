@@ -108,6 +108,12 @@ interface ProductOrder {
     totalPrice: number;
     product: Product;
   }[];
+  // Campos del webhook de Bold
+  customerName?: string;
+  customerEmail?: string;
+  shippingPhone?: string;
+  shippingAddress?: string;
+  shippingCity?: string;
 }
 
 interface OrdenesProductosAdminProps {
@@ -153,6 +159,19 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
 
   // Función para transformar los datos al formato del nuevo modal
   const transformOrderData = (order: ProductOrder) => {
+    // Debug: mostrar datos crudos de la orden
+    console.log(`[Admin Orders] Transformando orden:`, JSON.stringify({
+      id: order.id,
+      status: order.status,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      shippingPhone: order.shippingPhone,
+      shippingAddress: order.shippingAddress,
+      shippingCity: order.shippingCity,
+      userFirstName: order.user.firstName,
+      userEmail: order.user.email,
+    }, null, 2));
+
     const getStatusText = (status: string) => {
       switch (status) {
         case "PENDING":
@@ -207,9 +226,11 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
       status: getStatusText(order.status) as any,
       timeline: getStatusTimeline(order.status),
       client: {
-        name: `${order.user.firstName} ${order.user.lastName || ""}`,
-        email: order.user.email,
-        phone: "No disponible"
+        name: order.customerName || `${order.user.firstName} ${order.user.lastName || ""}`,
+        email: order.customerEmail || order.user.email,
+        phone: order.shippingPhone || "No disponible",
+        address: order.shippingAddress,
+        city: order.shippingCity
       },
       product: order.items && order.items.length > 0 ? {
         name: `${order.items.length} productos`,

@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Clock, ArrowRight, ExternalLink } from "lucide-react";
+import { MapPin, Clock, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface SedeCardProps {
   sede: {
@@ -21,24 +21,26 @@ interface SedeCardProps {
 export function SedeCard({ sede, index }: SedeCardProps) {
   const [showMap, setShowMap] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Generar URL de Google Maps usando la dirección
   const mapUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(sede?.direccion + ', ' + sede?.ciudad)}`;
   const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sede?.direccion + ', ' + sede?.ciudad)}`;
 
-  // Función para cambiar a la siguiente imagen
-  const nextImage = () => {
-    if (sede?.imagenes && sede.imagenes.length > 0) {
-      setCurrentImageIndex((prev) => (prev + 1) % sede.imagenes.length);
-    }
-  };
+  // Auto-rotación de imágenes con transición suave
+  useEffect(() => {
+    if (sede?.imagenes && sede.imagenes.length > 1) {
+      const interval = setInterval(() => {
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setCurrentImageIndex((prev) => (prev + 1) % sede.imagenes.length);
+          setIsTransitioning(false);
+        }, 300); // Duración del fade out
+      }, 3000); // Cambiar imagen cada 3 segundos
 
-  // Función para cambiar a la imagen anterior
-  const prevImage = () => {
-    if (sede?.imagenes && sede.imagenes.length > 0) {
-      setCurrentImageIndex((prev) => (prev - 1 + sede.imagenes.length) % sede.imagenes.length);
+      return () => clearInterval(interval);
     }
-  };
+  }, [sede?.imagenes]);
 
   // Obtener la imagen actual
   const currentImage = sede?.imagenes?.[currentImageIndex] || "https://cdn.abacus.ai/images/d9570e29-20cc-4090-b76d-62f460a6b818.png";
@@ -76,52 +78,23 @@ export function SedeCard({ sede, index }: SedeCardProps) {
                   quality={90}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   priority={index < 3}
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  className={`object-cover group-hover:scale-105 transition-all duration-700 ${
+                    isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+                  }`}
                 />
                 
-                {/* Controles del carrusel si hay múltiples imágenes */}
+                {/* Indicador de imágenes */}
                 {sede?.imagenes && sede.imagenes.length > 1 && (
-                  <>
-                    {/* Botones anterior/siguiente */}
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        prevImage();
-                      }}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm text-white rounded-full p-2 hover:bg-black/70 transition-colors z-10"
-                      title="Imagen anterior"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        nextImage();
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 backdrop-blur-sm text-white rounded-full p-2 hover:bg-black/70 transition-colors z-10"
-                      title="Siguiente imagen"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7-7" />
-                      </svg>
-                    </button>
-                    
-                    {/* Indicador de imágenes */}
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
-                      {sede.imagenes.map((_, index) => (
-                        <div
-                          key={index}
-                          className={`w-1.5 h-1.5 rounded-full transition-all ${
-                            index === currentImageIndex ? 'bg-white' : 'bg-white/50'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full">
+                    {sede.imagenes.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-1.5 h-1.5 rounded-full transition-all ${
+                          index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -176,7 +149,6 @@ export function SedeCard({ sede, index }: SedeCardProps) {
                   Maps
                 </button>
               </div>
-              <ArrowRight className="w-5 h-5 text-[#D604E0] group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
         </div>
