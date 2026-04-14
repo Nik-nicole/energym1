@@ -77,7 +77,11 @@ export async function GET(request: NextRequest) {
         totalOrders: productOrders.length,
         pending: productOrders.filter((o: any) => o.status === "PENDING").length,
         shipped: productOrders.filter((o: any) => o.status === "SHIPPED").length,
-        totalRevenue: productOrders.reduce((total: number, order: any) => total + order.totalPrice, 0),
+        verified: productOrders.filter((o: any) => o.status === "VERIFIED").length,
+        packed: productOrders.filter((o: any) => o.status === "PACKED").length,
+        totalRevenue: productOrders
+          .filter((o: any) => ["VERIFIED", "PACKED", "SHIPPED"].includes(o.status))
+          .reduce((total: number, order: any) => total + order.totalPrice, 0),
       };
 
       // Calcular estadísticas de planes
@@ -85,7 +89,9 @@ export async function GET(request: NextRequest) {
         totalOrders: planOrders.length,
         pending: planOrders.filter((o: any) => o.status === "PENDING").length,
         verified: planOrders.filter((o: any) => o.status === "VERIFIED").length,
-        totalRevenue: planOrders.reduce((total: number, order: any) => total + order.totalPrice, 0),
+        totalRevenue: planOrders
+          .filter((o: any) => o.status === "VERIFIED")
+          .reduce((total: number, order: any) => total + order.totalPrice, 0),
         vipPlans: planOrders.filter((o: any) => o.plan.esVip).length,
       };
 

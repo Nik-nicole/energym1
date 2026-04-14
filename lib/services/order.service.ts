@@ -1,7 +1,7 @@
 import { prisma } from '../prisma';
 import { userQueries } from '../query-helpers';
 import { PrismaWrapper } from '../connection-wrapper';
-import { WompiService } from '../wompi';
+import { BoldService } from '../bold';
 import { PlanService } from './plan.service';
 import { SedeService } from './sede.service';
 
@@ -24,8 +24,8 @@ export class OrderService {
 
     // Validar que la sede exista y esté activa
     const sede = await SedeService.getSedeWithPaymentGateway(sedeId);
-    if (!sede) {
-      throw new Error('Sede no disponible');
+    if (!sede || !sede.paymentGateway) {
+      throw new Error('Sede no disponible o sin pasarela de pago configurada');
     }
 
     // Validar que el plan esté disponible en esta sede
@@ -34,58 +34,58 @@ export class OrderService {
       throw new Error('Plan no disponible en esta sede');
     }
 
-    // Verificar si el usuario ya tiene este plan activo
-    const existingUserPlan = await PlanService.getPlanActivo(userId);
-    if (existingUserPlan && existingUserPlan.planId === planId) {
-      throw new Error('Ya tienes este plan activo');
+    // Verificar si el usuario puede comprar un nuevo plan (no tiene planes activos o congelados)
+    const canPurchase = await PlanService.canUserPurchaseNewPlan(userId);
+    if (!canPurchase) {
+      throw new Error('No puedes comprar un nuevo plan mientras tengas un plan activo o congelado');
     }
 
-    // Generar reference para Wompi
-    const reference = WompiService.generateReference();
+    // Generar referencia para BOLD
+    const reference = BoldService.generateReference('PLAN');
 
-    // Procesar pago con Wompi
-    const wompiResponse = await WompiService.processPayment({
+    // Obtener API Key de BOLD desde la configuración de la sede
+    const envVarName = sede.paymentGateway.cuentaBanco;
+    const boldApiKey = envVarName ? process.env[envVarName] : null;
+    
+    if (!boldApiKey) {
+      throw new Error('Configuración de pago incompleta - API Key de BOLD no configurada');
+    }
+
+    // Preparar callback URL
+    const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://energym1-five.vercel.app';
+    const callbackUrl = `${origin}/pago/confirmacion/bold?planOrderId=${reference}`;
+
+    // Crear link de pago con BOLD
+    const boldResponse = await BoldService.createPaymentLink({
       amount: totalPrice,
       currency: 'COP',
-      customerEmail: paymentInfo.email,
-      paymentMethod: paymentInfo.method,
-      ...(paymentInfo.method === 'card' && {
-        cardInfo: {
-          number: paymentInfo.cardNumber || '4242424242424242',
-          name: paymentInfo.cardName || 'Test User',
-          expiry: paymentInfo.cardExpiry || '12/25',
-          cvc: paymentInfo.cardCvc || '123'
-        }
-      }),
-      ...(paymentInfo.method === 'pse' && {
-        pseInfo: {
-          documentType: paymentInfo.documentType,
-          documentNumber: paymentInfo.documentNumber
-        }
-      }),
-      reference
+      reference,
+      description: `Plan ${plan.nombre} - Energym`,
+      callbackUrl,
+      apiKey: boldApiKey,
+      imageUrl: `${origin}/logo.png`
     });
 
-    if (!wompiResponse.success) {
-      throw new Error(`Error en el procesamiento del pago: ${wompiResponse.message}`);
+    if (!boldResponse.success) {
+      throw new Error(`Error en el procesamiento del pago: ${boldResponse.message}`);
     }
 
-    // Crear el registro de pago
+    // Crear el registro de pago con estado PENDING
     const payment = await PrismaWrapper.execute(
       () => prisma.payment.create({
         data: {
           sedeId: sede.id,
           amount: totalPrice,
           paymentMethod: paymentInfo.method,
-          status: 'COMPLETED',
-          transactionId: wompiResponse.transactionId,
-          gatewayResponse: JSON.parse(JSON.stringify(wompiResponse))
+          status: 'PENDING',
+          transactionId: boldResponse.reference,
+          gatewayResponse: JSON.parse(JSON.stringify(boldResponse))
         }
       }),
       3
     );
 
-    // Crear la orden del plan
+    // Crear la orden del plan con estado PENDING y asociada al pago
     const planOrder = await PrismaWrapper.execute(
       () => prisma.planOrder.create({
         data: {
@@ -96,7 +96,7 @@ export class OrderService {
           quantity: quantity || 1,
           unitPrice,
           totalPrice,
-          status: 'PAID'
+          status: 'PENDING'
         },
         include: {
           plan: true,
@@ -107,23 +107,15 @@ export class OrderService {
       3
     );
 
-    // Activar el plan para el usuario
-    const userPlan = await PlanService.activatePlanForUser(userId, plan.id, payment.id);
-
     // Enviar email de confirmación (simulado)
-    console.log(`Email de confirmación enviado para el plan ${plan.nombre}`);
+    console.log(`Email de confirmación enviado para el plan ${plan.nombre} - Payment URL: ${boldResponse.paymentUrl}`);
 
     return {
       success: true,
       order: planOrder,
-      userPlan: {
-        planId: plan.id,
-        startDate: userPlan.startDate,
-        endDate: userPlan.endDate,
-        isActive: userPlan.isActive
-      },
-      payment: wompiResponse,
-      message: "Plan activado exitosamente"
+      payment: boldResponse,
+      paymentUrl: boldResponse.paymentUrl,
+      message: "Pago iniciado exitosamente. Redirige al usuario a la URL de pago."
     };
   }
 
@@ -149,10 +141,10 @@ export class OrderService {
       throw new Error('Producto no disponible');
     }
 
-    // Validar que la sede exista
+    // Validar que la sede exista y tenga payment gateway
     const sede = await SedeService.getSedeWithPaymentGateway(sedeId);
-    if (!sede) {
-      throw new Error('Sede no disponible');
+    if (!sede || !sede.paymentGateway) {
+      throw new Error('Sede no disponible o sin pasarela de pago configurada');
     }
 
     // Validar stock
@@ -160,38 +152,65 @@ export class OrderService {
       throw new Error('Stock insuficiente');
     }
 
-    // Generar reference para Wompi
-    const reference = WompiService.generateReference();
+    // Generar referencia para BOLD
+    const reference = BoldService.generateReference('PROD');
 
-    // Procesar pago con Wompi
-    const wompiResponse = await WompiService.processPayment({
-      amount: totalPrice,
-      currency: 'COP',
-      customerEmail: paymentInfo.email,
-      paymentMethod: paymentInfo.method,
-      reference
-    });
-
-    if (!wompiResponse.success) {
-      throw new Error(`Error en el procesamiento del pago: ${wompiResponse.message}`);
+    // Obtener API Key de BOLD desde la configuración de la sede
+    const envVarName = sede.paymentGateway.cuentaBanco;
+    const boldApiKey = envVarName ? process.env[envVarName] : null;
+    
+    if (!boldApiKey) {
+      throw new Error('Configuración de pago incompleta - API Key de BOLD no configurada');
     }
 
-    // Crear el registro de pago
+    // Preparar callback URL
+    const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://energym1-five.vercel.app';
+    const callbackUrl = `${origin}/pago/confirmacion/bold-product?productOrderId=${reference}`;
+
+    // Calcular IVA para productos
+    const subtotal = totalPrice;
+    const ivaRate = 0.19;
+    const ivaAmount = Math.round(subtotal * ivaRate);
+    const totalAmount = Math.round(subtotal * (1 + ivaRate));
+
+    // Crear link de pago con BOLD
+    const boldResponse = await BoldService.createPaymentLink({
+      amount: totalAmount,
+      currency: 'COP',
+      reference,
+      description: `${product.nombre} (x${quantity}) - Energym`,
+      callbackUrl,
+      apiKey: boldApiKey,
+      imageUrl: product.imagen ? product.imagen.split(',')[0].trim() : `${origin}/logo.png`,
+      taxes: [
+        {
+          type: 'VAT',
+          base: subtotal,
+          value: ivaAmount,
+        },
+      ],
+    });
+
+    if (!boldResponse.success) {
+      throw new Error(`Error en el procesamiento del pago: ${boldResponse.message}`);
+    }
+
+    // Crear el registro de pago con estado PENDING
     const payment = await PrismaWrapper.execute(
       () => prisma.payment.create({
         data: {
           sedeId: sede.id,
-          amount: totalPrice,
+          amount: totalAmount, // Usar el total con IVA para productos
           paymentMethod: paymentInfo.method,
-          status: 'COMPLETED',
-          transactionId: wompiResponse.transactionId,
-          gatewayResponse: JSON.parse(JSON.stringify(wompiResponse))
+          status: 'PENDING',
+          transactionId: boldResponse.reference,
+          gatewayResponse: JSON.parse(JSON.stringify(boldResponse))
         }
       }),
       3
     );
 
-    // Crear la orden del producto
+    // Crear la orden del producto con estado PENDING y asociada al pago
     const productOrder = await PrismaWrapper.execute(
       () => prisma.productOrder.create({
         data: {
@@ -201,8 +220,8 @@ export class OrderService {
           paymentId: payment.id,
           quantity,
           unitPrice,
-          totalPrice,
-          status: 'PAID'
+          totalPrice: totalAmount, // Guardar el total con IVA
+          status: 'PENDING'
         },
         include: {
           product: true,
@@ -213,22 +232,15 @@ export class OrderService {
       3
     );
 
-    // Actualizar stock del producto
-    await PrismaWrapper.execute(
-      () => prisma.producto.update({
-        where: { id: productId },
-        data: {
-          stock: product.stock - quantity
-        }
-      }),
-      3
-    );
+    // Enviar email de confirmación (simulado)
+    console.log(`Email de confirmación enviado para el producto ${product.nombre} - Payment URL: ${boldResponse.paymentUrl}`);
 
     return {
       success: true,
       order: productOrder,
-      payment: wompiResponse,
-      message: "Producto comprado exitosamente"
+      payment: boldResponse,
+      paymentUrl: boldResponse.paymentUrl,
+      message: "Pago iniciado exitosamente. Redirige al usuario a la URL de pago."
     };
   }
 

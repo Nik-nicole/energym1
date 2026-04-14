@@ -95,14 +95,46 @@ export class UserService {
     email?: string;
     image?: string;
     sedeId?: string;
+    password?: string;
+    confirmPassword?: string;
+    role?: string;
   }) {
+    // Filter out confirmPassword and handle password hashing
+    const { confirmPassword, password, ...updateData } = data;
+    
+    // Check if email is being updated and if it already exists
+    if (updateData.email) {
+      const existingUser = await PrismaWrapper.execute(
+        () => prisma.user.findFirst({
+          where: {
+            email: updateData.email,
+            id: { not: userId }
+          }
+        }),
+        3
+      );
+      
+      if (existingUser) {
+        throw new Error("El email ya está en uso por otro usuario");
+      }
+    }
+    
+    // Prepare the update data
+    const finalUpdateData: any = {
+      ...updateData,
+      updatedAt: new Date()
+    };
+    
+    // If password is provided, hash it
+    if (password) {
+      const bcrypt = require('bcryptjs');
+      finalUpdateData.password = await bcrypt.hash(password, 10);
+    }
+    
     return await PrismaWrapper.execute(
       () => prisma.user.update({
         where: { id: userId },
-        data: {
-          ...data,
-          updatedAt: new Date()
-        },
+        data: finalUpdateData,
         select: {
           id: true,
           email: true,

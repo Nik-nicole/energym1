@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+﻿import { prisma } from "@/lib/prisma";
 import { withPrismaQuery } from "@/lib/prisma-middleware";
 import { AdminLayout } from "../_components/admin-layout";
 import { UsuariosAdmin } from "./_components/usuarios-admin";
@@ -83,59 +83,75 @@ async function getUsersData(): Promise<{ users: any[]; sedes: any[]; plans: any[
       let planStatus = null;
 
       if (latestPlanOrder && activePlan) {
+        console.log("DEBUG - latestPlanOrder.status:", latestPlanOrder.status);
         const isVerified = latestPlanOrder.status === "VERIFIED";
 
-        if (isVerified) {
-          const userPlanState = userPlans.find(
-            (up: any) =>
-              up.plan.id === activePlan.id &&
-              up.userId === user.id
-          );
+        // Buscar userPlanState siempre que haya un plan activo
+        const userPlanState = userPlans.find(
+          (up: any) =>
+            up.plan.id === activePlan.id &&
+            up.userId === user.id
+        );
+        
+        console.log("DEBUG - user.id:", user.id);
+        console.log("DEBUG - activePlan.id:", activePlan.id);
+        console.log("DEBUG - userPlans.length:", userPlans.length);
+        console.log("DEBUG - userPlanState:", userPlanState);
 
-          const isPlanActive = userPlanState
-            ? userPlanState.isActive
-            : true;
+        // Determinar el estado del plan basado en el userPlanState
+        let planStatusData: any = {
+          id: activePlan.id,
+          orderId: latestPlanOrder.id,
+          userPlanId: userPlanState?.id,
+          nombre: activePlan.nombre,
+          fechaInicio: latestPlanOrder.createdAt
+            ? new Date(latestPlanOrder.createdAt)
+                .toISOString()
+                .split("T")[0]
+            : null,
+          fechaFin: latestPlanOrder.createdAt
+            ? new Date(
+                new Date(latestPlanOrder.createdAt).getTime() +
+                  30 * 24 * 60 * 60 * 1000
+              )
+                .toISOString()
+                .split("T")[0]
+            : null,
+        };
 
-          planStatus = {
-            id: activePlan.id,
-            nombre: activePlan.nombre,
-            fechaInicio: latestPlanOrder.createdAt
-              ? new Date(latestPlanOrder.createdAt)
-                  .toISOString()
-                  .split("T")[0]
-              : null,
-            fechaFin: latestPlanOrder.createdAt
-              ? new Date(
-                  new Date(latestPlanOrder.createdAt).getTime() +
-                    30 * 24 * 60 * 60 * 1000
-                )
-                  .toISOString()
-                  .split("T")[0]
-              : null,
-            isActive: isPlanActive,
-            isDeactivated: !isPlanActive,
+        if (userPlanState) {
+          // Si existe userPlanState, usar su estado real
+          const status = (userPlanState as any)?.status || 'ACTIVE';
+          const isActive = (userPlanState as any)?.isActive || false;
+          
+          planStatusData = {
+            ...planStatusData,
+            status,
+            isActive: status === 'ACTIVE' && isActive,
+            isDeactivated: status === 'INACTIVE' || !isActive,
+            isFrozen: status === 'FROZEN',
+          };
+        } else if (isVerified) {
+          // Si no hay userPlanState pero la orden está verificada, crear uno nuevo
+          planStatusData = {
+            ...planStatusData,
+            status: 'ACTIVE',
+            isActive: true,
+            isDeactivated: false,
+            isFrozen: false,
           };
         } else {
-          planStatus = {
-            id: activePlan.id,
-            nombre: activePlan.nombre,
-            fechaInicio: latestPlanOrder.createdAt
-              ? new Date(latestPlanOrder.createdAt)
-                  .toISOString()
-                  .split("T")[0]
-              : null,
-            fechaFin: latestPlanOrder.createdAt
-              ? new Date(
-                  new Date(latestPlanOrder.createdAt).getTime() +
-                    30 * 24 * 60 * 60 * 1000
-                )
-                  .toISOString()
-                  .split("T")[0]
-              : null,
+          // Si no hay userPlanState y la orden no está verificada
+          planStatusData = {
+            ...planStatusData,
+            status: 'INACTIVE',
             isActive: false,
             isDeactivated: true,
+            isFrozen: false,
           };
         }
+
+        planStatus = planStatusData;
       }
 
       return {
@@ -168,7 +184,7 @@ async function getUsersData(): Promise<{ users: any[]; sedes: any[]; plans: any[
       });
     });
 
-    // 🔥 SOLUCIÓN CRÍTICA PARA PRODUCCIÓN
+    // ðŸ”¥ SOLUCIÃ“N CRÃTICA PARA PRODUCCIÃ“N
     // Convierte todo a JSON serializable (elimina Date objects)
     const safeUsers = JSON.parse(JSON.stringify(usersWithPlans));
     const safeSedes = JSON.parse(JSON.stringify(sedes));
@@ -198,3 +214,8 @@ export default async function UsuariosPage() {
     </AdminLayout>
   );
 }
+
+
+
+
+

@@ -59,6 +59,8 @@ import {
   Filter,
   Power,
   PowerOff,
+  Snowflake,
+  Sun,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useFormValidation, getInputProps, getLabelProps } from "@/hooks/use-form-validation";
@@ -91,11 +93,15 @@ interface User {
   updatedAt: Date;
   planActivo?: {
     id: string;
+    orderId?: string;
+    userPlanId?: string;
     nombre: string;
     fechaInicio: string;
     fechaFin: string;
-    isActive?: boolean;
+    isActive: boolean;
     isDeactivated?: boolean;
+    isFrozen?: boolean;
+    status?: string;
   } | null;
 }
 
@@ -158,6 +164,8 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationMessage, setValidationMessage] = useState("");
+  const [freezingPlan, setFreezingPlan] = useState(false);
+  const [unfreezingPlan, setUnfreezingPlan] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
     type: 'create' | 'toggle' | 'plan';
     user?: User;
@@ -554,6 +562,82 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       toast.error("Este usuario no tiene un plan asignado");
     }
   };
+
+  const handleFreezePlan = async (user: User) => {
+    console.log("handleFreezePlan - user.planActivo:", user.planActivo);
+    console.log("handleFreezePlan - userPlanId:", user.planActivo?.userPlanId);
+    
+    if (!user.planActivo?.userPlanId) {
+      toast.error("Este usuario no tiene un plan activo");
+      return;
+    }
+
+    setFreezingPlan(true);
+    try {
+      const response = await fetch(`/api/user-plans/${user.planActivo.userPlanId}/freeze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al congelar el plan");
+      }
+
+      toast.success("Plan congelado correctamente");
+      // Recargar la lista de usuarios para mostrar cambios
+      window.location.reload();
+    } catch (error) {
+      console.error("Error freezing plan:", error);
+      toast.error(error instanceof Error ? error.message : "Error al congelar el plan");
+    } finally {
+      setFreezingPlan(false);
+    }
+  };
+
+  const handleUnfreezePlan = async (user: User) => {
+    if (!user.planActivo?.userPlanId) {
+      toast.error("Este usuario no tiene un plan activo");
+      return;
+    }
+
+    setUnfreezingPlan(true);
+    try {
+      const response = await fetch(`/api/user-plans/${user.planActivo.userPlanId}/unfreeze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al descongelar el plan");
+      }
+
+      toast.success(`Plan descongelado correctamente. ${data.frozenDays ? `Se extendieron ${data.frozenDays} días.` : ''}`);
+      // Recargar la lista de usuarios para mostrar cambios
+      window.location.reload();
+    } catch (error) {
+      console.error("Error unfreezing plan:", error);
+      toast.error(error instanceof Error ? error.message : "Error al descongelar el plan");
+    } finally {
+      setUnfreezingPlan(false);
+    }
+  };
+
+  const getPlanStatus = (user: User) => {
+    if (!user.planActivo) return 'NONE';
+    if (user.planActivo.isDeactivated) return 'INACTIVE';
+    // Aquí deberías verificar el campo status cuando esté disponible
+    // Por ahora, asumimos que si está activo pero no está desactivado, está ACTIVE
+    return 'ACTIVE';
+  };
+
         return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -978,46 +1062,111 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                       <span className="font-medium text-white">{selectedUser.planActivo.nombre}</span>
                     </div>
                     <div className="space-y-1 text-sm text-[#A0A0A0]">
+                      {selectedUser.planActivo.orderId && (
+                        <p><span className="text-[#A0A0A0]">ID de la Orden:</span> <span className="text-white font-mono text-xs bg-[#1E1E1E] px-2 py-1 rounded">{selectedUser.planActivo.orderId}</span></p>
+                      )}
+                      {selectedUser.planActivo.userPlanId && (
+                        <p><span className="text-[#A0A0A0]">ID del UserPlan:</span> <span className="text-white font-mono text-xs bg-[#1E1E1E] px-2 py-1 rounded">{selectedUser.planActivo.userPlanId}</span></p>
+                      )}
                       <p><span className="text-[#A0A0A0]">Fecha de inicio:</span> {new Date(selectedUser.planActivo.fechaInicio).toLocaleDateString()}</p>
                       <p><span className="text-[#A0A0A0]">Fecha de fin:</span> {new Date(selectedUser.planActivo.fechaFin).toLocaleDateString()}</p>
                       <p><span className="text-[#A0A0A0]">Estado:</span> 
-                        <span className={`ml-1 ${selectedUser.planActivo.isActive !== false ? 'text-green-400' : 'text-red-400'}`}>
-                          {selectedUser.planActivo.isActive !== false ? 'Activo' : 'Inactivo'}
+                        <span className={`ml-1 ${
+                          selectedUser.planActivo.isFrozen 
+                            ? 'text-blue-400' 
+                            : selectedUser.planActivo.isActive !== false 
+                              ? 'text-green-400' 
+                              : 'text-red-400'
+                        }`}>
+                          {selectedUser.planActivo.isFrozen 
+                            ? 'Congelado' 
+                            : selectedUser.planActivo.isActive !== false 
+                              ? 'Activo' 
+                              : 'Inactivo'
+                          }
                         </span>
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    {/* Botón para planes activos */}
+                    {selectedUser.planActivo.isActive && !selectedUser.planActivo.isFrozen && (
+                      <>
+                        <Button
+                          onClick={() => handleFreezePlan(selectedUser)}
+                          disabled={freezingPlan}
+                          variant="outline"
+                          className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 flex-1"
+                        >
+                          {freezingPlan ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mr-2" />
+                              Congelando...
+                            </>
+                          ) : (
+                            <>
+                              <Snowflake className="h-4 w-4 mr-2" />
+                              Congelar
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            openTogglePlanDialog(selectedUser);
+                            setShowPlanDialog(false);
+                          }}
+                          className="border-red-500/50 text-red-400 hover:bg-red-500/10 flex-1"
+                        >
+                          <PowerOff className="h-4 w-4 mr-2" />
+                          Desactivar
+                        </Button>
+                      </>
+                    )}
+                    
+                    {/* Botón para planes congelados */}
+                    {selectedUser.planActivo.isFrozen && (
+                      <Button
+                        onClick={() => handleUnfreezePlan(selectedUser)}
+                        disabled={unfreezingPlan}
+                        variant="outline"
+                        className="border-green-500/50 text-green-400 hover:bg-green-500/10 flex-1"
+                      >
+                        {unfreezingPlan ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin mr-2" />
+                              Descongelando...
+                          </>
+                        ) : (
+                          <>
+                            <Sun className="h-4 w-4 mr-2" />
+                            Descongelar
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    
+                    {/* Botón para planes inactivos */}
+                    {selectedUser.planActivo.isDeactivated && !selectedUser.planActivo.isFrozen && (
+                      <Button
+                        onClick={() => {
+                          openTogglePlanDialog(selectedUser);
+                          setShowPlanDialog(false);
+                        }}
+                        className="border-green-500/50 text-green-400 hover:bg-green-500/10 flex-1"
+                      >
+                        <Power className="h-4 w-4 mr-2" />
+                        Reactivar
+                      </Button>
+                    )}
+                  </div>
                   <Button
                     variant="outline"
                     onClick={() => setShowPlanDialog(false)}
-                    className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white"
+                    className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white w-full"
                   >
                     Cerrar
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      openTogglePlanDialog(selectedUser);
-                      setShowPlanDialog(false);
-                    }}
-                    className={`${
-                      selectedUser.planActivo.isActive !== false 
-                        ? "border-red-500/50 text-red-400 hover:bg-red-500/10" 
-                        : "gradient-bg hover:opacity-90"
-                    }`}
-                  >
-                    {selectedUser.planActivo.isActive !== false ? (
-                      <>
-                        <PowerOff className="h-4 w-4 mr-2" />
-                        Desactivar Plan
-                      </>
-                    ) : (
-                      <>
-                        <Power className="h-4 w-4 mr-2" />
-                        Activar Plan
-                      </>
-                    )}
                   </Button>
                 </div>
               </>
@@ -1046,25 +1195,28 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Button
-                        onClick={() => {
-                          openTogglePlanDialog(selectedUser);
-                          setShowPlanDialog(false);
-                        }}
-                        className="gradient-bg hover:opacity-90 w-full"
-                      >
-                        <Power className="h-4 w-4 mr-2" />
-                        Reactivar Plan
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowPlanDialog(false)}
-                        className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white w-full"
-                      >
-                        Cerrar
-                      </Button>
-                    </div>
+                    <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        openTogglePlanDialog(selectedUser);
+                        setShowPlanDialog(false);
+                      }}
+                      className="gradient-bg hover:opacity-90 flex-1"
+                    >
+                      <Power className="h-4 w-4 mr-2" />
+                      Reactivar
+                    </Button>
+                    {/* Aquí podrías agregar un botón de descongelar si el plan está congelado pero desactivado */}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPlanDialog(false)}
+                    className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white w-full"
+                  >
+                    Cerrar
+                  </Button>
+                </div>
                   </>
                 ) : (
                   <>

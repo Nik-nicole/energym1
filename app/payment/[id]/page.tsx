@@ -303,7 +303,7 @@ export default function PaymentPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-green-500" />
-                    <span className="text-gray-300">Procesamiento seguro con Wompi</span>
+                    <span className="text-gray-300">Procesamiento seguro</span>
                   </div>
                 </div>
               </motion.div>

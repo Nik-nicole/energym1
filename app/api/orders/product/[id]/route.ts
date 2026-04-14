@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { BoldPollingService } from "@/lib/bold-polling";
 
 export async function GET(
   request: NextRequest,
@@ -69,12 +70,33 @@ export async function GET(
         id: productOrder.payment.id,
         method: productOrder.payment.paymentMethod,
         status: productOrder.payment.status,
-        amount: productOrder.payment.amount
+        amount: productOrder.payment.amount,
+        transactionId: productOrder.payment.transactionId
       } : null
     });
 
     if (!productOrder) {
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
+    }
+
+    // Si la orden tiene un pago con transactionId (paymentLinkId), consultar estado actualizado
+    if (productOrder.payment?.transactionId && productOrder.payment.status === 'PENDING') {
+      console.log(`[API Order] Consultando estado actualizado de Bold para paymentLinkId: ${productOrder.payment.transactionId}`);
+      
+      try {
+        const result = await BoldPollingService.pollAndUpdatePaymentStatus(productOrder.payment.transactionId);
+        
+        if (result.payment && result.payment.status !== productOrder.payment.status) {
+          console.log(`[API Order] Estado actualizado de ${productOrder.payment.status} a ${result.payment.status}`);
+          
+          // Actualizar el objeto productOrder con el nuevo estado
+          productOrder.payment.status = result.payment.status;
+          productOrder.status = result.payment.status; // Sincronizar estado de la orden
+        }
+      } catch (error) {
+        console.error(`[API Order] Error consultando estado actualizado:`, error);
+        // No fallar la petición si el polling falla
+      }
     }
 
     // Solo permitir acceso si es administrador o el dueño de la orden y está pagada
@@ -179,9 +201,10 @@ const formatCurrency = (amount: number) => {
         },
         payment: productOrder.payment ? {
           method: productOrder.payment.paymentMethod,
-          status: productOrder.payment.status === "COMPLETED" ? "Pagado" : 
+          status: productOrder.payment.status === "PAID" || productOrder.payment.status === "COMPLETED" ? "Pagado" : 
                   productOrder.payment.status === "PENDING" ? "Pendiente" : 
-                  productOrder.payment.status === "FAILED" ? "Fallido" : "Desconocido",
+                  productOrder.payment.status === "REJECTED" || productOrder.payment.status === "FAILED" ? "Fallido" : 
+                  productOrder.payment.status === "CANCELLED" || productOrder.payment.status === "EXPIRED" ? "Cancelado" : "Desconocido",
           amount: formatCurrency(productOrder.payment.amount),
           date: productOrder.payment.createdAt.toLocaleDateString(),
           transactionId: productOrder.payment.transactionId

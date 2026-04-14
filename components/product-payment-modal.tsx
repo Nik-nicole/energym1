@@ -105,7 +105,7 @@ export function ProductPaymentModal({
     setIsProcessing(true)
 
     try {
-      // Simulación de procesamiento de pago con Wompi
+      // Simulación de procesamiento de pago
       await new Promise(resolve => setTimeout(resolve, 3000))
 
       // Crear la orden

@@ -87,6 +87,7 @@ export async function POST(
         startDate,
         endDate,
         isActive: true,
+        status: 'ACTIVE',
       },
     });
 

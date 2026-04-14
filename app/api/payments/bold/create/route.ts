@@ -144,8 +144,8 @@ export async function POST(request: NextRequest) {
       .replace(/[^a-zA-Z0-9-_]/g, '-')
       .substring(0, 60);
 
-    // 7. Crear registro de PlanOrder dentro de transacción atómica
-    const planOrder = await prisma.$transaction(async (tx) => {
+    // 7. Crear registro de Payment y PlanOrder dentro de transacción atómica
+    const { planOrder, payment } = await prisma.$transaction(async (tx) => {
       // Verificar que no existe una orden pendiente reciente (evita duplicados)
       const existingOrder = await tx.planOrder.findFirst({
         where: {
@@ -160,14 +160,31 @@ export async function POST(request: NextRequest) {
 
       if (existingOrder) {
         console.log("[Bold API] Orden pendiente existente encontrada:", existingOrder.id);
-        return existingOrder;
+        // Devolver la orden existente y su pago asociado
+        const existingPayment = await tx.payment.findUnique({
+          where: { id: existingOrder.paymentId! }
+        });
+        return { planOrder: existingOrder, payment: existingPayment };
       }
 
-      // Crear nueva orden
+      // Crear registro de pago primero
+      const paymentRecord = await tx.payment.create({
+        data: {
+          sedeId: user.sedeId!,
+          amount: plan.precio,
+          paymentMethod: 'BOLD',
+          status: 'PENDING',
+          transactionId: reference, // Usar la referencia como transactionId
+          gatewayResponse: {}
+        }
+      });
+
+      // Crear nueva orden asociada al pago
       const order = await tx.planOrder.create({
         data: {
           userId: user.id,
           planId: plan.id,
+          paymentId: paymentRecord.id, // Asociar con el pago
           sedeId: user.sedeId!,
           quantity: 1,
           unitPrice: plan.precio,
@@ -176,14 +193,15 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      console.log("[Bold API] Payment creado:", paymentRecord.id);
       console.log("[Bold API] PlanOrder creado:", order.id);
-      return order;
+      return { planOrder: order, payment: paymentRecord };
     });
 
     // 8. Llamar a la API de Bold para generar el link de pago
     const boldApiUrl = "https://integrations.api.bold.co/online/link/v1";
     const origin = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
-    const callbackUrl = `${origin}/pago/confirmacion/bold?planOrderId=${planOrder.id}`;
+    const callbackUrl = `${origin}/payment-status?transactionId=${reference}`;
 
     const boldPayload: any = {
       amount_type: "CLOSE",
@@ -225,8 +243,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extraer la URL del link de pago
+    // Extraer la URL del link de pago y el paymentLinkId
     const paymentUrl = boldData.payload?.url || boldData.url || boldData.payment_link;
+    const paymentLinkId = boldData.payload?.payment_link || boldData.payment_link;
     
     if (!paymentUrl) {
       console.error("[Bold API] No se encontró URL de pago en respuesta:", JSON.stringify(boldData));
@@ -236,7 +255,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Actualizar el payment con la respuesta de Bold y el paymentLinkId
+    if (payment) {
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          gatewayResponse: boldData,
+          // Actualizar transactionId con el paymentLinkId de Bold para consultas futuras
+          transactionId: paymentLinkId
+        }
+      });
+    }
+
     console.log("[Bold API] Payment URL generada:", paymentUrl);
+    console.log("[Bold API] Payment Link ID:", paymentLinkId);
 
     const duration = Date.now() - startTime;
     console.log(`[Bold API] Request completado en ${duration}ms`);

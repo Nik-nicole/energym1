@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, ChevronLeft, ChevronRight, X, Save, Palette, FileText, AlertCircle } from "lucide-react";
+import { User, MapPin, Mail, Calendar, Shield, Dumbbell, Check, Crown, Package, ShoppingBag, Edit, CreditCard, Settings, Camera, Star, Zap, ArrowLeft, ArrowRight, Sparkles, ChevronDown, ChevronLeft, ChevronRight, X, Save, Palette, FileText, AlertCircle, Snowflake, Sun, Pause, Play } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -53,23 +53,24 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
   console.log("Usuario:", user);
   console.log("UserPlans:", user?.userPlans);
   
-  const hasActivePlan = user?.userPlans?.some((userPlan) => 
-    userPlan.isActive && 
-    (!userPlan.endDate || new Date(userPlan.endDate) > new Date())
-  ) || false;
-  
-  const activeUserPlan = user?.userPlans?.find((userPlan) => 
-    userPlan.isActive && 
-    (!userPlan.endDate || new Date(userPlan.endDate) > new Date())
+  // Obtener el plan actual considerando tanto isActive como status
+  const currentUserPlan = user?.userPlans?.find((userPlan) => 
+    userPlan.isActive === true && 
+    (userPlan.status === 'ACTIVE' || userPlan.status === 'FROZEN') &&
+    (userPlan.status === 'FROZEN' || !userPlan.endDate || new Date(userPlan.endDate) > new Date())
   );
   
-  console.log("hasActivePlan:", hasActivePlan);
-  console.log("activeUserPlan:", activeUserPlan);
+  const hasActivePlan = !!currentUserPlan;
+  const planStatus = currentUserPlan?.status || 'INACTIVE';
   
-  const activePlan = hasActivePlan && activeUserPlan ? {
-    ...activeUserPlan.plan,
-    fechaInicio: activeUserPlan.startDate,
-    fechaFin: activeUserPlan.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Si no hay endDate, mostrar 30 días desde inicio
+  console.log("hasActivePlan:", hasActivePlan);
+  console.log("currentUserPlan:", currentUserPlan);
+  console.log("planStatus:", planStatus);
+  
+  const activePlan = hasActivePlan && currentUserPlan ? {
+    ...currentUserPlan.plan,
+    fechaInicio: currentUserPlan.startDate,
+    fechaFin: currentUserPlan.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Si no hay endDate, mostrar 30 días desde inicio
   } : null;
 
   console.log("ActivePlan completo:", activePlan);
@@ -88,6 +89,8 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
   console.log("¿Es VIP por lógica mejorada?:", isVipPlan);
 
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [freezingPlan, setFreezingPlan] = useState(false);
+  const [unfreezingPlan, setUnfreezingPlan] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageClick = () => {
@@ -128,6 +131,64 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
   const scrollToPlans = () => {
     const plansTitle = document.querySelector('[data-plans-title]');
     plansTitle?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const handleFreezePlan = async () => {
+    if (!currentUserPlan?.id) return;
+    
+    setFreezingPlan(true);
+    try {
+      const response = await fetch(`/api/user-plans/${currentUserPlan.id}/freeze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al congelar el plan');
+      }
+
+      toast.success('Plan congelado correctamente');
+      // Recargar página para mostrar cambios
+      window.location.reload();
+    } catch (error) {
+      console.error('Error freezing plan:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al congelar el plan');
+    } finally {
+      setFreezingPlan(false);
+    }
+  };
+
+  const handleUnfreezePlan = async () => {
+    if (!currentUserPlan?.id) return;
+    
+    setUnfreezingPlan(true);
+    try {
+      const response = await fetch(`/api/user-plans/${currentUserPlan.id}/unfreeze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al descongelar el plan');
+      }
+
+      toast.success(`Plan descongelado correctamente. ${data.frozenDays ? `Se extendieron ${data.frozenDays} días.` : ''}`);
+      // Recargar página para mostrar cambios
+      window.location.reload();
+    } catch (error) {
+      console.error('Error unfreezing plan:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al descongelar el plan');
+    } finally {
+      setUnfreezingPlan(false);
+    }
   };
 
   const [currentOrderPage, setCurrentOrderPage] = useState(1);
@@ -259,9 +320,21 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
             <div className="text-center md:text-right">
               {hasActivePlan ? (
                 <>
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-full">
-                    <Crown className="w-4 h-4 text-[#EC4899]" />
-                    <span className="text-white">Plan Activo</span>
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border ${
+                    planStatus === 'FROZEN' 
+                      ? 'bg-blue-900/20 border-blue-800/50' 
+                      : 'bg-zinc-900 border-zinc-800'
+                  }`}>
+                    {planStatus === 'FROZEN' ? (
+                      <Snowflake className="w-4 h-4 text-blue-400" />
+                    ) : (
+                      <Crown className="w-4 h-4 text-[#EC4899]" />
+                    )}
+                    <span className={`text-white ${
+                      planStatus === 'FROZEN' ? 'text-blue-400' : ''
+                    }`}>
+                      {planStatus === 'FROZEN' ? 'Plan Congelado' : 'Plan Activo'}
+                    </span>
                   </div>
                   <p className="font-bold mt-2 text-[#EC4899]">
                     {activePlan?.nombre}
@@ -269,6 +342,47 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
                   <p className="text-sm text-gray-400 mt-1">
                     {formatPrice(activePlan?.precio || 0)}/{activePlan?.duracion}
                   </p>
+                  
+                  {/* Botones de congelar/descongelar */}
+                  <div className="mt-3 space-y-2">
+                    {planStatus === 'ACTIVE' ? (
+                      <button
+                        onClick={handleFreezePlan}
+                        disabled={freezingPlan}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        {freezingPlan ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Congelando...
+                          </>
+                        ) : (
+                          <>
+                            <Snowflake className="w-4 h-4" />
+                            Congelar Plan
+                          </>
+                        )}
+                      </button>
+                    ) : planStatus === 'FROZEN' ? (
+                      <button
+                        onClick={handleUnfreezePlan}
+                        disabled={unfreezingPlan}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        {unfreezingPlan ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Descongelando...
+                          </>
+                        ) : (
+                          <>
+                            <Sun className="w-4 h-4" />
+                            Descongelar Plan
+                          </>
+                        )}
+                      </button>
+                    ) : null}
+                  </div>
                 </>
               ) : (
                 <>
@@ -290,11 +404,15 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
 
         {/* TARJETA DEL PLAN ACTIVO */}
         {hasActivePlan ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 mb-8">
-            {/* Header minimalista con toque fucsia */}
+          <div className={`bg-zinc-900 border rounded-2xl p-8 mb-8 ${
+            planStatus === 'FROZEN' ? 'border-blue-800/50 bg-zinc-900/50' : 'border-zinc-800'
+          }`}>
+            {/* Header con estado del plan */}
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-fuchsia-400 mb-2">
+                <h2 className={`text-2xl font-bold mb-2 ${
+                  planStatus === 'FROZEN' ? 'text-blue-400' : 'text-fuchsia-400'
+                }`}>
                   {activePlan?.nombre}
                 </h2>
                 <div className="flex items-center gap-3">
@@ -304,11 +422,35 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
                   <span className="text-zinc-400">/{activePlan?.duracion}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-zinc-800 rounded-full border border-zinc-700">
-                <div className="w-2 h-2 bg-fuchsia-500 rounded-full"></div>
-                <span className="text-sm text-zinc-300">Activo</span>
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${
+                planStatus === 'FROZEN' 
+                  ? 'bg-blue-900/30 border-blue-800/50' 
+                  : 'bg-zinc-800 border-zinc-700'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  planStatus === 'FROZEN' ? 'bg-blue-500' : 'bg-fuchsia-500'
+                }`}></div>
+                <span className={`text-sm ${
+                  planStatus === 'FROZEN' ? 'text-blue-400' : 'text-zinc-300'
+                }`}>
+                  {planStatus === 'FROZEN' ? 'Congelado' : 'Activo'}
+                </span>
               </div>
             </div>
+
+            {/* Información de congelamiento si aplica */}
+            {planStatus === 'FROZEN' && currentUserPlan?.freezeDate && (
+              <div className="bg-blue-900/20 border border-blue-800/30 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <Snowflake className="w-5 h-5 text-blue-400" />
+                  <p className="text-blue-400 font-medium">Plan Congelado</p>
+                </div>
+                <p className="text-sm text-blue-300">
+                  Tu plan está congelado desde el {formatDate(currentUserPlan.freezeDate)}. 
+                  El tiempo está pausado y no se consumen días de tu membresía.
+                </p>
+              </div>
+            )}
 
             {/* Fechas con diseño bonito */}
             <div className="grid grid-cols-2 gap-4 mb-8">
@@ -319,7 +461,9 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
                 </p>
               </div>
               <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-xl p-4 text-center">
-                <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">Finaliza</p>
+                <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider">
+                  {planStatus === 'FROZEN' ? 'Reanudará' : 'Finaliza'}
+                </p>
                 <p className="text-sm font-medium text-white">
                   {formatDate(activePlan?.fechaFin || new Date())}
                 </p>
@@ -330,17 +474,34 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <p className="text-sm text-zinc-400">Beneficios incluidos:</p>
-                <span className="text-xs px-2 py-1 bg-fuchsia-500/10 text-fuchsia-400 rounded-full">
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  planStatus === 'FROZEN' 
+                    ? 'bg-blue-500/10 text-blue-400' 
+                    : 'bg-fuchsia-500/10 text-fuchsia-400'
+                }`}>
                   {activePlan?.beneficios?.length || 0} beneficios
                 </span>
               </div>
               <div className="space-y-2">
                 {activePlan?.beneficios.map((beneficio: string, index: number) => (
                   <div key={index} className="flex items-center gap-3 py-1">
-                    <div className="w-4 h-4 rounded-full border border-fuchsia-500/30 flex items-center justify-center flex-shrink-0">
-                      <Check className="w-2.5 h-2.5 text-fuchsia-400" />
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                      planStatus === 'FROZEN' 
+                        ? 'border-blue-500/30' 
+                        : 'border-fuchsia-500/30'
+                    }`}>
+                      <Check className={`w-2.5 h-2.5 ${
+                        planStatus === 'FROZEN' ? 'text-blue-400' : 'text-fuchsia-400'
+                      }`} />
                     </div>
-                    <span className="text-sm text-zinc-300">{beneficio}</span>
+                    <span className={`text-sm ${
+                      planStatus === 'FROZEN' ? 'text-zinc-400' : 'text-zinc-300'
+                    }`}>
+                      {beneficio}
+                      {planStatus === 'FROZEN' && (
+                        <span className="text-blue-400 ml-2 text-xs">(Pausado)</span>
+                      )}
+                    </span>
                   </div>
                 ))}
               </div>

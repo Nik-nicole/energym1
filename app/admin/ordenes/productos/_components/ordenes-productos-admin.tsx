@@ -2,6 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getPaymentStatusText } from "@/lib/payment-status-utils";
+
+// Función para formatear moneda en pesos colombianos
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+};
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -270,9 +281,7 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
       },
       payment: order.payment ? {
         method: order.payment.paymentMethod,
-        status: order.payment.status === "COMPLETED" ? "Pagado" : 
-                order.payment.status === "PENDING" ? "Pendiente" : 
-                order.payment.status === "FAILED" ? "Fallido" : "Desconocido",
+        status: getPaymentStatusText(order.payment.status as any),
         amount: formatCurrency(order.payment.amount),
         date: new Date(order.payment.createdAt).toLocaleDateString("es-CO"),
         transactionId: order.payment.transactionId
@@ -316,39 +325,42 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
       return <div className="w-3 h-3 rounded-full bg-red-500 mx-auto" />;
     }
     
-    // Estados que indican que la orden está pagada
-    const paidStatuses = ["PAID", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"];
+    // Estados que indican que la orden está pagada (incluye PAGO y VERIFIED)
+    const paidStatuses = ["PAGO", "PAID", "CONFIRMED", "VERIFIED", "PACKED", "SHIPPED", "DELIVERED"];
     const isPaid = paidStatuses.includes(order.status);
     
-    // Lógica específica para cada columna
+    // Lógica específica para cada columna - manteniendo anteriores verdes
     switch (columnIndex) {
       case 0: // Pagado
         return (
           <div 
             className="w-3 h-3 rounded-full mx-auto" 
             style={{ backgroundColor: isPaid ? '#22C55E' : '#6B7280' }}
-            title={`Status: ${order.status}, isPaid: ${isPaid}`}
+            title={`Status: ${order.status}, Pagado: ${isPaid ? 'Sí' : 'No'}`}
           />
         );
-      case 1: // Verificado
+      case 1: // Verificado (se pone verde cuando está verificado o superior)
+        return (
+          <div 
+            className="w-3 h-3 rounded-full mx-auto" 
+            style={{ backgroundColor: ["VERIFIED", "PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? '#22C55E' : '#6B7280' }}
+            title={`Verificado: ${["VERIFIED", "PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? 'Sí' : 'No'}`}
+          />
+        );
+      case 2: // Empacado (se pone verde cuando está empacado o superior)
         return (
           <div 
             className="w-3 h-3 rounded-full mx-auto" 
             style={{ backgroundColor: ["PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? '#22C55E' : '#6B7280' }}
+            title={`Empacado: ${["PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? 'Sí' : 'No'}`}
           />
         );
-      case 2: // Empacado
-        return (
-          <div 
-            className="w-3 h-3 rounded-full mx-auto" 
-            style={{ backgroundColor: ["PACKED", "SHIPPED", "DELIVERED"].includes(order.status) ? '#22C55E' : '#6B7280' }}
-          />
-        );
-      case 3: // Enviado
+      case 3: // Enviado (se pone verde cuando está enviado o entregado)
         return (
           <div 
             className="w-3 h-3 rounded-full mx-auto" 
             style={{ backgroundColor: ["SHIPPED", "DELIVERED"].includes(order.status) ? '#22C55E' : '#6B7280' }}
+            title={`Enviado: ${["SHIPPED", "DELIVERED"].includes(order.status) ? 'Sí' : 'No'}`}
           />
         );
       default:
@@ -646,6 +658,8 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
                 <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
                   <SelectItem value="all" className="text-white">Todos los estados</SelectItem>
                   <SelectItem value="PENDING" className="text-white">Pendiente</SelectItem>
+                  <SelectItem value="PAGO" className="text-white">Pagado</SelectItem>
+                  <SelectItem value="VERIFIED" className="text-white">Verificado</SelectItem>
                   <SelectItem value="PACKED" className="text-white">Empacado</SelectItem>
                   <SelectItem value="SHIPPED" className="text-white">Enviado</SelectItem>
                   <SelectItem value="DELIVERED" className="text-white">Entregado</SelectItem>
@@ -830,6 +844,8 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
                     </SelectTrigger>
                     <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
                       <SelectItem value="PENDING" className="text-white">Pendiente</SelectItem>
+                      <SelectItem value="PAGO" className="text-white">Pagado</SelectItem>
+                      <SelectItem value="VERIFIED" className="text-white">Verificado</SelectItem>
                       <SelectItem value="PACKED" className="text-white">Empacado</SelectItem>
                       <SelectItem value="SHIPPED" className="text-white">Enviado</SelectItem>
                       <SelectItem value="DELIVERED" className="text-white">Entregado</SelectItem>

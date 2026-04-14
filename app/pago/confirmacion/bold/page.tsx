@@ -1,8 +1,5 @@
 import { redirect } from "next/navigation";
 import prisma from "@/lib/db";
-import { Header } from "@/components/ui/header";
-import { Footer } from "@/components/ui/footer";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -32,34 +29,50 @@ export default async function BoldConfirmacionPage({
       // Buscar la orden
       const planOrder = await prisma.planOrder.findUnique({
         where: { id: planOrderId },
-        include: { plan: true, user: true },
+        include: { plan: true, user: true, payment: true },
       });
 
       if (planOrder && planOrder.status === "PENDING") {
-        // Crear el payment
-        const payment = await prisma.payment.create({
-          data: {
-            sedeId: planOrder.sedeId,
-            amount: planOrder.totalPrice,
-            paymentMethod: "BOLD",
-            status: "PAID",
-            transactionId: transaction_id,
-            gatewayResponse: {
-              bold_status: status,
-              bold_reference: bold_reference || reference,
-              planOrderId: planOrderId,
+        // Si ya tiene un payment asociado, actualizarlo
+        if (planOrder.payment) {
+          await prisma.payment.update({
+            where: { id: planOrder.payment.id },
+            data: {
+              status: "PAID",
+              transactionId: transaction_id,
+              gatewayResponse: {
+                bold_status: status,
+                bold_reference: bold_reference || reference,
+                planOrderId: planOrderId,
+              },
             },
-          },
-        });
+          });
+        } else {
+          // Crear el payment
+          const payment = await prisma.payment.create({
+            data: {
+              sedeId: planOrder.sedeId,
+              amount: planOrder.totalPrice,
+              paymentMethod: "BOLD",
+              status: "PAID",
+              transactionId: transaction_id,
+              gatewayResponse: {
+                bold_status: status,
+                bold_reference: bold_reference || reference,
+                planOrderId: planOrderId,
+              },
+            },
+          });
 
-        // Actualizar la orden a CONFIRMED
-        await prisma.planOrder.update({
-          where: { id: planOrderId },
-          data: {
-            status: "CONFIRMED",
-            paymentId: payment.id,
-          },
-        });
+          // Actualizar la orden con el paymentId
+          await prisma.planOrder.update({
+            where: { id: planOrderId },
+            data: {
+              status: "PAID",
+              paymentId: payment.id,
+            },
+          });
+        }
 
         // Activar el plan para el usuario
         const startDate = new Date();
@@ -87,7 +100,7 @@ export default async function BoldConfirmacionPage({
             isActive: true,
             startDate,
             endDate,
-            paymentId: payment.id,
+            paymentId: planOrder.paymentId,
           },
           create: {
             userId: planOrder.userId,
@@ -95,7 +108,7 @@ export default async function BoldConfirmacionPage({
             startDate,
             endDate,
             isActive: true,
-            paymentId: payment.id,
+            paymentId: planOrder.paymentId,
           },
         });
       }
@@ -104,58 +117,11 @@ export default async function BoldConfirmacionPage({
     }
   }
 
-  return (
-    <main className="min-h-screen flex flex-col bg-[#050505]">
-      <Header />
-      <div className="flex-1 pt-24 pb-16 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          {pagoExitoso ? (
-            <>
-              <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-4xl">✅</span>
-              </div>
-              <h1 className="text-3xl font-bold text-white mb-4">
-                ¡Pago Exitoso!
-              </h1>
-              <p className="text-gray-400 mb-2">
-                Tu plan ha sido activado exitosamente.
-              </p>
-              {transaction_id && (
-                <p className="text-gray-500 text-sm mb-8">
-                  Referencia: {transaction_id}
-                </p>
-              )}
-              <Link
-                href="/perfil"
-                className="inline-flex items-center gap-2 px-8 py-4 gradient-bg rounded-xl font-semibold text-white hover:opacity-90 transition-opacity"
-              >
-                Ver mi perfil
-              </Link>
-            </>
-          ) : (
-            <>
-              <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-4xl">❌</span>
-              </div>
-              <h1 className="text-3xl font-bold text-white mb-4">
-                Pago no completado
-              </h1>
-              <p className="text-gray-400 mb-8">
-                {status === "REJECTED"
-                  ? "El pago fue rechazado. Por favor intenta con otro método."
-                  : "Hubo un problema con tu pago. Por favor intenta nuevamente."}
-              </p>
-              <Link
-                href="/planes"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 rounded-xl font-semibold text-white hover:bg-white/20 transition-colors"
-              >
-                Ver planes disponibles
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-      <Footer />
-    </main>
-  );
+  // Redirigir a la nueva página de estado de pago con el transaction_id de Bold
+  if (transaction_id) {
+    redirect(`/payment-status?transactionId=${transaction_id}`);
+  } else {
+    // Si no hay transaction_id, redirigir al perfil
+    redirect("/perfil");
+  }
 }
