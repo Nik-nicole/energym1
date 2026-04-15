@@ -26,14 +26,16 @@ interface Plan {
 interface PlanCardsProps {
   planes: Plan[];
   hasActivePlan?: boolean;
+  hasFrozenPlan?: boolean;
   activePlan?: {
     id: string;
     nombre: string;
     esVip: boolean;
+    status?: string;
   } | null;
 }
 
-export function PlanCards({ planes, hasActivePlan, activePlan }: PlanCardsProps) {
+export function PlanCards({ planes, hasActivePlan, hasFrozenPlan, activePlan }: PlanCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 items-stretch">
       {(planes ?? []).map((plan, index) => (
@@ -42,6 +44,7 @@ export function PlanCards({ planes, hasActivePlan, activePlan }: PlanCardsProps)
           plan={plan} 
           index={index} 
           hasActivePlan={hasActivePlan}
+          hasFrozenPlan={hasFrozenPlan}
           activePlan={activePlan}
         />
       ))}

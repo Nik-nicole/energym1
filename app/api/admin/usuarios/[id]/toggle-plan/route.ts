@@ -67,11 +67,13 @@ export async function PATCH(
       },
       update: {
         isActive: isActive,
+        status: isActive ? 'ACTIVE' : 'INACTIVE',
       },
       create: {
         userId: params.id,
         planId: planId,
         isActive: isActive,
+        status: isActive ? 'ACTIVE' : 'INACTIVE',
       },
     });
 

@@ -20,14 +20,45 @@ export async function POST(
     const { id } = params;
     const userId = session.user.id;
 
-    // Obtener el UserPlan para verificar
-    const userPlan = await prisma.userPlan.findUnique({
+    // Intentar obtener el UserPlan por ID primero
+    let userPlan = await prisma.userPlan.findUnique({
       where: { id },
       include: {
         plan: true,
         user: true,
       },
     });
+
+    // Si no se encuentra por ID, buscar por userId y planId
+    if (!userPlan) {
+      console.log('No se encontró UserPlan por ID, buscando por userId y planId...');
+      userPlan = await prisma.userPlan.findFirst({
+        where: {
+          userId: userId,
+          planId: id,
+          isActive: false,
+        },
+        include: {
+          plan: true,
+          user: true,
+        },
+      });
+    }
+
+    // Si aún no se encuentra y es admin, buscar solo por planId
+    if (!userPlan && session.user.role === 'ADMIN') {
+      console.log('Buscando UserPlan como admin por planId...');
+      userPlan = await prisma.userPlan.findFirst({
+        where: {
+          planId: id,
+          isActive: false,
+        },
+        include: {
+          plan: true,
+          user: true,
+        },
+      });
+    }
 
     if (!userPlan) {
       return NextResponse.json(
@@ -52,7 +83,35 @@ export async function POST(
       );
     }
 
-    // Descongelar el plan - intentar usar campos status/freezeDate si existen
+    // Calcular días congelados y nueva fecha de fin
+    const now = new Date();
+    let frozenDays = 0;
+    let newEndDate = userPlan.endDate ? new Date(userPlan.endDate) : null;
+
+    if (userPlan.freezeDate) {
+      const freezeDate = new Date(userPlan.freezeDate);
+      frozenDays = Math.floor((now.getTime() - freezeDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Si no hay endDate, calcular según duración del plan
+      if (!newEndDate) {
+        newEndDate = new Date(now);
+        const duration = userPlan.plan.duracion.toLowerCase();
+        if (duration.includes('mes')) {
+          const months = parseInt(duration) || 1;
+          newEndDate.setMonth(newEndDate.getMonth() + months);
+        } else if (duration.includes('año')) {
+          const years = parseInt(duration) || 1;
+          newEndDate.setFullYear(newEndDate.getFullYear() + years);
+        } else {
+          newEndDate.setMonth(newEndDate.getMonth() + 1);
+        }
+      }
+      
+      // Extender endDate por los días congelados
+      newEndDate.setDate(newEndDate.getDate() + frozenDays);
+    }
+
+    // Descongelar el plan
     let unfrozenPlan;
     try {
       unfrozenPlan = await prisma.userPlan.update({
@@ -61,6 +120,7 @@ export async function POST(
           status: 'ACTIVE',
           isActive: true,
           freezeDate: null,
+          endDate: newEndDate,
           updatedAt: new Date(),
         },
       });
@@ -79,6 +139,7 @@ export async function POST(
     return NextResponse.json({
       message: 'Plan descongelado correctamente',
       userPlan: unfrozenPlan,
+      frozenDays,
     });
   } catch (error) {
     console.error('Error unfreezing plan:', error);

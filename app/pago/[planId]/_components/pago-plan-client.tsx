@@ -26,6 +26,8 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
   
   const [loading, setLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
+  const [hasFrozenPlan, setHasFrozenPlan] = useState(false);
+  const [frozenPlanName, setFrozenPlanName] = useState<string>('');
   const popupRef = useRef<Window | null>(null);
 
   const formatPrice = (price: number) => {
@@ -35,6 +37,39 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
       minimumFractionDigits: 0,
     }).format(price);
   };
+
+  // Verificar si el usuario tiene un plan congelado
+  useEffect(() => {
+    const checkUserPlan = async () => {
+      if (session?.user) {
+        try {
+          const response = await fetch('/api/user/profile');
+          if (response.ok) {
+            const data = await response.json();
+            const user = data.user;
+            
+            // Buscar plan congelado
+            const frozenPlan = user?.userPlans?.find((userPlan: any) =>
+              userPlan.status === 'FROZEN' &&
+              (!userPlan.endDate || new Date(userPlan.endDate) > new Date())
+            );
+            
+            if (frozenPlan && frozenPlan.plan) {
+              setHasFrozenPlan(true);
+              setFrozenPlanName(frozenPlan.plan.nombre);
+            } else {
+              setHasFrozenPlan(false);
+              setFrozenPlanName('');
+            }
+          }
+        } catch (error) {
+          console.error("Error checking user plan:", error);
+        }
+      }
+    };
+
+    checkUserPlan();
+  }, [session]);
 
   // Detectar cuando el usuario regresa del popup de pago
   useEffect(() => {
@@ -58,6 +93,12 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
   const handleProceedToPayment = async () => {
     if (!session) {
       router.push("/login");
+      return;
+    }
+
+    // Verificar si el usuario tiene un plan congelado
+    if (hasFrozenPlan) {
+      alert(`No puedes realizar esta compra porque tienes el plan "${frozenPlanName}" congelado. Por favor contacta al administrador para reactivar tu plan.`);
       return;
     }
 
@@ -132,6 +173,33 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
           </div>
         </motion.div>
 
+        {/* Alerta de plan congelado */}
+        {hasFrozenPlan && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Shield className="w-6 h-6 text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-blue-400 mb-2">Plan Congelado Detectado</h3>
+                  <p className="text-gray-300 mb-4">
+                    Actualmente tienes el plan <span className="font-bold text-blue-400">{frozenPlanName}</span> congelado.
+                    No puedes adquirir nuevos planes mientras tengas un plan congelado.
+                  </p>
+                  <p className="text-gray-400 text-sm">
+                    Por favor contacta al administrador para reactivar tu plan antes de realizar una nueva compra.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Información del Plan */}
           <motion.div
@@ -182,13 +250,18 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
                   
                   <button
                     onClick={handleProceedToPayment}
-                    disabled={loading || paymentStatus === 'completed'}
+                    disabled={loading || paymentStatus === 'completed' || hasFrozenPlan}
                     className="w-full py-4 gradient-bg rounded-2xl font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {paymentStatus === 'completed' ? (
                       <>
                         <Check className="w-5 h-5" />
                         Pago completado - Redirigiendo...
+                      </>
+                    ) : hasFrozenPlan ? (
+                      <>
+                        <Shield className="w-5 h-5" />
+                        Pago Bloqueado - Plan Congelado
                       </>
                     ) : loading ? (
                       "Preparando pago..."

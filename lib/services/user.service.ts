@@ -278,8 +278,12 @@ export class UserService {
     return await PrismaWrapper.execute(
       () => prisma.user.create({
         data: {
-          ...data,
-          role: data.role || 'CLIENTE',
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          password: "TEMP_PASSWORD", // Se debe establecer una contraseña temporal
+          role: (data.role as any) || 'CLIENTE',
+          sedeId: data.sedeId || null,
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -353,7 +357,7 @@ export class UserService {
       () => prisma.user.update({
         where: { id: userId },
         data: {
-          role,
+          role: role as any,
           updatedAt: new Date()
         },
         select: {

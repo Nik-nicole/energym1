@@ -170,19 +170,6 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
 
   // Función para transformar los datos al formato del nuevo modal
   const transformOrderData = (order: ProductOrder) => {
-    // Debug: mostrar datos crudos de la orden
-    console.log(`[Admin Orders] Transformando orden:`, JSON.stringify({
-      id: order.id,
-      status: order.status,
-      customerName: order.customerName,
-      customerEmail: order.customerEmail,
-      shippingPhone: order.shippingPhone,
-      shippingAddress: order.shippingAddress,
-      shippingCity: order.shippingCity,
-      userFirstName: order.user.firstName,
-      userEmail: order.user.email,
-    }, null, 2));
-
     const getStatusText = (status: string) => {
       switch (status) {
         case "PENDING":

@@ -27,14 +27,16 @@ interface Plan {
 interface PlanesSectionProps {
   planes: Plan[];
   hasActivePlan?: boolean;
+  hasFrozenPlan?: boolean;
   activePlan?: {
     id: string;
     nombre: string;
     esVip: boolean;
+    status?: string;
   } | null;
 }
 
-export function PlanesSection({ planes, hasActivePlan, activePlan }: PlanesSectionProps) {
+export function PlanesSection({ planes, hasActivePlan, hasFrozenPlan, activePlan }: PlanesSectionProps) {
   const { data: session } = useSession();
   
   return (
@@ -67,6 +69,7 @@ export function PlanesSection({ planes, hasActivePlan, activePlan }: PlanesSecti
               plan={plan} 
               index={index}
               hasActivePlan={hasActivePlan}
+              hasFrozenPlan={hasFrozenPlan}
               activePlan={activePlan}
             />
           ))}

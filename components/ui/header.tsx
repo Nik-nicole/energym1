@@ -1,10 +1,13 @@
 "use client";
 
+// External libraries
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { Menu, X, Dumbbell, User, LogOut, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+// Internal components
 import { CartButton } from "./cart-button";
 import { LogoutConfirmDialog } from "../logout-confirm-dialog";
 
@@ -23,12 +26,9 @@ export function Header() {
   const isAdmin = session?.user?.role === "ADMIN";
   const isAuthenticated = mounted && status === "authenticated";
 
-  // Debug: Verificar sesión y rol
   useEffect(() => {
     if (mounted && session) {
-      console.log("Session:", session);
-      console.log("User role:", session.user?.role);
-      console.log("Is admin:", isAdmin);
+      // Session loaded successfully
     }
   }, [mounted, session, isAdmin]);
 

@@ -54,11 +54,14 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
   console.log("UserPlans:", user?.userPlans);
   
   // Obtener el plan actual considerando tanto isActive como status
-  const currentUserPlan = user?.userPlans?.find((userPlan) => 
-    userPlan.isActive === true && 
-    (userPlan.status === 'ACTIVE' || userPlan.status === 'FROZEN') &&
-    (userPlan.status === 'FROZEN' || !userPlan.endDate || new Date(userPlan.endDate) > new Date())
-  );
+  // Solo planes ACTIVE o FROZEN bloquean la compra de nuevos planes
+  const currentUserPlan = user?.userPlans?.find((plan: any) => {
+    const isActiveAndActive = plan.isActive === true && plan.status === 'ACTIVE';
+    const isFrozen = plan.status === 'FROZEN';
+    const isValidDate = !plan.endDate || new Date(plan.endDate) > new Date();
+    
+    return (isActiveAndActive || isFrozen) && isValidDate;
+  });
   
   const hasActivePlan = !!currentUserPlan;
   const planStatus = currentUserPlan?.status || 'INACTIVE';
@@ -327,62 +330,38 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
                   }`}>
                     {planStatus === 'FROZEN' ? (
                       <Snowflake className="w-4 h-4 text-blue-400" />
+                    ) : planStatus === 'INACTIVE' || planStatus === 'DISABLED' ? (
+                      <Crown className="w-4 h-4 text-gray-400" />
                     ) : (
                       <Crown className="w-4 h-4 text-[#EC4899]" />
                     )}
                     <span className={`text-white ${
-                      planStatus === 'FROZEN' ? 'text-blue-400' : ''
+                      planStatus === 'FROZEN' ? 'text-blue-400' : 
+                      planStatus === 'INACTIVE' || planStatus === 'DISABLED' ? 'text-orange-400' : ''
                     }`}>
-                      {planStatus === 'FROZEN' ? 'Plan Congelado' : 'Plan Activo'}
+                      {planStatus === 'FROZEN' ? 'Plan Congelado' : 
+                       planStatus === 'INACTIVE' || planStatus === 'DISABLED' ? 'Desactivado' : 'Plan Activo'}
                     </span>
                   </div>
-                  <p className="font-bold mt-2 text-[#EC4899]">
+                  <p className={`font-bold mt-2 ${
+                    planStatus === 'FROZEN' 
+                      ? 'text-blue-400' 
+                      : planStatus === 'INACTIVE' || planStatus === 'DISABLED'
+                        ? 'text-gray-400'
+                        : 'text-[#EC4899]'
+                  }`}>
                     {activePlan?.nombre}
                   </p>
-                  <p className="text-sm text-gray-400 mt-1">
+                  <p className={`text-sm mt-1 ${
+                    planStatus === 'FROZEN' 
+                      ? 'text-blue-300' 
+                      : planStatus === 'INACTIVE' || planStatus === 'DISABLED'
+                        ? 'text-gray-500'
+                        : 'text-gray-400'
+                  }`}>
                     {formatPrice(activePlan?.precio || 0)}/{activePlan?.duracion}
                   </p>
                   
-                  {/* Botones de congelar/descongelar */}
-                  <div className="mt-3 space-y-2">
-                    {planStatus === 'ACTIVE' ? (
-                      <button
-                        onClick={handleFreezePlan}
-                        disabled={freezingPlan}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white text-sm font-medium rounded-lg transition-colors"
-                      >
-                        {freezingPlan ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            Congelando...
-                          </>
-                        ) : (
-                          <>
-                            <Snowflake className="w-4 h-4" />
-                            Congelar Plan
-                          </>
-                        )}
-                      </button>
-                    ) : planStatus === 'FROZEN' ? (
-                      <button
-                        onClick={handleUnfreezePlan}
-                        disabled={unfreezingPlan}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white text-sm font-medium rounded-lg transition-colors"
-                      >
-                        {unfreezingPlan ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            Descongelando...
-                          </>
-                        ) : (
-                          <>
-                            <Sun className="w-4 h-4" />
-                            Descongelar Plan
-                          </>
-                        )}
-                      </button>
-                    ) : null}
-                  </div>
                 </>
               ) : (
                 <>
@@ -411,15 +390,31 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h2 className={`text-2xl font-bold mb-2 ${
-                  planStatus === 'FROZEN' ? 'text-blue-400' : 'text-fuchsia-400'
+                  planStatus === 'FROZEN' 
+                    ? 'text-blue-400' 
+                    : planStatus === 'INACTIVE' || planStatus === 'DISABLED'
+                      ? 'text-gray-400'
+                      : 'text-fuchsia-400'
                 }`}>
                   {activePlan?.nombre}
                 </h2>
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl font-thin text-white">
+                  <span className={`text-3xl font-thin ${
+                    planStatus === 'FROZEN' 
+                      ? 'text-blue-400' 
+                      : planStatus === 'INACTIVE' || planStatus === 'DISABLED'
+                        ? 'text-gray-400'
+                        : 'text-white'
+                  }`}>
                     {formatPrice(activePlan?.precio || 0)}
                   </span>
-                  <span className="text-zinc-400">/{activePlan?.duracion}</span>
+                  <span className={`${
+                    planStatus === 'FROZEN' 
+                      ? 'text-blue-300' 
+                      : planStatus === 'INACTIVE' || planStatus === 'DISABLED'
+                        ? 'text-gray-500'
+                        : 'text-zinc-400'
+                  }`}>/{activePlan?.duracion}</span>
                 </div>
               </div>
               <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${
@@ -428,12 +423,21 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
                   : 'bg-zinc-800 border-zinc-700'
               }`}>
                 <div className={`w-2 h-2 rounded-full ${
-                  planStatus === 'FROZEN' ? 'bg-blue-500' : 'bg-fuchsia-500'
+                  planStatus === 'FROZEN' 
+                    ? 'bg-blue-500' 
+                    : planStatus === 'INACTIVE' || planStatus === 'DISABLED'
+                      ? 'bg-orange-500'
+                      : 'bg-fuchsia-500'
                 }`}></div>
                 <span className={`text-sm ${
-                  planStatus === 'FROZEN' ? 'text-blue-400' : 'text-zinc-300'
+                  planStatus === 'FROZEN' 
+                    ? 'text-blue-400' 
+                    : planStatus === 'INACTIVE' || planStatus === 'DISABLED'
+                      ? 'text-orange-400'
+                      : 'text-zinc-300'
                 }`}>
-                  {planStatus === 'FROZEN' ? 'Congelado' : 'Activo'}
+                  {planStatus === 'FROZEN' ? 'Congelado' : 
+                   planStatus === 'INACTIVE' || planStatus === 'DISABLED' ? 'Desactivado' : 'Activo'}
                 </span>
               </div>
             </div>
@@ -622,7 +626,8 @@ export function PerfilClient({ user, planes, orders }: PerfilClientProps) {
           <h3 className="text-2xl font-bold text-white mb-6 text-center" data-plans-title>Planes Disponibles</h3>
           <PlanCards 
             planes={planes} 
-            hasActivePlan={hasActivePlan}
+            hasActivePlan={hasActivePlan && planStatus !== 'FROZEN'}
+            hasFrozenPlan={planStatus === 'FROZEN'}
             activePlan={activePlan}
           />
         </div>

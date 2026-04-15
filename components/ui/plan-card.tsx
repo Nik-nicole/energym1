@@ -35,20 +35,23 @@ interface PlanCardProps {
   };
   index: number;
   hasActivePlan?: boolean;
+  hasFrozenPlan?: boolean;
   activePlan?: {
     id: string;
     nombre: string;
     esVip: boolean;
+    status?: string;
   } | null | undefined;
 }
 
-export function PlanCard({ plan, index, hasActivePlan, activePlan }: PlanCardProps) {
+export function PlanCard({ plan, index, hasActivePlan, hasFrozenPlan, activePlan }: PlanCardProps) {
   const { data: session } = useSession();
   const isVip = plan?.esVip ?? false;
   const isDestacado = plan?.destacado ?? false;
   const [showBenefits, setShowBenefits] = useState(false);
   const [showSedeErrorModal, setShowSedeErrorModal] = useState(false);
   const [showActivePlanModal, setShowActivePlanModal] = useState(false);
+  const [showFrozenPlanModal, setShowFrozenPlanModal] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -76,6 +79,12 @@ export function PlanCard({ plan, index, hasActivePlan, activePlan }: PlanCardPro
     if (!session) {
       // Si no está logueado, redirigir a login
       return; // El Link se encargará de la redirección
+    }
+
+    // Si el usuario tiene un plan congelado, mostrar modal específico
+    if (hasFrozenPlan && activePlan !== null && activePlan !== undefined) {
+      setShowFrozenPlanModal(true);
+      return;
     }
 
     // Si el usuario ya tiene un plan activo, mostrar modal
@@ -144,6 +153,14 @@ export function PlanCard({ plan, index, hasActivePlan, activePlan }: PlanCardPro
             <Zap className="w-4 h-4" />
             Empezar Ahora
           </Link>
+        ) : hasFrozenPlan && activePlan !== null && activePlan !== undefined ? (
+          <button
+            onClick={handleSelectPlan}
+            className="w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 bg-blue-500/20 text-blue-400 border border-blue-500/50 cursor-not-allowed"
+          >
+            <Zap className="w-4 h-4" />
+            Plan Congelado
+          </button>
         ) : hasActivePlan && activePlan !== null && activePlan !== undefined ? (
           <button
             onClick={handleSelectPlan}
@@ -220,6 +237,35 @@ export function PlanCard({ plan, index, hasActivePlan, activePlan }: PlanCardPro
                   <div className="flex justify-end gap-3 mt-6">
                     <button
                       onClick={() => setShowActivePlanModal(false)}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                    >
+                      Entendido
+                    </button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </AnimatePresence>
+
+          {/* Modal de plan congelado */}
+          <AnimatePresence>
+            {showFrozenPlanModal && (
+              <Dialog open={showFrozenPlanModal} onOpenChange={setShowFrozenPlanModal}>
+                <DialogContent className="bg-[#1A1A1A] border border-[#2A2A2A] text-white">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-blue-400" />
+                      <span className="text-blue-400">Plan Congelado</span>
+                    </DialogTitle>
+                  </DialogHeader>
+                  <DialogDescription className="text-gray-300">
+                    Actualmente tienes el plan <span className="font-bold text-blue-400">{activePlan?.nombre}</span> congelado.
+                    Mientras el plan esté congelado, no puedes comprar nuevos planes.
+                    Para reactivar tu plan, por favor comunícate con el administrador.
+                  </DialogDescription>
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button
+                      onClick={() => setShowFrozenPlanModal(false)}
                       className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
                     >
                       Entendido

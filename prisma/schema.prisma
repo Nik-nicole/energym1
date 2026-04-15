@@ -176,6 +176,7 @@ model ProductOrder {
   unitPrice       Float?
   updatedAt       DateTime @updatedAt
   status          String   @default("PENDING")
+  customerName    String?
   postalCode      String?
   shippingAddress String?
   shippingCity    String?

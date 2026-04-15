@@ -137,7 +137,7 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       message: "La contraseña debe tener al menos 6 caracteres" 
     },
     confirmPassword: { 
-      custom: (value) => {
+      custom: (value: string) => {
         const password = formData.password;
         return !password || value === password;
       },
@@ -472,26 +472,40 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
     if (!confirmAction.user || !confirmAction.plan) return;
     
     // Si intenta activar el plan, verificar que esté verificado
+    // Solo verificar si NO hay un userPlan existente (nueva asignación)
+    // Si ya existe un userPlan, permitir reactivación sin verificación adicional
     if (!confirmAction.isActive && confirmAction.plan) {
       try {
-        // Obtener la orden del plan para verificar su estado
-        const planOrderResponse = await fetch(`/api/admin/users/${confirmAction.user.id}/plan-orders?planId=${confirmAction.plan.id}`);
+        // Verificar si ya existe un UserPlan para este usuario y plan
+        const userPlanCheck = await fetch(`/api/admin/users/${confirmAction.user.id}/user-plans?planId=${confirmAction.plan.id}`);
         
-        if (planOrderResponse.ok) {
-          const planOrders = await planOrderResponse.json();
-          const latestPlanOrder = planOrders.find((order: any) => order.planId === confirmAction.plan?.id);
+        // Si NO existe un UserPlan previo, es una nueva asignación - verificar pago
+        if (userPlanCheck.ok) {
+          const userPlans = await userPlanCheck.json();
+          const existingUserPlan = userPlans.find((up: any) => up.planId === confirmAction.plan?.id);
           
-          if (latestPlanOrder && latestPlanOrder.status !== "VERIFIED") {
-            setValidationMessage("No se puede activar porque aún no se ha verificado si está pago");
-            setShowValidationModal(true);
-            return;
+          // Si no existe UserPlan previo, verificar la orden de pago
+          if (!existingUserPlan) {
+            // Obtener la orden del plan para verificar su estado
+            const planOrderResponse = await fetch(`/api/admin/users/${confirmAction.user.id}/plan-orders?planId=${confirmAction.plan.id}`);
+            
+            if (planOrderResponse.ok) {
+              const planOrders = await planOrderResponse.json();
+              const latestPlanOrder = planOrders.find((order: any) => order.planId === confirmAction.plan?.id);
+              
+              if (!latestPlanOrder || latestPlanOrder.status !== "VERIFIED") {
+                setValidationMessage("No se puede activar porque aún no se ha verificado si está pago");
+                setShowValidationModal(true);
+                return;
+              }
+            }
           }
+          // Si existe UserPlan previo, permitir reactivación sin verificación adicional
         }
       } catch (error) {
         console.error('Error verificando estado del plan:', error);
-        setValidationMessage("Error al verificar el estado del plan");
-        setShowValidationModal(true);
-        return;
+        // Si hay error en la verificación, permitir continuar (asumir que es reactivación)
+        console.log('Asumiendo reactivación de plan existente debido a error en verificación');
       }
     }
     
@@ -565,20 +579,26 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
 
   const handleFreezePlan = async (user: User) => {
     console.log("handleFreezePlan - user.planActivo:", user.planActivo);
-    console.log("handleFreezePlan - userPlanId:", user.planActivo?.userPlanId);
     
-    if (!user.planActivo?.userPlanId) {
+    // Usar plan.id como fallback si userPlanId no está disponible
+    const planId = user.planActivo?.userPlanId || user.planActivo?.id;
+    console.log("handleFreezePlan - planId a usar:", planId);
+    
+    if (!planId) {
       toast.error("Este usuario no tiene un plan activo");
       return;
     }
 
     setFreezingPlan(true);
     try {
-      const response = await fetch(`/api/user-plans/${user.planActivo.userPlanId}/freeze`, {
+      const response = await fetch(`/api/user-plans/${planId}/freeze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          userId: user.id, // Pasar el userId del usuario objetivo
+        }),
       });
 
       const data = await response.json();
@@ -588,8 +608,24 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       }
 
       toast.success("Plan congelado correctamente");
-      // Recargar la lista de usuarios para mostrar cambios
-      window.location.reload();
+      // Actualizar el estado local sin recargar la página
+      setUsersList(usersList.map(u => {
+        if (u.id === user.id && u.planActivo) {
+          return {
+            ...u,
+            planActivo: {
+              ...u.planActivo,
+              isActive: false,
+              isFrozen: true,
+              isDeactivated: false,
+              status: 'FROZEN'
+            }
+          };
+        }
+        return u;
+      }));
+      // Cerrar el diálogo si está abierto
+      setShowPlanDialog(false);
     } catch (error) {
       console.error("Error freezing plan:", error);
       toast.error(error instanceof Error ? error.message : "Error al congelar el plan");
@@ -599,14 +635,17 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
   };
 
   const handleUnfreezePlan = async (user: User) => {
-    if (!user.planActivo?.userPlanId) {
+    // Usar plan.id como fallback si userPlanId no está disponible
+    const planId = user.planActivo?.userPlanId || user.planActivo?.id;
+    
+    if (!planId) {
       toast.error("Este usuario no tiene un plan activo");
       return;
     }
 
     setUnfreezingPlan(true);
     try {
-      const response = await fetch(`/api/user-plans/${user.planActivo.userPlanId}/unfreeze`, {
+      const response = await fetch(`/api/user-plans/${planId}/unfreeze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -620,8 +659,24 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
       }
 
       toast.success(`Plan descongelado correctamente. ${data.frozenDays ? `Se extendieron ${data.frozenDays} días.` : ''}`);
-      // Recargar la lista de usuarios para mostrar cambios
-      window.location.reload();
+      // Actualizar el estado local sin recargar la página
+      setUsersList(usersList.map(u => {
+        if (u.id === user.id && u.planActivo) {
+          return {
+            ...u,
+            planActivo: {
+              ...u.planActivo,
+              isActive: true,
+              isFrozen: false,
+              isDeactivated: false,
+              status: 'ACTIVE'
+            }
+          };
+        }
+        return u;
+      }));
+      // Cerrar el diálogo si está abierto
+      setShowPlanDialog(false);
     } catch (error) {
       console.error("Error unfreezing plan:", error);
       toast.error(error instanceof Error ? error.message : "Error al descongelar el plan");
@@ -636,6 +691,18 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
     // Aquí deberías verificar el campo status cuando esté disponible
     // Por ahora, asumimos que si está activo pero no está desactivado, está ACTIVE
     return 'ACTIVE';
+  };
+
+  // Helper para normalizar el objeto planActivo con valores por defecto
+  const normalizePlanActivo = (planActivo: any) => {
+    if (!planActivo) return null;
+    return {
+      ...planActivo,
+      isActive: planActivo.isActive !== false, // undefined o true = true
+      isFrozen: !!planActivo.isFrozen, // undefined = false
+      isDeactivated: !!planActivo.isDeactivated, // undefined = false
+      status: planActivo.status || 'ACTIVE',
+    };
   };
 
         return (
@@ -861,13 +928,35 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                   {user.planActivo ? (
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
-                        <Crown className={`h-4 w-4 ${user.planActivo.isDeactivated ? 'text-orange-500' : 'text-emerald-400'}`} />
-                        <span className={`text-sm font-medium ${user.planActivo.isDeactivated ? 'text-orange-500' : 'text-emerald-400'}`}>
+                        <Crown className={`h-4 w-4 ${
+                          user.planActivo.isFrozen 
+                            ? 'text-blue-400' 
+                            : user.planActivo.isDeactivated 
+                              ? 'text-orange-500' 
+                              : 'text-emerald-400'
+                        }`} />
+                        <span className={`text-sm font-medium ${
+                          user.planActivo.isFrozen 
+                            ? 'text-blue-400' 
+                            : user.planActivo.isDeactivated 
+                              ? 'text-orange-500' 
+                              : 'text-emerald-400'
+                        }`}>
                           {user.planActivo.nombre}
                         </span>
                       </div>
-                      <span className={`text-xs ${user.planActivo.isDeactivated ? 'text-orange-400' : 'text-emerald-400'}`}>
-                        {user.planActivo.isDeactivated ? 'Desactivado' : 'Activo'}
+                      <span className={`text-xs ${
+                        user.planActivo.isFrozen 
+                          ? 'text-blue-300' 
+                          : user.planActivo.isDeactivated 
+                            ? 'text-orange-400' 
+                            : 'text-emerald-400'
+                      }`}>
+                        {user.planActivo.isFrozen 
+                          ? 'Congelado' 
+                          : user.planActivo.isDeactivated 
+                            ? 'Desactivado' 
+                            : 'Activo'}
                       </span>
                     </div>
                   ) : (
@@ -1068,19 +1157,19 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                       {selectedUser.planActivo.userPlanId && (
                         <p><span className="text-[#A0A0A0]">ID del UserPlan:</span> <span className="text-white font-mono text-xs bg-[#1E1E1E] px-2 py-1 rounded">{selectedUser.planActivo.userPlanId}</span></p>
                       )}
-                      <p><span className="text-[#A0A0A0]">Fecha de inicio:</span> {new Date(selectedUser.planActivo.fechaInicio).toLocaleDateString()}</p>
-                      <p><span className="text-[#A0A0A0]">Fecha de fin:</span> {new Date(selectedUser.planActivo.fechaFin).toLocaleDateString()}</p>
+                      <p><span className="text-[#A0A0A0]">Fecha de inicio:</span> {selectedUser.planActivo.fechaInicio ? new Date(selectedUser.planActivo.fechaInicio).toLocaleDateString() : 'N/A'}</p>
+                      <p><span className="text-[#A0A0A0]">Fecha de fin:</span> {selectedUser.planActivo.fechaFin ? new Date(selectedUser.planActivo.fechaFin).toLocaleDateString() : 'N/A'}</p>
                       <p><span className="text-[#A0A0A0]">Estado:</span> 
                         <span className={`ml-1 ${
-                          selectedUser.planActivo.isFrozen 
+                          selectedUser?.planActivo?.isFrozen 
                             ? 'text-blue-400' 
-                            : selectedUser.planActivo.isActive !== false 
+                            : selectedUser?.planActivo?.isActive !== false 
                               ? 'text-green-400' 
                               : 'text-red-400'
                         }`}>
-                          {selectedUser.planActivo.isFrozen 
+                          {selectedUser?.planActivo?.isFrozen 
                             ? 'Congelado' 
-                            : selectedUser.planActivo.isActive !== false 
+                            : selectedUser?.planActivo?.isActive !== false 
                               ? 'Activo' 
                               : 'Inactivo'
                           }
@@ -1091,11 +1180,11 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                 </div>
                 <div className="space-y-3">
                   <div className="flex gap-2">
-                    {/* Botón para planes activos */}
-                    {selectedUser.planActivo.isActive && !selectedUser.planActivo.isFrozen && (
+                    {/* Botón para planes activos - mostrar Congelar y Desactivar */}
+                    {selectedUser?.planActivo && (selectedUser.planActivo.isActive !== false && !selectedUser.planActivo.isFrozen && !selectedUser.planActivo.isDeactivated) && (
                       <>
                         <Button
-                          onClick={() => handleFreezePlan(selectedUser)}
+                          onClick={() => selectedUser && handleFreezePlan(selectedUser)}
                           disabled={freezingPlan}
                           variant="outline"
                           className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 flex-1"
@@ -1126,9 +1215,9 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                     )}
                     
                     {/* Botón para planes congelados */}
-                    {selectedUser.planActivo.isFrozen && (
+                    {selectedUser?.planActivo?.isFrozen && (
                       <Button
-                        onClick={() => handleUnfreezePlan(selectedUser)}
+                        onClick={() => selectedUser && handleUnfreezePlan(selectedUser)}
                         disabled={unfreezingPlan}
                         variant="outline"
                         className="border-green-500/50 text-green-400 hover:bg-green-500/10 flex-1"
@@ -1148,10 +1237,10 @@ export function UsuariosAdmin({ users, sedes, plans }: UsuariosAdminProps) {
                     )}
                     
                     {/* Botón para planes inactivos */}
-                    {selectedUser.planActivo.isDeactivated && !selectedUser.planActivo.isFrozen && (
+                    {selectedUser?.planActivo?.isDeactivated && !selectedUser.planActivo.isFrozen && (
                       <Button
                         onClick={() => {
-                          openTogglePlanDialog(selectedUser);
+                          selectedUser && openTogglePlanDialog(selectedUser);
                           setShowPlanDialog(false);
                         }}
                         className="border-green-500/50 text-green-400 hover:bg-green-500/10 flex-1"

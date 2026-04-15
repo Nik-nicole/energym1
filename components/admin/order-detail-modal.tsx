@@ -240,15 +240,10 @@ export function OrderDetailModal({
   }
 
   const handleSave = async () => {
-    console.log("order:", order)
-    console.log("orderId:", orderId)
-    console.log("currentStatus:", currentStatus)
-    
     if (!order) {
-      console.log("No order found, returning")
       return
     }
-    
+
     try {
       setSaving(true)
       
@@ -262,13 +257,9 @@ export function OrderDetailModal({
       }
 
       const dbStatus = statusMapping[currentStatus] || "PENDING"
-      console.log("Saving order with status:", dbStatus)
-      
       const requestBody = {
         status: dbStatus
       }
-      console.log("Request body:", requestBody)
-      
       const response = await fetch(`/api/orders/product/${orderId}`, {
         method: 'PUT',
         headers: {
@@ -277,9 +268,6 @@ export function OrderDetailModal({
         body: JSON.stringify(requestBody),
       })
 
-      console.log("Response status:", response.status)
-      console.log("Response ok:", response.ok)
-
       if (!response.ok) {
         const errorData = await response.json()
         console.error("Error response:", errorData)
@@ -287,10 +275,8 @@ export function OrderDetailModal({
       }
 
       const data = await response.json()
-      console.log("Response data:", data)
       
       if (data.success) {
-        console.log("Order updated successfully:", data.order)
         setIsEditing(false)
         fetchOrder() // Recargar datos
         

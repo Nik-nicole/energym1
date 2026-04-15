@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary';
+import sharp from 'sharp';
 
 // Configuración de Cloudinary
 cloudinary.config({
@@ -15,7 +16,31 @@ export async function uploadImage(file: File, folder: string = 'fitzone/marketpl
   try {
     // Convertir File a Buffer
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    let buffer = Buffer.from(bytes);
+
+    // Detectar si es HEIC/HEIF y convertir a JPEG
+    const isHeicByExtension = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+    const isHeicOrHeif = file.type === 'image/heic' || 
+                        file.type === 'image/heif' || 
+                        file.type.includes('heic') || 
+                        file.type.includes('heif') ||
+                        (isHeicByExtension && file.type === 'application/octet-stream');
+
+    if (isHeicOrHeif) {
+      console.log(`Convirtiendo imagen HEIC/HEIF a JPEG: ${file.name}`);
+      
+      try {
+        // Convertir HEIC/HEIF a JPEG usando sharp
+        buffer = await sharp(buffer)
+          .jpeg({ quality: 90 })
+          .toBuffer();
+        
+        console.log(`Conversión exitosa: ${file.name} -> JPEG`);
+      } catch (conversionError) {
+        console.error('Error al convertir HEIC/HEIF a JPEG:', conversionError);
+        throw new Error('Error al convertir el formato HEIC/HEIF a JPEG');
+      }
+    }
 
     // Subir a Cloudinary
     const result = await new Promise((resolve, reject) => {

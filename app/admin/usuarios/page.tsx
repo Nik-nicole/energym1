@@ -87,16 +87,17 @@ async function getUsersData(): Promise<{ users: any[]; sedes: any[]; plans: any[
         const isVerified = latestPlanOrder.status === "VERIFIED";
 
         // Buscar userPlanState siempre que haya un plan activo
+        console.log("DEBUG - Buscando userPlan para userId:", user.id, "planId:", activePlan.id);
+        console.log("DEBUG - userPlans disponibles:", userPlans.map((up: any) => ({ userId: up.userId, planId: up.plan.id, status: up.status })));
+        
         const userPlanState = userPlans.find(
           (up: any) =>
             up.plan.id === activePlan.id &&
             up.userId === user.id
         );
         
-        console.log("DEBUG - user.id:", user.id);
-        console.log("DEBUG - activePlan.id:", activePlan.id);
-        console.log("DEBUG - userPlans.length:", userPlans.length);
-        console.log("DEBUG - userPlanState:", userPlanState);
+        console.log("DEBUG - userPlanState encontrado:", userPlanState);
+        console.log("DEBUG - userPlanState?.id:", userPlanState?.id);
 
         // Determinar el estado del plan basado en el userPlanState
         let planStatusData: any = {
@@ -152,6 +153,7 @@ async function getUsersData(): Promise<{ users: any[]; sedes: any[]; plans: any[
         }
 
         planStatus = planStatusData;
+        console.log("DEBUG - planStatusData final:", planStatusData);
       }
 
       return {

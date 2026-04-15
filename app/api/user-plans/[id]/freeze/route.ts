@@ -19,15 +19,92 @@ export async function POST(
 
     const { id } = params;
     const userId = session.user.id;
+    const userRole = session.user.role;
 
-    // Obtener el UserPlan para verificar
-    const userPlan = await prisma.userPlan.findUnique({
+    console.log('DEBUG API - id recibido:', id);
+    console.log('DEBUG API - userId:', userId);
+    console.log('DEBUG API - userRole:', userRole);
+
+    // Intentar obtener el UserPlan por ID primero
+    let userPlan = await prisma.userPlan.findUnique({
       where: { id },
       include: {
         plan: true,
         user: true,
       },
     });
+    console.log('DEBUG API - UserPlan encontrado por ID:', userPlan);
+
+    // Si no se encuentra por ID, buscar por userId y planId
+    if (!userPlan) {
+      console.log('DEBUG API - No se encontró por ID, buscando por userId y planId...');
+      userPlan = await prisma.userPlan.findFirst({
+        where: {
+          userId: userId,
+          planId: id,
+          isActive: true,
+        },
+        include: {
+          plan: true,
+          user: true,
+        },
+      });
+      console.log('DEBUG API - UserPlan encontrado por userId+planId:', userPlan);
+    }
+
+    // Si aún no se encuentra y es admin, buscar solo por planId
+    if (!userPlan && userRole === 'ADMIN') {
+      console.log('DEBUG API - Buscando como admin por planId...');
+      userPlan = await prisma.userPlan.findFirst({
+        where: {
+          planId: id,
+          isActive: true,
+        },
+        include: {
+          plan: true,
+          user: true,
+        },
+      });
+      console.log('DEBUG API - UserPlan encontrado por admin:', userPlan);
+    }
+
+    // Si no se encuentra UserPlan, crearlo automáticamente (solo para admins)
+    if (!userPlan && userRole === 'ADMIN') {
+      console.log('DEBUG API - Creando UserPlan automáticamente...');
+      try {
+        // Obtener el body para ver si viene un targetUserId
+        const body = await request.json().catch(() => ({}));
+        const targetUserId = body.userId;
+        
+        if (!targetUserId) {
+          return NextResponse.json(
+            { error: 'Se requiere userId para crear el plan' },
+            { status: 400 }
+          );
+        }
+        
+        userPlan = await prisma.userPlan.create({
+          data: {
+            userId: targetUserId,
+            planId: id,
+            isActive: true,
+            status: 'ACTIVE',
+            startDate: new Date(),
+          },
+          include: {
+            plan: true,
+            user: true,
+          },
+        });
+        console.log('DEBUG API - UserPlan creado:', userPlan);
+      } catch (createError) {
+        console.error('DEBUG API - Error creando UserPlan:', createError);
+        return NextResponse.json(
+          { error: 'No se pudo crear el plan para congelar' },
+          { status: 500 }
+        );
+      }
+    }
 
     if (!userPlan) {
       return NextResponse.json(
