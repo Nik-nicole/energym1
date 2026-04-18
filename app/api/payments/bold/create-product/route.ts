@@ -214,8 +214,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
     const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
     
-    const callbackUrl = `${publicOrigin}/api/webhooks/bold`;
-    const redirectionUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
+    const returnUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
 
     // Calcular IVA en pesos
     const ivaAmountPesos = Math.round(subtotal * ivaRate);
@@ -237,12 +236,12 @@ export async function POST(request: NextRequest) {
       },
       reference: reference,
       description: `${product.nombre} (x${quantity}) - Energym`,
-      callback_url: callbackUrl,
-      redirection_url: redirectionUrl,
+      callback_url: returnUrl,
+      redirection_url: returnUrl,
       image_url: imageUrl,
     };
 
-    console.log("REDIRECTION URL:", redirectionUrl);
+    console.log("REDIRECTION URL:", returnUrl);
     console.log("[Bold Product API] Llamando a Bold API...");
     console.log("[Bold Product API] URL:", boldApiUrl);
     console.log("[Bold Product API] Payload:", JSON.stringify(boldPayload, null, 2));

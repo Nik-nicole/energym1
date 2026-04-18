@@ -211,8 +211,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
     const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
     
-    const callbackUrl = `${publicOrigin}/api/webhooks/bold`;
-    const redirectionUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
+    const returnUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
 
     // Generar descripción con todos los productos
     const productDescriptions = products.map(p => `${p.nombre} (x${p.requestedQuantity})`).join(', ');
@@ -238,12 +237,12 @@ export async function POST(request: NextRequest) {
       },
       reference: reference,
       description: description,
-      callback_url: callbackUrl,
-      redirection_url: redirectionUrl,
+      callback_url: returnUrl,
+      redirection_url: returnUrl,
       image_url: imageUrl,
     };
 
-    console.log("REDIRECTION URL:", redirectionUrl);
+    console.log("REDIRECTION URL:", returnUrl);
     console.log("[Orders Create] Llamando a Bold API...");
     console.log("[Orders Create] Payload:", JSON.stringify(boldPayload, null, 2));
 

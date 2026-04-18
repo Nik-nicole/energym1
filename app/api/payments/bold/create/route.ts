@@ -205,8 +205,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
     const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
     
-    const callbackUrl = `${publicOrigin}/api/webhooks/bold`;
-    const redirectionUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
+    const returnUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
 
     const boldPayload: any = {
       amount_type: "CLOSE",
