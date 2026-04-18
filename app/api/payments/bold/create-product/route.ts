@@ -209,11 +209,15 @@ export async function POST(request: NextRequest) {
 
     // 7. Llamar a la API de Bold para generar el link de pago
     const boldApiUrl = "https://integrations.api.bold.co/online/link/v1";
-    const origin = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
-    const callbackUrl = `${origin}/payment-status?transactionId=${reference}`;
+    const publicOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
+    
+    // Usamos SIEMPRE la URL pública para evitar el error 403 de Bold.
+    const closeUrl = `${publicOrigin}/payment-close`;
 
     // Calcular IVA en pesos
     const ivaAmountPesos = Math.round(subtotal * ivaRate);
+    
+    const imageUrl = product.imagen ? product.imagen.split(',')[0].trim() : `${publicOrigin}/logo.png`;
 
     const boldPayload: any = {
       amount_type: "CLOSE",
@@ -230,8 +234,9 @@ export async function POST(request: NextRequest) {
       },
       reference: reference,
       description: `${product.nombre} (x${quantity}) - Energym`,
-      callback_url: callbackUrl,
-      image_url: product.imagen ? product.imagen.split(',')[0].trim() : `${origin}/logo.png`,
+      callback_url: closeUrl,
+      redirection_url: closeUrl,
+      image_url: imageUrl,
     };
 
     console.log("[Bold Product API] Llamando a Bold API...");

@@ -200,8 +200,11 @@ export async function POST(request: NextRequest) {
 
     // 8. Llamar a la API de Bold para generar el link de pago
     const boldApiUrl = "https://integrations.api.bold.co/online/link/v1";
-    const origin = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
-    const callbackUrl = `${origin}/payment-status?transactionId=${reference}`;
+    const publicOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
+    
+    // Usamos SIEMPRE la URL pública para evitar el error 403 de Bold.
+    // La pestaña cargará y se cerrará automáticamente sin importar si tú estás probando en localhost.
+    const closeUrl = `${publicOrigin}/payment-close`;
 
     const boldPayload: any = {
       amount_type: "CLOSE",
@@ -212,8 +215,9 @@ export async function POST(request: NextRequest) {
       },
       reference: reference,
       description: `Plan ${plan.nombre} - Energym`,
-      callback_url: callbackUrl,
-      image_url: `${origin}/logo.png`,
+      callback_url: closeUrl,
+      redirection_url: closeUrl,
+      image_url: `${publicOrigin}/logo.png`,
     };
     
     // Solo agregar expiration_date si es necesario (probar sin ella primero)

@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
 
     // Generar link de pago con Bold
     const boldApiUrl = "https://integrations.api.bold.co/online/link/v1";
-    const origin = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
+    const publicOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
 
     // Generar descripción con todos los productos
     const productDescriptions = products.map(p => `${p.nombre} (x${p.requestedQuantity})`).join(', ');
@@ -215,9 +215,9 @@ export async function POST(request: NextRequest) {
       : `${firstProduct.nombre} (x${firstProduct.requestedQuantity}) - Energym`;
 
     // Usar imagen del primer producto
-    const imageUrl = firstProduct.imagen ? firstProduct.imagen.split(',')[0].trim() : `${origin}/logo.png`;
-    const callbackUrl = `${origin}/payment-status?transactionId=${reference}`;
-    const returnUrl = `${origin}/marketplace`; // URL para el botón "Regresar"
+    const imageUrl = firstProduct.imagen ? firstProduct.imagen.split(',')[0].trim() : `${publicOrigin}/logo.png`;
+    
+    const closeUrl = `${publicOrigin}/payment-close`;
 
     const boldPayload = {
       amount_type: "CLOSE",
@@ -234,8 +234,8 @@ export async function POST(request: NextRequest) {
       },
       reference: reference,
       description: description,
-      callback_url: callbackUrl,
-      redirection_url: returnUrl,
+      callback_url: closeUrl,
+      redirection_url: closeUrl,
       image_url: imageUrl,
     };
 

@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Shield, Check, ExternalLink } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Shield, Check, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface Plan {
@@ -153,6 +153,45 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
   return (
     <div className="flex-1 pt-24 pb-16">
       <div className="max-w-4xl mx-auto px-4">
+        {/* Modal de Procesamiento de Pago */}
+        <AnimatePresence>
+          {(loading || paymentStatus === 'processing' || paymentStatus === 'completed') && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-[#0a0a0a] border border-white/10 p-8 rounded-3xl flex flex-col items-center max-w-sm w-full mx-4 shadow-2xl"
+              >
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 ${
+                  paymentStatus === 'completed' ? 'bg-green-500/20' : 'bg-blue-500/20'
+                }`}>
+                  {paymentStatus === 'completed' ? (
+                    <Check className="w-8 h-8 text-green-400" />
+                  ) : (
+                    <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                  )}
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">
+                  {paymentStatus === 'completed' ? '¡Pago Completado!' : paymentStatus === 'processing' ? 'Completa tu pago' : 'Procesando Pago'}
+                </h3>
+                <p className="text-gray-400 text-center text-sm">
+                  {paymentStatus === 'completed' 
+                    ? 'Tu pago ha sido procesado exitosamente. Redirigiendo...'
+                    : paymentStatus === 'processing' 
+                    ? 'Por favor completa el pago en la ventana emergente de Bold. Esta página se actualizará automáticamente cuando termines.'
+                    : 'Estamos conectando de forma segura con la pasarela de pagos. Por favor, espera un momento.'}
+                </p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
