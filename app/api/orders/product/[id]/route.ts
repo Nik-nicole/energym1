@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
-import { BoldPollingService } from "@/lib/bold-polling";
 
 export async function GET(
   request: NextRequest,
@@ -77,26 +76,6 @@ export async function GET(
 
     if (!productOrder) {
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
-    }
-
-    // Si la orden tiene un pago con transactionId (paymentLinkId), consultar estado actualizado
-    if (productOrder.payment?.transactionId && productOrder.payment.status === 'PENDING') {
-      console.log(`[API Order] Consultando estado actualizado de Bold para paymentLinkId: ${productOrder.payment.transactionId}`);
-      
-      try {
-        const result = await BoldPollingService.pollAndUpdatePaymentStatus(productOrder.payment.transactionId);
-        
-        if (result.payment && result.payment.status !== productOrder.payment.status) {
-          console.log(`[API Order] Estado actualizado de ${productOrder.payment.status} a ${result.payment.status}`);
-          
-          // Actualizar el objeto productOrder con el nuevo estado
-          productOrder.payment.status = result.payment.status;
-          productOrder.status = result.payment.status; // Sincronizar estado de la orden
-        }
-      } catch (error) {
-        console.error(`[API Order] Error consultando estado actualizado:`, error);
-        // No fallar la petición si el polling falla
-      }
     }
 
     // Solo permitir acceso si es administrador o el dueño de la orden y está pagada
@@ -181,14 +160,14 @@ const formatCurrency = (amount: number) => {
           total: formatCurrency(productOrder.totalPrice)
         } : {
           // Single product fallback
-          name: productOrder.product.nombre,
-          description: productOrder.product.descripcion,
-          category: productOrder.product.categoria,
-          image: productOrder.product.imagen || "/placeholder-product.jpg",
-          quantity: productOrder.quantity,
-          unitPrice: formatCurrency(productOrder.unitPrice),
-          subtotal: formatCurrency(productOrder.unitPrice * productOrder.quantity),
-          total: formatCurrency(productOrder.totalPrice),
+          name: productOrder.product?.nombre || "Producto",
+          description: productOrder.product?.descripcion || "",
+          category: productOrder.product?.categoria || "",
+          image: productOrder.product?.imagen || "/placeholder-product.jpg",
+          quantity: productOrder.quantity || 1,
+          unitPrice: formatCurrency(productOrder.unitPrice || 0),
+          subtotal: formatCurrency((productOrder.unitPrice || 0) * (productOrder.quantity || 1)),
+          total: formatCurrency(productOrder.totalPrice || 0),
           items: []
         },
         location: {
