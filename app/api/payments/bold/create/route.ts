@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 // Rate limiting simple en memoria (para producción usar Redis)
 const rateLimitMap = new Map<string, { count: number; timestamp: number }>();
