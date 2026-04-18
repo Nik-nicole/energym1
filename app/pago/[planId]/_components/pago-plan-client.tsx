@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Shield, Check, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, Shield, Check, ExternalLink, Loader2, XCircle } from "lucide-react";
 import Link from "next/link";
 
 interface Plan {
@@ -24,11 +24,10 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
   const { data: session } = useSession();
   const router = useRouter();
   
-  const [loading, setLoading] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [hasFrozenPlan, setHasFrozenPlan] = useState(false);
   const [frozenPlanName, setFrozenPlanName] = useState<string>('');
-  const popupRef = useRef<Window | null>(null);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -71,35 +70,6 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
     checkUserPlan();
   }, [session]);
 
-  // Detectar cuando el usuario regresa del popup de pago
-  useEffect(() => {
-    if (paymentStatus !== 'processing' || !popupRef.current) return;
-
-    const finishPayment = () => {
-      if (popupRef.current && !popupRef.current.closed) {
-        popupRef.current.close();
-      }
-        setPaymentStatus('completed');
-        setLoading(false);
-        // Redirigir a la página principal después de 2 segundos
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
-    };
-
-    // 1. Escuchar mensaje desde la ventana de Bold (payment-close)
-    const handleMessage = (e: MessageEvent) => {
-      if (e.data === 'payment_closed') {
-        finishPayment();
-      }
-    };
-    window.addEventListener('message', handleMessage);
-
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [paymentStatus, router]);
-
   const handleProceedToPayment = async () => {
     if (!session) {
       router.push("/login");
@@ -112,7 +82,8 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
+    setError(null);
 
     try {
       // Llamar al endpoint de Bold para generar el pago
@@ -129,74 +100,37 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Error al preparar el pago");
+        throw new Error(data.details || data.error || "Error al preparar el pago");
       }
 
-      const { paymentUrl, planOrderId } = data;
+      const { paymentUrl } = data;
 
-      // Guardar el planOrderId en sessionStorage para el callback
-      sessionStorage.setItem("currentPlanOrderId", planOrderId);
-
-      console.log("[Bold] Payment URL recibida:", paymentUrl);
-      
-      setPaymentStatus('processing');
-      
-      // Abrir pasarela de pago de Bold en nueva pestaña
-      const newWindow = window.open(paymentUrl, '_blank');
-      popupRef.current = newWindow;
-      
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        // Popup bloqueado - mostrar mensaje al usuario
-        alert('Por favor permite las ventanas emergentes para continuar con el pago, o haz clic derecho en el botón y selecciona "Abrir enlace en nueva pestaña"');
-        setLoading(false);
-        setPaymentStatus('idle');
-        return;
-      }
-
+      window.location.href = paymentUrl;
     } catch (error) {
       console.error("[Bold] Error al procesar el pago:", error);
-      alert(error instanceof Error ? error.message : "Error al procesar el pago");
-      setLoading(false);
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido al procesar el pago";
+      setError(errorMessage);
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="flex-1 pt-24 pb-16">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Modal de Procesamiento de Pago */}
+        {/* Modal de Carga */}
         <AnimatePresence>
-          {(loading || paymentStatus === 'processing' || paymentStatus === 'completed') && (
+          {isLoading && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
             >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-[#0a0a0a] border border-white/10 p-8 rounded-3xl flex flex-col items-center max-w-sm w-full mx-4 shadow-2xl"
-              >
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 ${
-                  paymentStatus === 'completed' ? 'bg-green-500/20' : 'bg-blue-500/20'
-                }`}>
-                  {paymentStatus === 'completed' ? (
-                    <Check className="w-8 h-8 text-green-400" />
-                  ) : (
-                    <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
-                  )}
+              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
+                <div className="bg-[#0a0a0a] border border-white/10 p-8 rounded-3xl flex flex-col items-center gap-4">
+                  <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                  <p className="text-white font-medium">Conectando con la pasarela de pago...</p>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">
-                  {paymentStatus === 'completed' ? '¡Pago Completado!' : paymentStatus === 'processing' ? 'Completa tu pago' : 'Procesando Pago'}
-                </h3>
-                <p className="text-gray-400 text-center text-sm">
-                  {paymentStatus === 'completed' 
-                    ? 'Tu pago ha sido procesado exitosamente. Redirigiendo...'
-                    : paymentStatus === 'processing' 
-                    ? 'Por favor completa el pago en la ventana emergente de Bold. Esta página se actualizará automáticamente cuando termines.'
-                    : 'Estamos conectando de forma segura con la pasarela de pagos. Por favor, espera un momento.'}
-                </p>
               </motion.div>
             </motion.div>
           )}
@@ -246,6 +180,24 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {/* Alerta de Error */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-center gap-3"
+          >
+            <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-red-400 text-sm font-medium">Error al iniciar el pago</p>
+              <p className="text-red-400/80 text-xs">{error}</p>
+            </div>
+            <button onClick={() => setError(null)} className="p-1 text-red-400/80 hover:text-red-400">
+              <XCircle className="w-4 h-4" />
+            </button>
           </motion.div>
         )}
 
@@ -299,26 +251,21 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
                   
                   <button
                     onClick={handleProceedToPayment}
-                    disabled={loading || paymentStatus === 'completed' || hasFrozenPlan}
+                    disabled={isLoading || hasFrozenPlan}
                     className="w-full py-4 gradient-bg rounded-2xl font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {paymentStatus === 'completed' ? (
-                      <>
-                        <Check className="w-5 h-5" />
-                        Pago completado - Redirigiendo...
-                      </>
-                    ) : hasFrozenPlan ? (
+                    {hasFrozenPlan ? (
                       <>
                         <Shield className="w-5 h-5" />
                         Pago Bloqueado - Plan Congelado
                       </>
-                    ) : loading ? (
-                      "Preparando pago..."
-                    ) : (
+                    ) : isLoading ? (
                       <>
-                        <ExternalLink className="w-5 h-5" />
-                        Pagar {formatPrice(plan.precio * 1.19)}
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Preparando pago...
                       </>
+                    ) : (
+                      `Pagar ${formatPrice(plan.precio)}`
                     )}
                   </button>
                 </div>

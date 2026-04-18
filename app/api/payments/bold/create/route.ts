@@ -200,29 +200,31 @@ export async function POST(request: NextRequest) {
 
     // 8. Llamar a la API de Bold para generar el link de pago
     const boldApiUrl = "https://integrations.api.bold.co/online/link/v1";
-    const publicOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
     
-    // Usamos SIEMPRE la URL pública para evitar el error 403 de Bold.
-    // La pestaña cargará y se cerrará automáticamente sin importar si tú estás probando en localhost.
-    const closeUrl = `${publicOrigin}/payment-close`;
+    // Bold rechaza "localhost" con 403 Forbidden. Usamos la URL de producción obligatoriamente.
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
+    const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
+    
+    const callbackUrl = `${publicOrigin}/api/webhooks/bold`;
+    const redirectionUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
 
     const boldPayload: any = {
       amount_type: "CLOSE",
       amount: {
         currency: "COP",
         total_amount: totalAmount,
-        // IVA removido - Bold lo calcula automáticamente
       },
       reference: reference,
       description: `Plan ${plan.nombre} - Energym`,
-      callback_url: closeUrl,
-      redirection_url: closeUrl,
+      callback_url: callbackUrl,
+      redirection_url: redirectionUrl,
       image_url: `${publicOrigin}/logo.png`,
     };
     
     // Solo agregar expiration_date si es necesario (probar sin ella primero)
     // expiration_date: Math.floor((Date.now() + 2 * 60 * 60 * 1000) * 1000),
 
+    console.log("REDIRECTION URL:", redirectionUrl);
     console.log("[Bold API] Llamando a Bold API...");
     console.log("[Bold API] URL:", boldApiUrl);
     console.log("[Bold API] Payload:", JSON.stringify(boldPayload, null, 2));

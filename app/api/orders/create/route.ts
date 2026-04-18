@@ -206,7 +206,13 @@ export async function POST(request: NextRequest) {
 
     // Generar link de pago con Bold
     const boldApiUrl = "https://integrations.api.bold.co/online/link/v1";
-    const publicOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
+    
+    // Bold rechaza "localhost" con 403 Forbidden. Usamos la URL de producción obligatoriamente.
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
+    const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
+    
+    const callbackUrl = `${publicOrigin}/api/webhooks/bold`;
+    const redirectionUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
 
     // Generar descripción con todos los productos
     const productDescriptions = products.map(p => `${p.nombre} (x${p.requestedQuantity})`).join(', ');
@@ -217,8 +223,6 @@ export async function POST(request: NextRequest) {
     // Usar imagen del primer producto
     const imageUrl = firstProduct.imagen ? firstProduct.imagen.split(',')[0].trim() : `${publicOrigin}/logo.png`;
     
-    const closeUrl = `${publicOrigin}/payment-close`;
-
     const boldPayload = {
       amount_type: "CLOSE",
       amount: {
@@ -234,11 +238,12 @@ export async function POST(request: NextRequest) {
       },
       reference: reference,
       description: description,
-      callback_url: closeUrl,
-      redirection_url: closeUrl,
+      callback_url: callbackUrl,
+      redirection_url: redirectionUrl,
       image_url: imageUrl,
     };
 
+    console.log("REDIRECTION URL:", redirectionUrl);
     console.log("[Orders Create] Llamando a Bold API...");
     console.log("[Orders Create] Payload:", JSON.stringify(boldPayload, null, 2));
 
