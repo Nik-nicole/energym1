@@ -75,19 +75,29 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
   useEffect(() => {
     if (paymentStatus !== 'processing' || !popupRef.current) return;
 
-    const interval = setInterval(() => {
-      if (popupRef.current?.closed) {
-        clearInterval(interval);
+    const finishPayment = () => {
+      if (popupRef.current && !popupRef.current.closed) {
+        popupRef.current.close();
+      }
         setPaymentStatus('completed');
         setLoading(false);
         // Redirigir a la página principal después de 2 segundos
         setTimeout(() => {
           router.push('/');
         }, 2000);
-      }
-    }, 1000);
+    };
 
-    return () => clearInterval(interval);
+    // 1. Escuchar mensaje desde la ventana de Bold (payment-close)
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data === 'payment_closed') {
+        finishPayment();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
   }, [paymentStatus, router]);
 
   const handleProceedToPayment = async () => {
