@@ -215,15 +215,15 @@ export async function POST(request: NextRequest) {
       },
       reference: reference,
       description: `Plan ${plan.nombre} - Energym`,
-      callback_url: callbackUrl,
-      redirection_url: redirectionUrl,
+      callback_url: returnUrl,
+      redirection_url: returnUrl,
       image_url: `${publicOrigin}/logo.png`,
     };
     
     // Solo agregar expiration_date si es necesario (probar sin ella primero)
     // expiration_date: Math.floor((Date.now() + 2 * 60 * 60 * 1000) * 1000),
 
-    console.log("REDIRECTION URL:", redirectionUrl);
+    console.log("REDIRECTION URL:", returnUrl);
     console.log("[Bold API] Llamando a Bold API...");
     console.log("[Bold API] URL:", boldApiUrl);
     console.log("[Bold API] Payload:", JSON.stringify(boldPayload, null, 2));
