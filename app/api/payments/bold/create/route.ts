@@ -64,24 +64,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "planId requerido" }, { status: 400 });
     }
 
-    // 1. Ejecutar queries en paralelo para mejor rendimiento
-    const [user, plan] = await Promise.all([
-      // Obtener usuario con sede y paymentGateway
-      prisma.user.findUnique({
-        where: { email: session.user.email },
-        include: {
-          sede: {
-            include: {
-              paymentGateway: true,
-            },
+    // 1. Ejecutar queries de forma secuencial para evitar saturar el pool de conexiones en serverless
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        sede: {
+          include: {
+            paymentGateway: true,
           },
         },
-      }),
-      // Obtener el plan
-      prisma.plan.findUnique({
-        where: { id: planId, activo: true },
-      }),
-    ]);
+      },
+    });
+
+    const plan = await prisma.plan.findUnique({
+      where: { id: planId, activo: true },
+    });
 
     if (!user) {
       console.log("[Bold API] Error: Usuario no encontrado");
