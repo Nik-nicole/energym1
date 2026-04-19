@@ -299,6 +299,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       paymentUrl,           // URL completa del link de pago
+      transactionId: paymentLinkId || reference,
       productOrderId: productOrder.id,
       product: {
         id: product.id,

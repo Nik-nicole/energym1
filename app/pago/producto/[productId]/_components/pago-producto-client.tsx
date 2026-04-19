@@ -89,25 +89,17 @@ export function PagoProductoClient({ product }: PagoProductoClientProps) {
         throw new Error(data.error || "Error al preparar el pago");
       }
 
-      const { paymentUrl, productOrderId } = data;
+      const { paymentUrl, productOrderId, transactionId } = data;
 
       // Guardar el productOrderId en sessionStorage para el callback
       sessionStorage.setItem("currentProductOrderId", productOrderId);
 
       console.log("[Bold Product] Payment URL recibida:", paymentUrl);
 
-      setPaymentStatus('processing');
+      window.open(paymentUrl, '_blank');
 
-      // Abrir pasarela de pago de Bold en nueva pestaña
-      const newWindow = window.open(paymentUrl, '_blank');
-      popupRef.current = newWindow;
-
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        // Popup bloqueado - mostrar mensaje al usuario
-        alert('Por favor permite las ventanas emergentes para continuar con el pago, o haz clic derecho en el botón y selecciona "Abrir enlace en nueva pestaña"');
-        setLoading(false);
-        setPaymentStatus('idle');
-        return;
+      if (transactionId) {
+        router.push(`/payment-status?transactionId=${transactionId}`);
       }
 
     } catch (error) {

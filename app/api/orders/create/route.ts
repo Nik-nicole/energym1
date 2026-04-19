@@ -309,6 +309,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       paymentUrl,
+      transactionId: paymentLinkId || reference,
       productOrderId: productOrder.id,
       orderDetails, // Enviar detalles de todos los productos al cliente
       order: {

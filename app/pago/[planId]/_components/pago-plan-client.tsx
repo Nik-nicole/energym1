@@ -103,9 +103,13 @@ export function PagoPlanClient({ plan }: PagoPlanClientProps) {
         throw new Error(data.details || data.error || "Error al preparar el pago");
       }
 
-      const { paymentUrl } = data;
+      const { paymentUrl, transactionId } = data;
 
-      window.location.href = paymentUrl;
+      window.open(paymentUrl, '_blank');
+
+      if (transactionId) {
+        router.push(`/payment-status?transactionId=${transactionId}`);
+      }
     } catch (error) {
       console.error("[Bold] Error al procesar el pago:", error);
       const errorMessage = error instanceof Error ? error.message : "Error desconocido al procesar el pago";

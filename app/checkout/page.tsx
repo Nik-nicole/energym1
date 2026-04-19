@@ -197,7 +197,7 @@ export default function CheckoutPage() {
       }
 
       const data = await response.json();
-      const { paymentUrl, productOrderId } = data;
+      const { paymentUrl, productOrderId, transactionId } = data;
 
       // Guardar el productOrderId en sessionStorage
       sessionStorage.setItem("currentProductOrderId", productOrderId);
@@ -208,6 +208,9 @@ export default function CheckoutPage() {
       // Redirigir al link de pago de Bold
       if (paymentUrl) {
         window.open(paymentUrl, '_blank');
+        if (transactionId) {
+          router.push(`/payment-status?transactionId=${transactionId}`);
+        }
       } else {
         throw new Error("No se recibió link de pago");
       }
