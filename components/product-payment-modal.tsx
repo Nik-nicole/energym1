@@ -143,28 +143,16 @@ export function ProductPaymentModal({
       const result = await response.json()
 
       if (result.success) {
-        setShowConfirmation(true)
-        setTimeout(() => {
-          onOpenChange(false)
-          setShowConfirmation(false)
-          // Reset form
-          setFormData({
-            direccion: "",
-            ciudad: "",
-            departamento: "",
-            codigoPostal: "",
-            telefono: "",
-            indicaciones: "",
-            cardNumber: "",
-            cardName: "",
-            cardExpiry: "",
-            cardCvc: "",
-            email: "",
-            documentType: "CC",
-            documentNumber: ""
-          })
-          setPaymentMethod("")
-        }, 5000)
+        const paymentUrl = result.paymentUrl
+        const orderId = result.productOrderId || result.order?.id
+
+        if (!paymentUrl || !orderId) {
+          throw new Error("Respuesta incompleta del pago")
+        }
+
+        window.open(paymentUrl, '_blank')
+        onOpenChange(false)
+        window.location.assign(`/payment-status?orderId=${encodeURIComponent(orderId)}`)
       } else {
         throw new Error(result.error || 'Error al procesar el pago')
       }

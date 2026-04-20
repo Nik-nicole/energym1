@@ -109,9 +109,9 @@ export function PagoProductoClient({ product }: PagoProductoClientProps) {
     }
   };
 
-  const subtotal = product.precio * quantity;
-  const iva = subtotal * 0.19;
-  const total = subtotal + iva;
+  const total = product.precio * quantity;
+  const iva = Math.round(total - (total / 1.19));
+  const subtotal = total - iva;
 
   const images = product.imagen ? product.imagen.split(',').filter(img => img.trim()) : [];
 
@@ -268,7 +268,7 @@ export function PagoProductoClient({ product }: PagoProductoClientProps) {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Subtotal</span>
+                  <span className="text-gray-400">Base (sin IVA)</span>
                   <span className="text-white">{formatPrice(subtotal)}</span>
                 </div>
 
@@ -279,7 +279,7 @@ export function PagoProductoClient({ product }: PagoProductoClientProps) {
 
                 <div className="border-t border-white/[0.05] pt-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-white font-medium">Total</span>
+                    <span className="text-white font-medium">Total (IVA incluido)</span>
                     <span className="text-2xl font-bold text-white">
                       {formatPrice(total)}
                     </span>

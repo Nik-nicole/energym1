@@ -157,7 +157,8 @@ model PlanOrder {
   totalPrice Float
   unitPrice  Float
   updatedAt  DateTime @updatedAt
-  status     String   @default("PENDING")
+  status            String   @default("PENDING")
+  transactionStatus String?
   payment    Payment? @relation(fields: [paymentId], references: [id])
   plan       Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
   sede       Sede     @relation(fields: [sedeId], references: [id], onDelete: SetNull)
@@ -175,7 +176,8 @@ model ProductOrder {
   totalPrice      Float
   unitPrice       Float?
   updatedAt       DateTime @updatedAt
-  status          String   @default("PENDING")
+  status            String   @default("PENDING")
+  transactionStatus String?
   customerName    String?
   postalCode      String?
   shippingAddress String?

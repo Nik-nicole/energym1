@@ -142,11 +142,12 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // 5. Calcular totales y preparar datos para el botón de Bold
+    // 5. El precio del producto ya incluye IVA
     const unitPrice = product.precio;
-    const subtotal = unitPrice * quantity;
+    const totalAmount = Math.round(unitPrice * quantity); // Total final (IVA incluido)
     const ivaRate = 0.19;
-    const totalAmount = Math.round(subtotal * (1 + ivaRate)); // Total en pesos
+    const subtotal = Math.round(totalAmount / (1 + ivaRate)); // Base sin IVA
+    const ivaAmountPesos = totalAmount - subtotal; // IVA incluido en el precio
 
     // Generar referencia única
     const reference = `PROD-${user.id.slice(0, 8)}-${product.id.slice(0, 8)}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -197,7 +198,7 @@ export async function POST(request: NextRequest) {
           sedeId: user.sedeId!,
           quantity: quantity,
           unitPrice: unitPrice,
-          totalPrice: subtotal * 1.19,
+          totalPrice: totalAmount,
           status: "PENDING",
         },
       });
@@ -216,9 +217,6 @@ export async function POST(request: NextRequest) {
 
     const returnUrl = `${publicOrigin}/payment-status?orderId=${productOrder.id}`;
 
-    // Calcular IVA en pesos
-    const ivaAmountPesos = Math.round(subtotal * ivaRate);
-    
     const imageUrl = product.imagen ? product.imagen.split(',')[0].trim() : `${publicOrigin}/logo.png`;
 
     const boldPayload: any = {

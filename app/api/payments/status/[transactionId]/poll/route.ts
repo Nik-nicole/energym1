@@ -8,6 +8,30 @@ const BOLD_API_BASE = "https://integrations.api.bold.co/online/link/v1";
 /** Estados que Bold retorna cuando el pago ya terminó (sin vuelta atrás) */
 const TERMINAL_STATUSES = new Set(["PAID", "REJECTED", "CANCELLED", "EXPIRED"]);
 
+async function syncTransactionStatus(paymentId: string, finalStatus: string) {
+  try {
+    const [planCount, productCount] = await Promise.all([
+      prisma.$executeRaw`
+        UPDATE "PlanOrder"
+        SET "transactionStatus" = ${finalStatus}
+        WHERE "paymentId" = ${paymentId}
+      `,
+      prisma.$executeRaw`
+        UPDATE "ProductOrder"
+        SET "transactionStatus" = ${finalStatus}
+        WHERE "paymentId" = ${paymentId}
+      `,
+    ]);
+
+    console.log(
+      `[Poll] transactionStatus sincronizado (${finalStatus}) -> PlanOrder:${planCount} ProductOrder:${productCount}`
+    );
+  } catch (syncError) {
+    // No romper el polling por errores de sincronización secundaria
+    console.warn("[Poll] No se pudo sincronizar transactionStatus:", syncError);
+  }
+}
+
 /**
  * Polling liviano: consulta el estado del link de pago directamente en Bold.
  * - Una sola query a la BD (solo sedeId + paymentGateway para resolver API key).
@@ -49,8 +73,9 @@ export async function GET(
       return NextResponse.json({ error: "Pago no encontrado" }, { status: 404 });
     }
 
-    // Si ya tenemos un estado terminal en nuestra BD, no llamamos a Bold
+    // Si ya tenemos un estado terminal en Payment, asegurar transactionStatus y evitar llamar a Bold
     if (TERMINAL_STATUSES.has(payment.status)) {
+      await syncTransactionStatus(payment.id, payment.status);
       return NextResponse.json({ status: payment.status });
     }
 
@@ -85,16 +110,14 @@ export async function GET(
 
     console.log(`[Poll] Bold status para ${transactionId}:`, boldStatus);
 
-    // Si Bold reporta estado terminal, sincronizar nuestra BD
+    // Si Bold reporta estado terminal, sincronizar pago + órdenes relacionadas
     if (TERMINAL_STATUSES.has(boldStatus)) {
       await prisma.payment.update({
         where: { id: payment.id },
-        data: {
-          status: boldStatus,
-          gatewayResponse: boldData,
-        },
+        data: { status: boldStatus, gatewayResponse: boldData },
       });
-      console.log(`[Poll] BD actualizada con estado terminal: ${boldStatus}`);
+      await syncTransactionStatus(payment.id, boldStatus);
+      console.log(`[Poll] BD actualizada con estado terminal: ${boldStatus} (transactionStatus sincronizado)`);
     }
 
     return NextResponse.json({ status: boldStatus });

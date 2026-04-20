@@ -6,6 +6,30 @@ import { prisma } from "@/lib/prisma";
 const BOLD_API_BASE = "https://integrations.api.bold.co/online/link/v1";
 const TERMINAL_STATUSES = new Set(["PAID", "REJECTED", "CANCELLED", "EXPIRED"]);
 
+async function syncTransactionStatus(paymentId: string, finalStatus: string) {
+  try {
+    const [planCount, productCount] = await Promise.all([
+      prisma.$executeRaw`
+        UPDATE "PlanOrder"
+        SET "transactionStatus" = ${finalStatus}
+        WHERE "paymentId" = ${paymentId}
+      `,
+      prisma.$executeRaw`
+        UPDATE "ProductOrder"
+        SET "transactionStatus" = ${finalStatus}
+        WHERE "paymentId" = ${paymentId}
+      `,
+    ]);
+
+    console.log(
+      `[Status] transactionStatus sincronizado (${finalStatus}) -> PlanOrder:${planCount} ProductOrder:${productCount}`
+    );
+  } catch (syncError) {
+    // No romper la consulta principal por errores de sincronización secundaria
+    console.warn("[Status] No se pudo sincronizar transactionStatus:", syncError);
+  }
+}
+
 /**
  * Llamada inicial: valida propiedad del pago, obtiene datos del link en Bold,
  * y retorna amount + paymentMethod para que el cliente los cachée.
@@ -136,6 +160,19 @@ export async function GET(
 
     let currentStatus = payment.status;
 
+    // Si Payment ya está en estado terminal, asegurar transactionStatus y evitar una llamada extra a Bold
+    if (TERMINAL_STATUSES.has(payment.status)) {
+      await syncTransactionStatus(payment.id, payment.status);
+
+      return NextResponse.json({
+        status: currentStatus,
+        amount: payment.amount,
+        transactionId: payment.transactionId,
+        orderId: resolvedOrderId,
+        paymentMethod: payment.paymentMethod,
+      });
+    }
+
     if (boldApiKey) {
       try {
         const boldResponse = await fetch(`${BOLD_API_BASE}/${payment.transactionId}`, {
@@ -152,12 +189,13 @@ export async function GET(
           const boldStatus: string = boldData.status ?? boldData.payload?.status ?? currentStatus;
           currentStatus = boldStatus;
 
-          // Si Bold ya reporta estado terminal, sincronizar BD
+          // Si Bold ya reporta estado terminal, sincronizar BD (pago + órdenes relacionadas)
           if (TERMINAL_STATUSES.has(boldStatus) && boldStatus !== payment.status) {
             await prisma.payment.update({
               where: { id: payment.id },
               data: { status: boldStatus, gatewayResponse: boldData },
             });
+            await syncTransactionStatus(payment.id, boldStatus);
           }
         }
       } catch (boldErr) {
