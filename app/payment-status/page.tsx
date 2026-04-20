@@ -12,6 +12,7 @@ interface PaymentData {
   status: PaymentStatus;
   amount?: number;
   transactionId: string;
+  orderId?: string;
   paymentMethod?: string;
   error?: string;
 }
@@ -29,7 +30,9 @@ export default function PaymentStatusPage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const transactionId = searchParams.get('transactionId');
+  const orderId = searchParams.get('orderId');
+  const legacyTransactionId = searchParams.get('transactionId');
+  const transactionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const stopPolling = () => {
@@ -44,8 +47,10 @@ export default function PaymentStatusPage() {
       setIsPolling(false);
     };
 
-    if (!transactionId) {
-      setError('No se encontró ID de transacción');
+    const identifier = orderId || legacyTransactionId;
+
+    if (!identifier) {
+      setError('No se encontró identificador de pago');
       setStatus('error');
       return;
     }
@@ -73,11 +78,17 @@ export default function PaymentStatusPage() {
     // Primera llamada: consulta completa con validación de propiedad
     const fetchInitial = async (): Promise<boolean> => {
       try {
-        const response = await fetch(`/api/payments/status/${transactionId}`);
+        const response = await fetch(`/api/payments/status/${identifier}`);
         if (!response.ok) throw new Error('Error al consultar estado del pago');
         const data = await response.json();
         if (data.error) throw new Error(data.error);
         if (cancelled) return true;
+
+        if (!data.transactionId) {
+          throw new Error('No se recibió transactionId del pago');
+        }
+
+        transactionIdRef.current = data.transactionId;
 
         // Guardar en caché los datos que no cambian
         cachedPaymentMeta.current = { amount: data.amount, paymentMethod: data.paymentMethod };
@@ -88,6 +99,7 @@ export default function PaymentStatusPage() {
           amount: data.amount,
           paymentMethod: data.paymentMethod,
           transactionId: data.transactionId,
+          orderId: data.orderId,
         });
         setStatus(newStatus);
         if (isTerminal(newStatus)) {
@@ -108,7 +120,11 @@ export default function PaymentStatusPage() {
     // Llamadas sucesivas: solo consulta el campo status (endpoint liviano)
     const fetchPoll = async (): Promise<boolean> => {
       try {
-        const response = await fetch(`/api/payments/status/${transactionId}/poll`);
+        if (!transactionIdRef.current) {
+          throw new Error('transactionId no disponible para polling');
+        }
+
+        const response = await fetch(`/api/payments/status/${transactionIdRef.current}/poll`);
         if (!response.ok) throw new Error('Error al consultar estado del pago');
         const data = await response.json();
         if (data.error) throw new Error(data.error);
@@ -119,7 +135,7 @@ export default function PaymentStatusPage() {
         // Preservar los datos invariables del caché
         setPaymentData(prev => prev
           ? { ...prev, status: data.status }
-          : { status: data.status, transactionId: transactionId!, ...cachedPaymentMeta.current });
+          : { status: data.status, transactionId: transactionIdRef.current!, orderId: orderId || undefined, ...cachedPaymentMeta.current });
 
         if (isTerminal(newStatus)) {
           stopPolling();
@@ -163,7 +179,7 @@ export default function PaymentStatusPage() {
       cancelled = true;
       stopPolling();
     };
-  }, [transactionId]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [orderId, legacyTransactionId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const getStatusIcon = () => {
     switch (status) {
@@ -329,11 +345,13 @@ export default function PaymentStatusPage() {
         {/* Botones de acción */}
         {getActionButton()}
 
-        {/* Transaction ID para referencia */}
-        {transactionId && (
+        {/* Referencia para usuario */}
+        {(orderId || legacyTransactionId) && (
           <div className="mt-6 pt-6 border-t border-white/10">
             <p className="text-gray-500 text-xs">
-              Referencia de pago: {transactionId}
+              {orderId
+                ? `Referencia de orden: ${orderId}`
+                : `Referencia de pago: ${legacyTransactionId}`}
             </p>
           </div>
         )}

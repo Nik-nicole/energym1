@@ -21,9 +21,9 @@ export async function GET(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const transactionId = params.transactionId;
-    if (!transactionId) {
-      return NextResponse.json({ error: "transactionId requerido" }, { status: 400 });
+    const identifier = params.transactionId;
+    if (!identifier) {
+      return NextResponse.json({ error: "identificador requerido" }, { status: 400 });
     }
 
     // Obtener usuario para validar propiedad
@@ -36,33 +36,98 @@ export async function GET(
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    // Query completa: valida propiedad + obtiene todos los datos necesarios
-    const payment = await prisma.payment.findFirst({
-      where: {
-        transactionId,
-        OR: [
-          { planOrders: { some: { userId: user.id } } },
-          { productOrders: { some: { userId: user.id } } },
-        ],
-      },
-      select: {
-        id: true,
-        status: true,
-        amount: true,
-        paymentMethod: true,
-        transactionId: true,
-        sede: {
-          select: {
-            paymentGateway: {
-              select: { cuentaBanco: true },
+    // Resolver el pago a partir del orderId (plan o producto) para no exponer LNK_* en la URL
+    const [planOrder, productOrder] = await Promise.all([
+      prisma.planOrder.findFirst({
+        where: { id: identifier, userId: user.id },
+        select: {
+          id: true,
+          payment: {
+            select: {
+              id: true,
+              status: true,
+              amount: true,
+              paymentMethod: true,
+              transactionId: true,
+              sede: {
+                select: {
+                  paymentGateway: {
+                    select: { cuentaBanco: true },
+                  },
+                },
+              },
             },
           },
         },
-      },
-    });
+      }),
+      prisma.productOrder.findFirst({
+        where: { id: identifier, userId: user.id },
+        select: {
+          id: true,
+          payment: {
+            select: {
+              id: true,
+              status: true,
+              amount: true,
+              paymentMethod: true,
+              transactionId: true,
+              sede: {
+                select: {
+                  paymentGateway: {
+                    select: { cuentaBanco: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
 
+    let payment = planOrder?.payment || productOrder?.payment;
+    let resolvedOrderId: string | undefined = planOrder?.id || productOrder?.id;
+
+    // Fallback legacy: permitir identificar por transactionId para compatibilidad con enlaces antiguos
     if (!payment) {
-      return NextResponse.json({ error: "Pago no encontrado" }, { status: 404 });
+      const legacyPayment = await prisma.payment.findFirst({
+        where: {
+          transactionId: identifier,
+          OR: [
+            { planOrders: { some: { userId: user.id } } },
+            { productOrders: { some: { userId: user.id } } },
+          ],
+        },
+        select: {
+          id: true,
+          status: true,
+          amount: true,
+          paymentMethod: true,
+          transactionId: true,
+          sede: {
+            select: {
+              paymentGateway: {
+                select: { cuentaBanco: true },
+              },
+            },
+          },
+          planOrders: { select: { id: true }, take: 1 },
+          productOrders: { select: { id: true }, take: 1 },
+        },
+      });
+
+      if (!legacyPayment) {
+        return NextResponse.json({ error: "Orden o pago no encontrado" }, { status: 404 });
+      }
+
+      payment = {
+        id: legacyPayment.id,
+        status: legacyPayment.status,
+        amount: legacyPayment.amount,
+        paymentMethod: legacyPayment.paymentMethod,
+        transactionId: legacyPayment.transactionId,
+        sede: legacyPayment.sede,
+      };
+      resolvedOrderId = legacyPayment.planOrders[0]?.id || legacyPayment.productOrders[0]?.id;
     }
 
     // Resolver API key y consultar estado actual en Bold
@@ -73,7 +138,7 @@ export async function GET(
 
     if (boldApiKey) {
       try {
-        const boldResponse = await fetch(`${BOLD_API_BASE}/${transactionId}`, {
+        const boldResponse = await fetch(`${BOLD_API_BASE}/${payment.transactionId}`, {
           method: "GET",
           headers: {
             "Authorization": `x-api-key ${boldApiKey}`,
@@ -105,6 +170,7 @@ export async function GET(
       status: currentStatus,
       amount: payment.amount,
       transactionId: payment.transactionId,
+      orderId: resolvedOrderId,
       paymentMethod: payment.paymentMethod,
     });
   } catch (error) {

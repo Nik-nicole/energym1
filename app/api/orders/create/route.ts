@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
     const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
     
-    const returnUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
+    const returnUrl = `${publicOrigin}/payment-status?orderId=${productOrder.id}`;
 
     // Generar descripción con todos los productos
     const productDescriptions = products.map(p => `${p.nombre} (x${p.requestedQuantity})`).join(', ');

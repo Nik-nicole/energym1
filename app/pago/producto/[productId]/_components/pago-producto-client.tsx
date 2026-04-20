@@ -89,7 +89,7 @@ export function PagoProductoClient({ product }: PagoProductoClientProps) {
         throw new Error(data.error || "Error al preparar el pago");
       }
 
-      const { paymentUrl, productOrderId, transactionId } = data;
+      const { paymentUrl, productOrderId } = data;
 
       // Guardar el productOrderId en sessionStorage para el callback
       sessionStorage.setItem("currentProductOrderId", productOrderId);
@@ -98,8 +98,8 @@ export function PagoProductoClient({ product }: PagoProductoClientProps) {
 
       window.open(paymentUrl, '_blank');
 
-      if (transactionId) {
-        router.push(`/payment-status?transactionId=${transactionId}`);
+      if (productOrderId) {
+        router.push(`/payment-status?orderId=${productOrderId}`);
       }
 
     } catch (error) {

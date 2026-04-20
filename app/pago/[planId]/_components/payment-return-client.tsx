@@ -14,18 +14,20 @@ type BoldStatus =
 export default function PaymentReturnClient() {
   const searchParams = useSearchParams();
   const linkId = searchParams.get("link_id");
+  const orderId = searchParams.get("order_id");
+  const paymentIdentifier = linkId || orderId;
 
   const [status, setStatus] = useState<BoldStatus>("PROCESSING");
 
   useEffect(() => {
-    if (!linkId) {
+    if (!paymentIdentifier) {
       setStatus("ERROR");
       return;
     }
 
     const checkStatus = async () => {
       try {
-        const res = await fetch(`/api/bold/status/${linkId}`);
+        const res = await fetch(`/api/bold/status/${paymentIdentifier}`);
 
         if (!res.ok) {
           setStatus("ERROR");
@@ -55,7 +57,7 @@ export default function PaymentReturnClient() {
     const interval = setInterval(checkStatus, 3000);
 
     return () => clearInterval(interval);
-  }, [linkId]);
+  }, [paymentIdentifier]);
 
   const getStatusConfig = () => {
     switch (status) {

@@ -213,8 +213,8 @@ export async function POST(request: NextRequest) {
     // Bold rechaza "localhost" con 403 Forbidden. Usamos la URL de producción obligatoriamente.
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
     const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
-    
-    const returnUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
+
+    const returnUrl = `${publicOrigin}/payment-status?orderId=${productOrder.id}`;
 
     // Calcular IVA en pesos
     const ivaAmountPesos = Math.round(subtotal * ivaRate);
