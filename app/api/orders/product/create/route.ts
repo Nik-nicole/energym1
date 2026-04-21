@@ -78,15 +78,53 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Preparar callback URL
-    const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://energym1-five.vercel.app';
-    const callbackUrl = `${origin}/pago/confirmacion/bold-product?productOrderId=${reference}`;
+    // Bold rechaza localhost en algunos escenarios; usar origen público
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://energym1-five.vercel.app';
+    const publicOrigin = baseUrl.includes('localhost') ? 'https://energym1-five.vercel.app' : baseUrl;
 
-    // Calcular IVA para productos
-    const subtotal = totalPrice;
+    // El precio de producto ya incluye IVA
+    const totalAmount = Math.round(totalPrice); // Total final (IVA incluido)
     const ivaRate = 0.19;
-    const ivaAmount = Math.round(subtotal * ivaRate);
-    const totalAmount = Math.round(subtotal * (1 + ivaRate));
+    const subtotal = Math.round(totalAmount / (1 + ivaRate)); // Base sin IVA
+    const ivaAmount = totalAmount - subtotal;
+
+    // Crear pago y orden primero para poder usar orderId en callback_url/redirection_url
+    const { payment, productOrder } = await prisma.$transaction(async (tx) => {
+      const paymentRecord = await tx.payment.create({
+        data: {
+          sedeId: sede.id,
+          amount: totalAmount,
+          paymentMethod: paymentInfo.method || 'BOLD',
+          status: 'PENDING',
+          transactionId: reference,
+          gatewayResponse: {},
+        },
+      });
+
+      const orderRecord = await tx.productOrder.create({
+        data: {
+          userId: user.id,
+          productId: product.id,
+          sedeId: sede.id,
+          paymentId: paymentRecord.id,
+          quantity,
+          unitPrice,
+          totalPrice: totalAmount,
+          status: 'PENDING',
+          // Guardar información de envío
+          shippingAddress: shippingAddress.direccion,
+          shippingCity: shippingAddress.ciudad,
+          shippingState: shippingAddress.departamento,
+          shippingPhone: shippingAddress.telefono,
+          shippingNotes: shippingAddress.indicaciones,
+          postalCode: shippingAddress.codigoPostal,
+        },
+      });
+
+      return { payment: paymentRecord, productOrder: orderRecord };
+    });
+
+    const callbackUrl = `${publicOrigin}/payment-status?orderId=${productOrder.id}`;
 
     // Crear link de pago con BOLD
     const boldResponse = await BoldService.createPaymentLink({
@@ -96,7 +134,7 @@ export async function POST(request: NextRequest) {
       description: `${product.nombre} (x${quantity}) - Energym`,
       callbackUrl,
       apiKey: boldApiKey,
-      imageUrl: product.imagen ? product.imagen.split(',')[0].trim() : `${origin}/logo.png`,
+      imageUrl: product.imagen ? product.imagen.split(',')[0].trim() : `${publicOrigin}/logo.png`,
       taxes: [
         {
           type: 'VAT',
@@ -107,48 +145,36 @@ export async function POST(request: NextRequest) {
     });
 
     if (!boldResponse.success) {
-      return NextResponse.json({ 
-        error: "Error en el procesamiento del pago", 
-        details: boldResponse.message 
+      // Rollback manual si falla la creación del link
+      await prisma.productOrder.delete({ where: { id: productOrder.id } });
+      await prisma.payment.delete({ where: { id: payment.id } });
+
+      return NextResponse.json({
+        error: "Error en el procesamiento del pago",
+        details: boldResponse.message
       }, { status: 400 });
     }
 
-    // Crear el registro de pago con estado PENDING
-    const payment = await prisma.payment.create({
+    const paymentLinkId =
+      (boldResponse as any)?.data?.payload?.payment_link ||
+      (boldResponse as any)?.data?.payment_link ||
+      reference;
+
+    await prisma.payment.update({
+      where: { id: payment.id },
       data: {
-        sedeId: sede.id,
-        amount: totalAmount, // Usar total con IVA
-        paymentMethod: paymentInfo.method,
-        status: 'PENDING',
-        transactionId: boldResponse.reference,
-        gatewayResponse: JSON.parse(JSON.stringify(boldResponse))
-      }
+        transactionId: paymentLinkId,
+        gatewayResponse: JSON.parse(JSON.stringify((boldResponse as any)?.data ?? boldResponse)),
+      },
     });
 
-    // Crear la orden del producto con estado PENDING
-    const productOrder = await prisma.productOrder.create({
-      data: {
-        userId: user.id,
-        productId: product.id,
-        sedeId: sede.id,
-        paymentId: payment.id,
-        quantity,
-        unitPrice,
-        totalPrice: totalAmount, // Guardar total con IVA
-        status: 'PENDING',
-        // Guardar información de envío
-        shippingAddress: shippingAddress.direccion,
-        shippingCity: shippingAddress.ciudad,
-        shippingState: shippingAddress.departamento,
-        shippingPhone: shippingAddress.telefono,
-        shippingNotes: shippingAddress.indicaciones,
-        postalCode: shippingAddress.codigoPostal
-      },
+    const productOrderWithRelations = await prisma.productOrder.findUnique({
+      where: { id: productOrder.id },
       include: {
         product: true,
         sede: true,
-        payment: true
-      }
+        payment: true,
+      },
     });
 
     // Enviar email de confirmación (simulado)
@@ -156,9 +182,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      order: productOrder,
+      order: productOrderWithRelations,
       payment: boldResponse,
       paymentUrl: boldResponse.paymentUrl,
+      transactionId: paymentLinkId,
+      productOrderId: productOrder.id,
       message: "Orden creada exitosamente. Redirige al usuario a la URL de pago."
     });
 

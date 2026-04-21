@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock, XCircle, AlertCircle, RefreshCw, ArrowRight } from "lucide-react";
@@ -12,6 +12,8 @@ interface PaymentData {
   status: PaymentStatus;
   amount?: number;
   transactionId: string;
+  orderId?: string;
+  paymentMethod?: string;
   error?: string;
 }
 
@@ -23,126 +25,161 @@ export default function PaymentStatusPage() {
   const [error, setError] = useState<string | null>(null);
   const [pollingCount, setPollingCount] = useState(0);
   const [isPolling, setIsPolling] = useState(false);
+  // Caché de datos invariables del pago (cargados en la primera llamada)
+  const cachedPaymentMeta = useRef<{ amount?: number; paymentMethod?: string } | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const transactionId = searchParams.get('transactionId');
+  const orderId = searchParams.get('orderId');
+  const legacyTransactionId = searchParams.get('transactionId');
+  const transactionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!transactionId) {
-      setError('No se encontró ID de transacción');
+    const stopPolling = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setIsPolling(false);
+    };
+
+    const identifier = orderId || legacyTransactionId;
+
+    if (!identifier) {
+      setError('No se encontró identificador de pago');
       setStatus('error');
       return;
     }
 
+    let cancelled = false;
+    setPollingCount(0);
     setIsPolling(true);
 
-    // Función de polling
-    const pollPaymentStatus = async () => {
-      try {
-        console.log(`[PaymentStatus] Consultando estado para transactionId: ${transactionId} (intento ${pollingCount + 1})`);
-        
-        const response = await fetch(`/api/payments/status/${transactionId}`);
-        
-        if (!response.ok) {
-          throw new Error('Error al consultar estado del pago');
-        }
-        
-        const data = await response.json();
-        
-        console.log(`[PaymentStatus] Estado recibido:`, data);
-        
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        
-        // Actualizar datos de pago
-        setPaymentData({
-          status: data.status,
-          amount: data.amount,
-          transactionId: data.transactionId
-        });
-        
-        // Mapear estado a tipo local
-        let newStatus: StatusType = 'pending';
-        switch (data.status) {
-          case 'PENDING':
-            newStatus = 'pending';
-            break;
-          case 'PAID':
-          case 'COMPLETED':
-            newStatus = 'paid';
-            break;
-          case 'REJECTED':
-          case 'FAILED':
-            newStatus = 'rejected';
-            break;
-          case 'CANCELLED':
-          case 'EXPIRED':
-            newStatus = 'expired';
-            break;
-          default:
-            newStatus = 'pending';
-            break;
-        }
-        
-        setStatus(newStatus);
-        
-        // Determinar si debemos detener el polling
-        const shouldStop = ['paid', 'rejected', 'expired', 'error'].includes(newStatus);
-        
-        if (shouldStop) {
-          setIsPolling(false);
-        }
-        
-        return shouldStop;
-        
-      } catch (error) {
-        console.error('[PaymentStatus] Error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        setError(errorMessage);
-        setStatus('error');
-        setIsPolling(false);
-        return true; // Detener polling en caso de error
+    const mapStatus = (rawStatus: string): StatusType => {
+      switch (rawStatus) {
+        case 'PENDING': return 'pending';
+        case 'PAID':
+        case 'COMPLETED': return 'paid';
+        case 'REJECTED':
+        case 'FAILED': return 'rejected';
+        case 'CANCELLED':
+        case 'EXPIRED': return 'expired';
+        default: return 'pending';
       }
     };
 
-    // Iniciar el proceso
-    const startPolling = async () => {
-      // Hacer consulta inicial inmediata
-      const shouldStop = await pollPaymentStatus();
-      if (shouldStop) return;
+    const isTerminal = (s: StatusType) =>
+      ['paid', 'rejected', 'expired', 'error'].includes(s);
 
-      // Configurar polling cada 5 segundos
-      const interval = setInterval(async () => {
-        if (!isPolling) {
-          clearInterval(interval);
-          return;
+    // Primera llamada: consulta completa con validación de propiedad
+    const fetchInitial = async (): Promise<boolean> => {
+      try {
+        const response = await fetch(`/api/payments/status/${identifier}`);
+        if (!response.ok) throw new Error('Error al consultar estado del pago');
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        if (cancelled) return true;
+
+        if (!data.transactionId) {
+          throw new Error('No se recibió transactionId del pago');
         }
-        
+
+        transactionIdRef.current = data.transactionId;
+
+        // Guardar en caché los datos que no cambian
+        cachedPaymentMeta.current = { amount: data.amount, paymentMethod: data.paymentMethod };
+
+        const newStatus = mapStatus(data.status);
+        setPaymentData({
+          status: data.status,
+          amount: data.amount,
+          paymentMethod: data.paymentMethod,
+          transactionId: data.transactionId,
+          orderId: data.orderId,
+        });
+        setStatus(newStatus);
+        if (isTerminal(newStatus)) {
+          stopPolling();
+          return true;
+        }
+        return isTerminal(newStatus);
+      } catch (err) {
+        if (cancelled) return true;
+        console.error('[PaymentStatus] Error inicial:', err);
+        setError(err instanceof Error ? err.message : 'Error desconocido');
+        setStatus('error');
+        stopPolling();
+        return true;
+      }
+    };
+
+    // Llamadas sucesivas: solo consulta el campo status (endpoint liviano)
+    const fetchPoll = async (): Promise<boolean> => {
+      try {
+        if (!transactionIdRef.current) {
+          throw new Error('transactionId no disponible para polling');
+        }
+
+        const response = await fetch(`/api/payments/status/${transactionIdRef.current}/poll`);
+        if (!response.ok) throw new Error('Error al consultar estado del pago');
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        if (cancelled) return true;
+
+        const newStatus = mapStatus(data.status);
+        setStatus(newStatus);
+        // Preservar los datos invariables del caché
+        setPaymentData(prev => prev
+          ? { ...prev, status: data.status }
+          : { status: data.status, transactionId: transactionIdRef.current!, orderId: orderId || undefined, ...cachedPaymentMeta.current });
+
+        if (isTerminal(newStatus)) {
+          stopPolling();
+          return true;
+        }
+
         setPollingCount(prev => prev + 1);
-        const shouldStop = await pollPaymentStatus();
-        if (shouldStop) {
-          clearInterval(interval);
-        }
-      }, 5000);
+        return isTerminal(newStatus);
+      } catch (err) {
+        if (cancelled) return true;
+        console.error('[PaymentStatus] Error en polling:', err);
+        // No detener polling por error transitorio — solo logueamos
+        return false;
+      }
+    };
 
-      // Limpiar interval después de 5 minutos (60 intentos)
-      const timeout = setTimeout(() => {
-        clearInterval(interval);
-        if (isPolling) {
-          setError('Tiempo de espera agotado. Por favor actualiza la página.');
-          setStatus('expired');
-          setIsPolling(false);
-        }
-      }, 5 * 60 * 1000);
+    const startPolling = async () => {
+      const done = await fetchInitial();
+      if (done) return;
 
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
+      // Polling liviano cada 15 segundos
+      intervalRef.current = setInterval(async () => {
+        const done = await fetchPoll();
+        if (done) {
+          stopPolling();
+        }
+      }, 15000);
+
+      // Tiempo máximo de espera: 10 minutos (~40 intentos)
+      timeoutRef.current = setTimeout(() => {
+        if (cancelled) return;
+        setError('Tiempo de espera agotado. Por favor actualiza la página.');
+        setStatus('expired');
+        stopPolling();
+      }, 10 * 60 * 1000);
     };
 
     startPolling();
-  }, [transactionId, pollingCount, isPolling]);
+
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+  }, [orderId, legacyTransactionId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const getStatusIcon = () => {
     switch (status) {
@@ -293,7 +330,7 @@ export default function PaymentStatusPage() {
               {status === 'loading' ? 'Iniciando verificación...' : `Verificando estado (${pollingCount + 1} intentos)`}
             </p>
             <p className="text-blue-400 text-xs mt-1">
-              Actualizando automáticamente cada 5 segundos...
+              Actualizando automáticamente cada 15 segundos...
             </p>
           </div>
         )}
@@ -308,11 +345,13 @@ export default function PaymentStatusPage() {
         {/* Botones de acción */}
         {getActionButton()}
 
-        {/* Transaction ID para referencia */}
-        {transactionId && (
+        {/* Referencia para usuario */}
+        {(orderId || legacyTransactionId) && (
           <div className="mt-6 pt-6 border-t border-white/10">
             <p className="text-gray-500 text-xs">
-              Referencia de pago: {transactionId}
+              {orderId
+                ? `Referencia de orden: ${orderId}`
+                : `Referencia de pago: ${legacyTransactionId}`}
             </p>
           </div>
         )}

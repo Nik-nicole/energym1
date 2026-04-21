@@ -19,34 +19,8 @@ export default function BoldProductConfirmationPage() {
       setLoading(false);
       return;
     }
-
-    // Obtener el transactionId desde la orden y redirigir
-    const getOrderAndRedirect = async () => {
-      try {
-        const response = await fetch(`/api/orders/product/${productOrderId}`);
-        if (!response.ok) {
-          throw new Error('Error al obtener la orden');
-        }
-        
-        const orderData = await response.json();
-        
-        if (orderData.order?.payment?.transactionId) {
-          const transactionId = orderData.order.payment.transactionId;
-          console.log(`[Redirect] Redirigiendo a /payment-status?transactionId=${transactionId}`);
-          
-          // Redirigir a la nueva página de estado de pago
-          router.replace(`/payment-status?transactionId=${transactionId}`);
-        } else {
-          throw new Error('No se encontró transactionId en la orden');
-        }
-      } catch (error) {
-        console.error('Error obteniendo orden:', error);
-        setError(error instanceof Error ? error.message : 'Error desconocido');
-        setLoading(false);
-      }
-    };
-
-    getOrderAndRedirect();
+    // Redirigir a la pantalla de estado usando orderId (sin exponer LNK_* en URL)
+    router.replace(`/payment-status?orderId=${productOrderId}`);
   }, [productOrderId, router]);
 
   if (loading) {

@@ -142,11 +142,12 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // 5. Calcular totales y preparar datos para el botón de Bold
+    // 5. El precio del producto ya incluye IVA
     const unitPrice = product.precio;
-    const subtotal = unitPrice * quantity;
+    const totalAmount = Math.round(unitPrice * quantity); // Total final (IVA incluido)
     const ivaRate = 0.19;
-    const totalAmount = Math.round(subtotal * (1 + ivaRate)); // Total en pesos
+    const subtotal = Math.round(totalAmount / (1 + ivaRate)); // Base sin IVA
+    const ivaAmountPesos = totalAmount - subtotal; // IVA incluido en el precio
 
     // Generar referencia única
     const reference = `PROD-${user.id.slice(0, 8)}-${product.id.slice(0, 8)}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -197,7 +198,7 @@ export async function POST(request: NextRequest) {
           sedeId: user.sedeId!,
           quantity: quantity,
           unitPrice: unitPrice,
-          totalPrice: subtotal * 1.19,
+          totalPrice: totalAmount,
           status: "PENDING",
         },
       });
@@ -213,12 +214,9 @@ export async function POST(request: NextRequest) {
     // Bold rechaza "localhost" con 403 Forbidden. Usamos la URL de producción obligatoriamente.
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
     const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
-    
-    const returnUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
 
-    // Calcular IVA en pesos
-    const ivaAmountPesos = Math.round(subtotal * ivaRate);
-    
+    const returnUrl = `${publicOrigin}/payment-status?orderId=${productOrder.id}`;
+
     const imageUrl = product.imagen ? product.imagen.split(',')[0].trim() : `${publicOrigin}/logo.png`;
 
     const boldPayload: any = {
@@ -299,6 +297,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       paymentUrl,           // URL completa del link de pago
+      transactionId: paymentLinkId || reference,
       productOrderId: productOrder.id,
       product: {
         id: product.id,

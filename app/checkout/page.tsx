@@ -18,6 +18,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, total, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
+  const [isRedirectingToPaymentStatus, setIsRedirectingToPaymentStatus] = useState(false);
 
   // Estado para el formulario de envío
   const [shippingData, setShippingData] = useState({
@@ -142,11 +143,11 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (items.length === 0 && !loading && status === "authenticated") {
+    if (items.length === 0 && !loading && status === "authenticated" && !isRedirectingToPaymentStatus) {
       router.push("/marketplace");
       return;
     }
-  }, [status, session, items.length, router, loading]);
+  }, [status, session, items.length, router, loading, isRedirectingToPaymentStatus]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-CO", {
@@ -203,17 +204,22 @@ export default function CheckoutPage() {
       sessionStorage.setItem("currentProductOrderId", productOrderId);
 
       // Limpiar carrito
+      setIsRedirectingToPaymentStatus(true);
       clearCart();
 
       // Redirigir al link de pago de Bold
       if (paymentUrl) {
         window.open(paymentUrl, '_blank');
+        if (productOrderId) {
+          router.push(`/payment-status?orderId=${productOrderId}`);
+        }
       } else {
         throw new Error("No se recibió link de pago");
       }
 
     } catch (error) {
       console.error("Checkout error:", error);
+      setIsRedirectingToPaymentStatus(false);
       alert("Error al procesar el pedido. Por favor intenta nuevamente.");
     } finally {
       setLoading(false);

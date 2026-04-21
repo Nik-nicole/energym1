@@ -145,10 +145,11 @@ export async function POST(request: NextRequest) {
     // Generar número de orden único
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    // Calcular totales de todos los productos
+    // Los precios de producto ya incluyen IVA
     const ivaRate = 0.19;
-    const totalWithIva = Math.round(totalSubtotal * (1 + ivaRate));
-    const ivaAmount = Math.round(totalSubtotal * ivaRate);
+    const totalWithIva = Math.round(totalSubtotal); // total final (IVA incluido)
+    const subtotalWithoutIva = Math.round(totalWithIva / (1 + ivaRate));
+    const ivaAmount = totalWithIva - subtotalWithoutIva;
 
     // Generar referencia única para Bold
     const reference = `ORD-${user.id.slice(0, 8)}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -167,42 +168,47 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Crear la orden del producto con items en una transacción
-    const productOrder = await prisma.$transaction(async (tx) => {
-      // Crear la orden principal
-      const order = await tx.productOrder.create({
-        data: {
-          userId: user.id,
-          productId: firstProduct.id,
-          paymentId: payment.id, // Asociar con el pago
-          sedeId: sedeId,
-          quantity: totalQuantity,
-          unitPrice: totalSubtotal / totalQuantity,
-          totalPrice: totalWithIva,
-          status: 'PENDING',
-          customerName: shippingData?.name || '',
-          shippingAddress: shippingData?.address || '',
-          shippingCity: shippingData?.city || '',
-          shippingPhone: shippingData?.phone || '',
-          shippingNotes: shippingData?.notes || ''
-        }
-      });
-
-      // Crear los items individuales
-      for (const product of products) {
-        await tx.productOrderItem.create({
-          data: {
-            orderId: order.id,
-            productId: product.id,
-            quantity: product.requestedQuantity,
-            unitPrice: product.unitPrice,
-            totalPrice: product.unitPrice * product.requestedQuantity
-          }
-        });
+    // Crear la orden principal (sin items anidados para compatibilidad de runtime)
+    const productOrder = await prisma.productOrder.create({
+      data: {
+        userId: user.id,
+        productId: firstProduct.id,
+        paymentId: payment.id, // Asociar con el pago
+        sedeId: sedeId,
+        quantity: totalQuantity,
+        unitPrice: totalSubtotal / totalQuantity,
+        totalPrice: totalWithIva,
+        status: 'PENDING',
+        shippingAddress: shippingData?.address || '',
+        shippingCity: shippingData?.city || '',
+        shippingPhone: shippingData?.phone || '',
+        shippingNotes: shippingData?.notes || ''
       }
-
-      return order;
     });
+
+    // Crear los items del pedido en una operación separada
+    const orderItems = products.map((product) => ({
+      orderId: productOrder.id,
+      productId: product.id,
+      quantity: product.requestedQuantity,
+      unitPrice: product.unitPrice,
+      totalPrice: product.unitPrice * product.requestedQuantity,
+    }));
+
+    try {
+      await prisma.productOrderItem.createMany({
+        data: orderItems,
+      });
+    } catch (itemsError) {
+      console.error("[Orders Create] Error creando items de la orden:", itemsError);
+      // Rollback manual para no dejar orden/pago huérfanos
+      await prisma.productOrder.delete({ where: { id: productOrder.id } });
+      await prisma.payment.delete({ where: { id: payment.id } });
+      return NextResponse.json(
+        { error: "Error al crear los items de la orden" },
+        { status: 500 }
+      );
+    }
 
     // Generar link de pago con Bold
     const boldApiUrl = "https://integrations.api.bold.co/online/link/v1";
@@ -211,7 +217,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
     const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
     
-    const returnUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
+    const returnUrl = `${publicOrigin}/payment-status?orderId=${productOrder.id}`;
 
     // Generar descripción con todos los productos
     const productDescriptions = products.map(p => `${p.nombre} (x${p.requestedQuantity})`).join(', ');
@@ -230,7 +236,7 @@ export async function POST(request: NextRequest) {
         taxes: [
           {
             type: "VAT",
-            base: totalSubtotal,
+            base: subtotalWithoutIva,
             value: ivaAmount,
           },
         ],
@@ -309,6 +315,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       paymentUrl,
+      transactionId: paymentLinkId || reference,
       productOrderId: productOrder.id,
       orderDetails, // Enviar detalles de todos los productos al cliente
       order: {

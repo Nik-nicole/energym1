@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://energym1-five.vercel.app";
     const publicOrigin = baseUrl.includes("localhost") ? "https://energym1-five.vercel.app" : baseUrl;
     
-    const returnUrl = `${publicOrigin}/payment/return?link_id={bold-order-id}`;
+    const returnUrl = `${publicOrigin}/payment-status?orderId=${planOrder.id}`;
 
     const boldPayload: any = {
       amount_type: "CLOSE",
@@ -278,6 +278,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       paymentUrl,           // URL completa del link de pago
+      transactionId: paymentLinkId || reference,
       planOrderId: planOrder.id,
       plan: {
         id: plan.id,

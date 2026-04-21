@@ -117,11 +117,15 @@ export default async function BoldConfirmacionPage({
     }
   }
 
-  // Redirigir a la nueva página de estado de pago con el transaction_id de Bold
+  // Redirigir usando orderId para no exponer el ID de Bold en la URL pública
+  if (planOrderId) {
+    redirect(`/payment-status?orderId=${planOrderId}`);
+  }
+
+  // Fallback legacy: en flujos antiguos solo puede venir transaction_id
   if (transaction_id) {
     redirect(`/payment-status?transactionId=${transaction_id}`);
-  } else {
-    // Si no hay transaction_id, redirigir al perfil
-    redirect("/perfil");
   }
+
+  redirect("/perfil");
 }
