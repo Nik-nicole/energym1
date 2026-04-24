@@ -89,24 +89,29 @@ export async function GET(
       const statusOrder = ["PENDING", "PAID", "VERIFIED", "PACKED", "SHIPPED", "DELIVERED"];
       const currentIndex = statusOrder.indexOf(currentStatus);
       
-      if (currentStatus === "CANCELLED") return "cancelled";
+      if (currentStatus === "CANCELLED") return "error";
       if (stepIndex < currentIndex) return "completed";
       if (stepIndex === currentIndex) return "current";
       return "pending";
     };
 
-    const timeline = [
-      { label: "Orden Pagada", status: getTimelineStatus(1, productOrder.status), date: productOrder.createdAt.toLocaleDateString() },
-      { label: "Verificada", status: getTimelineStatus(2, productOrder.status), date: "" },
-      { label: "Empacada", status: getTimelineStatus(3, productOrder.status), date: "" },
-      { label: "Enviada", status: getTimelineStatus(4, productOrder.status), date: "" }
-    ];
-
-    // Si está cancelado, mostrar todos como cancelados con X roja
-    if (productOrder.status === "CANCELLED") {
-      timeline.forEach(item => {
-        item.status = "cancelled";
-      });
+    let timeline;
+    if (productOrder.transactionStatus === "REJECTED" || productOrder.status === "CANCELLED") {
+      timeline = [
+        { label: "Pagada", status: "error", date: "Cancelado" },
+        { label: "Verificada", status: "error", date: "Cancelado" },
+        { label: "Empacada", status: "error", date: "Cancelado" },
+        { label: "Enviada", status: "error", date: "Cancelado" },
+        { label: "Entregada", status: "error", date: "Cancelado" }
+      ];
+    } else {
+      timeline = [
+        { label: "Pagada", status: getTimelineStatus(1, productOrder.status), date: ["PAID", "VERIFIED", "PACKED", "SHIPPED", "DELIVERED"].includes(productOrder.status) ? productOrder.createdAt.toLocaleDateString() : "Pendiente" },
+        { label: "Verificada", status: getTimelineStatus(2, productOrder.status), date: ["VERIFIED", "PACKED", "SHIPPED", "DELIVERED"].includes(productOrder.status) ? "Verificado" : "Pendiente" },
+        { label: "Empacada", status: getTimelineStatus(3, productOrder.status), date: ["PACKED", "SHIPPED", "DELIVERED"].includes(productOrder.status) ? "Procesado" : "Pendiente" },
+        { label: "Enviada", status: getTimelineStatus(4, productOrder.status), date: ["SHIPPED", "DELIVERED"].includes(productOrder.status) ? "En camino" : "Pendiente" },
+        { label: "Entregada", status: getTimelineStatus(5, productOrder.status), date: productOrder.status === "DELIVERED" ? "Recibido por el cliente" : "Pendiente" }
+      ];
     }
 
 // Función para formatear moneda en pesos colombianos
@@ -125,11 +130,14 @@ const formatCurrency = (amount: number) => {
         id: productOrder.id,
         date: productOrder.createdAt.toLocaleDateString(),
         total: formatCurrency(productOrder.totalPrice),
-        status: productOrder.status === "PAID" ? "Orden Pagada" : 
+        status: productOrder.transactionStatus === "REJECTED" ? "Rechazada" :
+                productOrder.status === "PAID" ? "Orden Pagada" : 
                 productOrder.status === "VERIFIED" ? "Verificada" :
                 productOrder.status === "PACKED" ? "Empacada" :
                 productOrder.status === "SHIPPED" ? "Enviada" :
-                productOrder.status === "CANCELLED" ? "Cancelada" : "Orden Pagada",
+                productOrder.status === "DELIVERED" ? "Entregada" :
+                productOrder.status === "CANCELLED" ? "Cancelada" : "Pendiente",
+        transactionStatus: productOrder.transactionStatus,
         timeline: timeline,
         client: {
           name: (productOrder as any).customerName || `${productOrder.user.firstName} ${productOrder.user.lastName || ''}`,
@@ -231,6 +239,15 @@ export async function PUT(
     if (!user) {
       console.log("User not found")
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+
+    // Verificar que la orden no esté rechazada antes de actualizar
+    const existingOrder = await prisma.productOrder.findUnique({
+      where: { id: id }
+    });
+
+    if (existingOrder?.transactionStatus === 'REJECTED') {
+      return NextResponse.json({ error: "No se puede cambiar el estado de una orden rechazada" }, { status: 400 });
     }
 
     console.log("Updating order status to:", body.status)

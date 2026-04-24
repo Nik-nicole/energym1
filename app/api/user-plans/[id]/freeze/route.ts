@@ -43,6 +43,10 @@ export async function POST(
           userId: userId,
           planId: id,
           isActive: true,
+          OR: [
+            { endDate: null },
+            { endDate: { gt: new Date() } }
+          ]
         },
         include: {
           plan: true,
@@ -59,6 +63,10 @@ export async function POST(
         where: {
           planId: id,
           isActive: true,
+          OR: [
+            { endDate: null },
+            { endDate: { gt: new Date() } }
+          ]
         },
         include: {
           plan: true,

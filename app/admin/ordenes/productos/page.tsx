@@ -17,6 +17,7 @@ async function getOrdenesProductosData() {
         unitPrice: true,
         totalPrice: true,
         status: true,
+        transactionStatus: true,
         createdAt: true,
         updatedAt: true,
         user: {

@@ -3,6 +3,30 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 
+function calculateEndDate(startDate: Date, duration: string): Date | null {
+  const normalizedDuration = duration.toLowerCase();
+  const amount = parseInt(normalizedDuration) || 1;
+  const newEndDate = new Date(startDate);
+
+  if (normalizedDuration.includes('día') || normalizedDuration.includes('dia')) {
+    newEndDate.setDate(newEndDate.getDate() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('mes')) {
+    newEndDate.setMonth(newEndDate.getMonth() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('año') || normalizedDuration.includes('year')) {
+    newEndDate.setFullYear(newEndDate.getFullYear() + amount);
+    return newEndDate;
+  }
+
+  if (normalizedDuration.includes('sesion') || normalizedDuration.includes('hora')) {
+    return null;
+  }
+  return null;
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -27,37 +51,40 @@ export async function PATCH(
     const body = await request.json();
     const { planId, isActive } = body;
 
-    // Obtener el usuario a modificar
+    // Obtener el usuario a modificar con sus órdenes de planes
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
-        orders: {
+        planOrders: {
           include: {
-            items: {
-              include: {
-                plan: true
-              }
-            }
-          }
-        }
-      }
+            plan: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+      },
     });
 
     if (!user) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    // Buscar la orden con el plan específico
-    const planOrder = user.orders.find(order => 
-      order.items.some(item => item.plan?.id === planId)
-    );
+    // Buscar la orden de plan específica
+    const planOrder = user.planOrders.find(order => order.planId === planId || order.plan?.id === planId);
 
     if (!planOrder) {
-      return NextResponse.json({ error: "Orden con plan no encontrada" }, { status: 404 });
+      return NextResponse.json({ error: "Orden de plan no encontrada" }, { status: 404 });
     }
+
+    // Obtener el plan para calcular la endDate correcta
+    const plan = planOrder.plan;
 
     // Crear o actualizar el UserPlan
     console.log('🔧 Creando/actualizando UserPlan:', { userId: id, planId, isActive });
+    
+    const startDate = planOrder.createdAt;
+    const endDate = plan ? calculateEndDate(startDate, plan.duracion) : null;
     
     try {
       const userPlan = await prisma.userPlan.upsert({
@@ -75,8 +102,8 @@ export async function PATCH(
           userId: id,
           planId: planId,
           isActive: isActive,
-          startDate: planOrder.createdAt,
-          endDate: new Date(planOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000)
+          startDate: startDate,
+          endDate: endDate || new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
         }
       });
 
@@ -91,8 +118,8 @@ export async function PATCH(
             userId: id,
             planId: planId,
             isActive: isActive,
-            startDate: planOrder.createdAt,
-            endDate: new Date(planOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000)
+            startDate: startDate,
+            endDate: endDate || new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
           }
         });
         console.log('✅ UserPlan creado (fallback):', userPlan);
@@ -112,27 +139,16 @@ export async function PATCH(
             nombre: true,
           },
         },
-        orders: {
+        planOrders: {
           include: {
-            items: {
-              include: {
-                plan: {
-                  select: {
-                    id: true,
-                    nombre: true,
-                    precio: true,
-                    duracion: true,
-                  }
-                },
-                product: {
-                  select: {
-                    id: true,
-                    nombre: true,
-                    precio: true,
-                  }
-                }
-              },
-            },
+            plan: {
+              select: {
+                id: true,
+                nombre: true,
+                precio: true,
+                duracion: true,
+              }
+            }
           },
           orderBy: {
             createdAt: 'desc'
@@ -140,7 +156,7 @@ export async function PATCH(
         },
         _count: {
           select: {
-            orders: true,
+            planOrders: true,
           },
         },
       },
@@ -164,40 +180,33 @@ export async function PATCH(
     });
 
     // Aplicar la misma lógica de transformación que en getUsersData
-    const allPlanOrders = updatedUser.orders
-      .filter(order => order.items.some(item => item.plan))
+    const allPlanOrders = updatedUser.planOrders
+      .filter(order => !!order.plan)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     
-    const paidPlanOrders = allPlanOrders.filter(order => order.paymentStatus === "PAID");
-    const latestPlanOrder = paidPlanOrders[0] || allPlanOrders[0];
-    const activePlan = latestPlanOrder?.items.find(item => item.plan)?.plan;
+    const verifiedPlanOrders = allPlanOrders.filter(order => order.status === "VERIFIED");
+    const latestPlanOrder = verifiedPlanOrders[0] || allPlanOrders[0];
+    const activePlan = latestPlanOrder?.plan;
     
     let planStatus = null;
     if (latestPlanOrder && activePlan) {
-      const isPaid = latestPlanOrder.paymentStatus === "PAID";
+      const isVerified = latestPlanOrder.status === "VERIFIED";
       
-      // Si el plan fue modificado manualmente, usar ese estado
       const modifiedUserPlan = userPlans.find((up: any) => up.plan.id === activePlan.id);
+      const userPlanEndDate = modifiedUserPlan?.endDate 
+        ? new Date(modifiedUserPlan.endDate)
+        : (activePlan.duracion ? calculateEndDate(new Date(latestPlanOrder.createdAt), activePlan.duracion) : null);
+      const isExpired = userPlanEndDate ? userPlanEndDate <= new Date() : false;
+      const isActiveStatus = (modifiedUserPlan?.isActive ?? true) && !isExpired && isVerified;
 
-      if (isPaid) {
-        planStatus = {
-          id: activePlan.id,
-          nombre: activePlan.nombre,
-          fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
-          fechaFin: new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          isActive: modifiedUserPlan?.isActive ?? true,
-          isDeactivated: !(modifiedUserPlan?.isActive ?? true),
-        };
-      } else {
-        planStatus = {
-          id: activePlan.id,
-          nombre: activePlan.nombre,
-          fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
-          fechaFin: new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          isActive: false,
-          isDeactivated: true,
-        };
-      }
+      planStatus = {
+        id: activePlan.id,
+        nombre: activePlan.nombre,
+        fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
+        fechaFin: userPlanEndDate ? userPlanEndDate.toISOString().split('T')[0] : null,
+        isActive: isActiveStatus,
+        isDeactivated: !isActiveStatus,
+      };
     }
 
     console.log(`🎯 Estado final del plan para usuario ${id}:`, planStatus);

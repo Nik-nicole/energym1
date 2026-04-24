@@ -43,7 +43,6 @@ export function MarketplaceMinimal({ productos, sedes }: MarketplaceClientProps)
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSede, setSelectedSede] = useState<string>("all");
   const [selectedCategoria, setSelectedCategoria] = useState<string>("all");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
   const [sortBy, setSortBy] = useState<string>("destacado");
   const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
 
@@ -55,12 +54,15 @@ export function MarketplaceMinimal({ productos, sedes }: MarketplaceClientProps)
 
   // Obtener rango de precios
   const priceRangeLimits = useMemo(() => {
+    if (!productos || productos.length === 0) return { min: 0, max: 1000000 };
     const prices = productos.map(p => p.precio);
     return {
       min: Math.min(...prices),
       max: Math.max(...prices)
     };
   }, [productos]);
+
+  const [priceRange, setPriceRange] = useState<[number, number]>([priceRangeLimits.min, priceRangeLimits.max]);
 
   // Filtrar productos
   const productosFiltrados = useMemo(() => {

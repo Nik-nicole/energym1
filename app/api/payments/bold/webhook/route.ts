@@ -11,6 +11,30 @@ import prisma from "@/lib/db";
 // Para producción, la API Key de webhook debería venir de variable de entorno
 const BOLD_WEBHOOK_SECRET = process.env.BOLD_WEBHOOK_SECRET || "";
 
+function calculateEndDate(startDate: Date, duration: string): Date | null {
+  const normalizedDuration = duration.toLowerCase();
+  const amount = parseInt(normalizedDuration) || 1;
+  const newEndDate = new Date(startDate);
+
+  if (normalizedDuration.includes('día') || normalizedDuration.includes('dia')) {
+    newEndDate.setDate(newEndDate.getDate() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('mes')) {
+    newEndDate.setMonth(newEndDate.getMonth() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('año') || normalizedDuration.includes('year')) {
+    newEndDate.setFullYear(newEndDate.getFullYear() + amount);
+    return newEndDate;
+  }
+
+  if (normalizedDuration.includes('sesion') || normalizedDuration.includes('hora')) {
+    return null;
+  }
+  return null;
+}
+
 function safeString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -187,17 +211,7 @@ export async function POST(request: NextRequest) {
 
           // 3. Calcular fechas del plan
           const startDate = new Date();
-          const endDate = new Date();
-          const duracion = planOrder.plan.duracion.toLowerCase();
-
-          if (duracion.includes("mes")) {
-            const meses = parseInt(duracion) || 1;
-            endDate.setMonth(endDate.getMonth() + meses);
-          } else if (duracion.includes("año") || duracion.includes("year")) {
-            endDate.setFullYear(endDate.getFullYear() + 1);
-          } else {
-            endDate.setMonth(endDate.getMonth() + 1);
-          }
+          const endDate = calculateEndDate(startDate, planOrder.plan.duracion);
 
           // 4. Activar el plan para el usuario
           await tx.userPlan.upsert({

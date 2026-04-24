@@ -106,3 +106,57 @@ body {
 .noticia-content h6 {
   color: white !important;
 }
+
+/* Estilos personalizados para sliders de precio */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid white;
+  transition: all 0.3s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  width: 22px;
+  height: 22px;
+  box-shadow: 0 4px 16px rgba(4, 10, 224, 0.5);
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid white;
+  transition: all 0.3s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+  width: 22px;
+  height: 22px;
+  box-shadow: 0 4px 16px rgba(4, 10, 224, 0.5);
+}
+
+.slider::-webkit-slider-runnable-track {
+  background: transparent;
+  border: none;
+}
+
+.slider::-moz-range-track {
+  background: transparent;
+  border: none;
+}

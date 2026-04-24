@@ -193,7 +193,18 @@ export class PlanService {
           userId,
           status: {
             in: ['ACTIVE', 'FROZEN']
-          }
+          },
+          OR: [
+            {
+              status: 'ACTIVE',
+              endDate: {
+                gt: new Date()
+              }
+            },
+            {
+              status: 'FROZEN'
+            }
+          ]
         }
       }),
       3

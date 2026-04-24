@@ -3,6 +3,30 @@ import prisma from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+function calculateEndDate(startDate: Date, duration: string): Date | null {
+  const normalizedDuration = duration.toLowerCase();
+  const amount = parseInt(normalizedDuration) || 1;
+  const newEndDate = new Date(startDate);
+
+  if (normalizedDuration.includes('día') || normalizedDuration.includes('dia')) {
+    newEndDate.setDate(newEndDate.getDate() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('mes')) {
+    newEndDate.setMonth(newEndDate.getMonth() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('año') || normalizedDuration.includes('year')) {
+    newEndDate.setFullYear(newEndDate.getFullYear() + amount);
+    return newEndDate;
+  }
+
+  if (normalizedDuration.includes('sesion') || normalizedDuration.includes('hora')) {
+    return null;
+  }
+  return null;
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -86,31 +110,44 @@ export async function PATCH(
       );
     }
 
-    // Obtener el plan activo usando la misma lógica que en la página principal
+    // Obtener el plan activo considerando tanto PlanOrder como UserPlan
     const latestPlanOrder = updatedUser.planOrders[0];
     const activePlan = latestPlanOrder?.plan;
     
     let planStatus = null;
     if (latestPlanOrder && activePlan) {
-      if (latestPlanOrder.status === "VERIFIED") {
-        planStatus = {
-          id: activePlan.id,
-          nombre: activePlan.nombre,
-          fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
-          fechaFin: new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          isActive: true,
-          isDeactivated: false,
-        };
-      } else {
-        planStatus = {
-          id: activePlan.id,
-          nombre: activePlan.nombre,
-          fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
-          fechaFin: new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          isActive: false,
-          isDeactivated: true,
-        };
-      }
+      // Buscar el UserPlan correspondiente para obtener la fecha real de fin
+      const userPlan = await prisma.userPlan.findFirst({
+        where: {
+          userId: updatedUser.id,
+          planId: activePlan.id,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      // Determinar si el plan está realmente activo (no expirado)
+      const calculatedEndDate = activePlan?.duracion 
+        ? calculateEndDate(new Date(latestPlanOrder.createdAt), activePlan.duracion)
+        : new Date(latestPlanOrder.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      let endDate = userPlan?.endDate 
+        ? new Date(userPlan.endDate).toISOString().split('T')[0] 
+        : (calculatedEndDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0]);
+      
+      const isExpired = userPlan?.endDate ? new Date(userPlan.endDate) <= new Date() : false;
+      const isVerified = latestPlanOrder.status === "VERIFIED";
+      const isUserPlanActive = userPlan?.isActive && userPlan?.status === 'ACTIVE';
+
+      planStatus = {
+        id: activePlan.id,
+        nombre: activePlan.nombre,
+        fechaInicio: latestPlanOrder.createdAt.toISOString().split('T')[0],
+        fechaFin: endDate,
+        isActive: isVerified && isUserPlanActive && !isExpired,
+        isDeactivated: !isVerified || !isUserPlanActive || isExpired,
+      };
     }
 
     // Transform response for frontend compatibility

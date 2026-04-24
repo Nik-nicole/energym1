@@ -18,7 +18,7 @@ export async function uploadImage(file: File, folder: string = 'fitzone/marketpl
     const bytes = await file.arrayBuffer();
     let buffer = Buffer.from(bytes);
 
-    // Detectar si es HEIC/HEIF y convertir a JPEG
+    // Detectar si es HEIC/HEIF
     const isHeicByExtension = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
     const isHeicOrHeif = file.type === 'image/heic' || 
                         file.type === 'image/heif' || 
@@ -26,19 +26,33 @@ export async function uploadImage(file: File, folder: string = 'fitzone/marketpl
                         file.type.includes('heif') ||
                         (isHeicByExtension && file.type === 'application/octet-stream');
 
-    if (isHeicOrHeif) {
-      console.log(`Convirtiendo imagen HEIC/HEIF a JPEG: ${file.name}`);
+    // Convertir TODOS los formatos a WebP
+    try {
+      let imageFormat = file.type || 'image/jpeg';
+      if (isHeicOrHeif) {
+        console.log(`Convirtiendo imagen HEIC/HEIF a WebP: ${file.name}`);
+      } else if (file.name.toLowerCase().endsWith('.avif')) {
+        console.log(`Convirtiendo imagen AVIF a WebP: ${file.name}`);
+      } else {
+        console.log(`Convirtiendo imagen ${file.name} a WebP`);
+      }
       
+      // Convertir a WebP con sharp
+      buffer = await sharp(buffer)
+        .webp({ quality: 85, alphaQuality: 100 })
+        .toBuffer();
+      
+      console.log(`Conversión exitosa: ${file.name} -> WebP`);
+    } catch (conversionError) {
+      console.error('Error al convertir imagen a WebP:', conversionError);
+      // Si falla la conversión a WebP, intentar al menos procesar la imagen con sharp
       try {
-        // Convertir HEIC/HEIF a JPEG usando sharp
         buffer = await sharp(buffer)
-          .jpeg({ quality: 90 })
           .toBuffer();
-        
-        console.log(`Conversión exitosa: ${file.name} -> JPEG`);
-      } catch (conversionError) {
-        console.error('Error al convertir HEIC/HEIF a JPEG:', conversionError);
-        throw new Error('Error al convertir el formato HEIC/HEIF a JPEG');
+        console.log(`Procesada imagen con sharp (sin conversión): ${file.name}`);
+      } catch (fallbackError) {
+        console.error('Error en fallback de procesamiento:', fallbackError);
+        throw new Error('Error al procesar la imagen');
       }
     }
 
@@ -48,11 +62,12 @@ export async function uploadImage(file: File, folder: string = 'fitzone/marketpl
         {
           folder,
           resource_type: 'image',
-          allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+          format: 'webp', // Forzar formato WebP
+          allowed_formats: ['webp', 'jpg', 'jpeg', 'png'],
           max_file_size: 10000000, // 10MB
           transformation: [
             { width: 800, height: 600, crop: 'limit', quality: 'auto' },
-            { fetch_format: 'auto' }
+            { fetch_format: 'webp' } // Servir siempre en WebP
           ]
         },
         (error, result) => {

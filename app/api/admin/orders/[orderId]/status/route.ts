@@ -3,6 +3,30 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 
+function calculateEndDate(startDate: Date, duration: string): Date | null {
+  const normalizedDuration = duration.toLowerCase();
+  const amount = parseInt(normalizedDuration) || 1;
+  const newEndDate = new Date(startDate);
+
+  if (normalizedDuration.includes('día') || normalizedDuration.includes('dia')) {
+    newEndDate.setDate(newEndDate.getDate() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('mes')) {
+    newEndDate.setMonth(newEndDate.getMonth() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('año') || normalizedDuration.includes('year')) {
+    newEndDate.setFullYear(newEndDate.getFullYear() + amount);
+    return newEndDate;
+  }
+
+  if (normalizedDuration.includes('sesion') || normalizedDuration.includes('hora')) {
+    return null;
+  }
+  return null;
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { orderId: string } }
@@ -79,6 +103,10 @@ export async function PATCH(
     // Si la orden está siendo verificada (VERIFIED) y tiene un plan, activar el plan para el usuario
     if (status === "VERIFIED" && updatedOrder.plan) {
       try {
+        // Calcular la fecha de fin correcta basado en la duracion del plan
+        const planEndDate = calculateEndDate(new Date(), updatedOrder.plan.duracion) 
+          || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        
         // Crear registro de plan activo para el usuario
         await prisma.userPlan.upsert({
           where: {
@@ -90,7 +118,7 @@ export async function PATCH(
           update: {
             isActive: true,
             startDate: new Date(),
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+            endDate: planEndDate,
             paymentId: updatedOrder.paymentId,
           },
           create: {
@@ -98,7 +126,7 @@ export async function PATCH(
             planId: updatedOrder.planId!,
             isActive: true,
             startDate: new Date(),
-            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+            endDate: planEndDate,
             paymentId: updatedOrder.paymentId,
           },
         });

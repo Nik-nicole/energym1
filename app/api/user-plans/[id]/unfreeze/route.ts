@@ -3,6 +3,30 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/db';
 
+function calculateEndDate(startDate: Date, duration: string): Date | null {
+  const normalizedDuration = duration.toLowerCase();
+  const amount = parseInt(normalizedDuration) || 1;
+  const newEndDate = new Date(startDate);
+
+  if (normalizedDuration.includes('día') || normalizedDuration.includes('dia')) {
+    newEndDate.setDate(newEndDate.getDate() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('mes')) {
+    newEndDate.setMonth(newEndDate.getMonth() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('año') || normalizedDuration.includes('year')) {
+    newEndDate.setFullYear(newEndDate.getFullYear() + amount);
+    return newEndDate;
+  }
+
+  if (normalizedDuration.includes('sesion') || normalizedDuration.includes('hora')) {
+    return null;
+  }
+  return null;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -36,7 +60,12 @@ export async function POST(
         where: {
           userId: userId,
           planId: id,
+          status: 'FROZEN',
           isActive: false,
+          OR: [
+            { endDate: null },
+            { endDate: { gt: new Date() } }
+          ]
         },
         include: {
           plan: true,
@@ -51,6 +80,7 @@ export async function POST(
       userPlan = await prisma.userPlan.findFirst({
         where: {
           planId: id,
+          status: 'FROZEN',
           isActive: false,
         },
         include: {
@@ -94,21 +124,13 @@ export async function POST(
       
       // Si no hay endDate, calcular según duración del plan
       if (!newEndDate) {
-        newEndDate = new Date(now);
-        const duration = userPlan.plan.duracion.toLowerCase();
-        if (duration.includes('mes')) {
-          const months = parseInt(duration) || 1;
-          newEndDate.setMonth(newEndDate.getMonth() + months);
-        } else if (duration.includes('año')) {
-          const years = parseInt(duration) || 1;
-          newEndDate.setFullYear(newEndDate.getFullYear() + years);
-        } else {
-          newEndDate.setMonth(newEndDate.getMonth() + 1);
-        }
+        newEndDate = calculateEndDate(now, userPlan.plan.duracion);
       }
       
       // Extender endDate por los días congelados
-      newEndDate.setDate(newEndDate.getDate() + frozenDays);
+      if (newEndDate) {
+        newEndDate.setDate(newEndDate.getDate() + frozenDays);
+      }
     }
 
     // Descongelar el plan

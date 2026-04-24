@@ -5,6 +5,30 @@ import { UsuariosAdmin } from "./_components/usuarios-admin";
 
 export const dynamic = "force-dynamic";
 
+function calculateEndDate(startDate: Date, duration: string): Date | null {
+  const normalizedDuration = duration.toLowerCase();
+  const amount = parseInt(normalizedDuration) || 1;
+  const newEndDate = new Date(startDate);
+
+  if (normalizedDuration.includes('día') || normalizedDuration.includes('dia')) {
+    newEndDate.setDate(newEndDate.getDate() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('mes')) {
+    newEndDate.setMonth(newEndDate.getMonth() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('año') || normalizedDuration.includes('year')) {
+    newEndDate.setFullYear(newEndDate.getFullYear() + amount);
+    return newEndDate;
+  }
+
+  if (normalizedDuration.includes('sesion') || normalizedDuration.includes('hora')) {
+    return null;
+  }
+  return null;
+}
+
 async function getUsersData(): Promise<{ users: any[]; sedes: any[]; plans: any[] }> {
   try {
     const users = await withPrismaQuery(async () => {
@@ -100,6 +124,10 @@ async function getUsersData(): Promise<{ users: any[]; sedes: any[]; plans: any[
         console.log("DEBUG - userPlanState?.id:", userPlanState?.id);
 
         // Determinar el estado del plan basado en el userPlanState
+        const calculatedEndDate = activePlan?.duracion 
+          ? calculateEndDate(new Date(latestPlanOrder.createdAt), activePlan.duracion)
+          : new Date(new Date(latestPlanOrder.createdAt).getTime() + 30 * 24 * 60 * 60 * 1000);
+        
         let planStatusData: any = {
           id: activePlan.id,
           orderId: latestPlanOrder.id,
@@ -110,13 +138,8 @@ async function getUsersData(): Promise<{ users: any[]; sedes: any[]; plans: any[
                 .toISOString()
                 .split("T")[0]
             : null,
-          fechaFin: latestPlanOrder.createdAt
-            ? new Date(
-                new Date(latestPlanOrder.createdAt).getTime() +
-                  30 * 24 * 60 * 60 * 1000
-              )
-                .toISOString()
-                .split("T")[0]
+          fechaFin: calculatedEndDate
+            ? calculatedEndDate.toISOString().split("T")[0]
             : null,
         };
 
@@ -124,21 +147,25 @@ async function getUsersData(): Promise<{ users: any[]; sedes: any[]; plans: any[
           // Si existe userPlanState, usar su estado real
           const status = (userPlanState as any)?.status || 'ACTIVE';
           const isActive = (userPlanState as any)?.isActive || false;
+          const endDate = (userPlanState as any)?.endDate;
+          const isExpired = endDate && new Date(endDate) <= new Date();
           
           planStatusData = {
             ...planStatusData,
             status,
-            isActive: status === 'ACTIVE' && isActive,
-            isDeactivated: status === 'INACTIVE' || !isActive,
-            isFrozen: status === 'FROZEN',
+            isActive: status === 'ACTIVE' && isActive && !isExpired,
+            isDeactivated: status === 'INACTIVE' || !isActive || isExpired,
+            isFrozen: status === 'FROZEN' && !isExpired,
           };
         } else if (isVerified) {
-          // Si no hay userPlanState pero la orden está verificada, crear uno nuevo
+          // Si no hay userPlanState pero la orden está verificada, validar si ha expirado
+          const isExpired = calculatedEndDate && new Date(calculatedEndDate) <= new Date();
+          
           planStatusData = {
             ...planStatusData,
             status: 'ACTIVE',
-            isActive: true,
-            isDeactivated: false,
+            isActive: !isExpired,
+            isDeactivated: isExpired,
             isFrozen: false,
           };
         } else {

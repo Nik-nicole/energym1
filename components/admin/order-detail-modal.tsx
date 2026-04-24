@@ -39,11 +39,14 @@ import StepLabel from '@mui/material/StepLabel'
 import StepIcon from '@mui/material/StepIcon'
 
 type OrderStatus =
+  | "Pendiente"
   | "Orden Pagada"
   | "Verificada"
   | "Empacada"
   | "Enviada"
+  | "Entregada"
   | "Cancelada"
+  | "Rechazada"
 
 interface OrderDetailModalProps {
   open: boolean
@@ -114,11 +117,14 @@ interface OrderData {
 }
 
 const statusBadgeColors: Record<OrderStatus, string> = {
+  Pendiente: "bg-yellow-500/20 text-yellow-400 border-yellow-500/40",
   "Orden Pagada": "bg-green-500/20 text-green-400 border-green-500/40",
   Verificada: "bg-blue-500/20 text-blue-400 border-blue-500/40",
   Empacada: "bg-blue-400/20 text-blue-300 border-blue-400/40",
   Enviada: "bg-[#040AE0]/20 text-[#7A7DFF] border-[#040AE0]/40",
+  Entregada: "bg-green-500/20 text-green-400 border-green-500/40",
   Cancelada: "bg-red-500/20 text-red-400 border-red-500/40",
+  Rechazada: "bg-red-500/20 text-red-500 border-red-500/50 font-bold",
 }
 
 function SectionCard({
@@ -223,20 +229,10 @@ export function OrderDetailModal({
 
   // Función para obtener los estados permitidos según el estado actual
   const getAllowedStatuses = (currentStatus: OrderStatus): OrderStatus[] => {
-    switch (currentStatus) {
-      case "Orden Pagada":
-        return ["Orden Pagada", "Verificada", "Cancelada"];
-      case "Verificada":
-        return ["Orden Pagada", "Verificada", "Empacada", "Cancelada"];
-      case "Empacada":
-        return ["Orden Pagada", "Verificada", "Empacada", "Enviada", "Cancelada"];
-      case "Enviada":
-        return ["Orden Pagada", "Verificada", "Empacada", "Enviada", "Cancelada"];
-      case "Cancelada":
-        return ["Orden Pagada", "Verificada", "Empacada", "Enviada", "Cancelada"]; // Permitir reactivar
-      default:
-        return ["Orden Pagada", "Verificada", "Empacada", "Enviada", "Cancelada"];
+    if (currentStatus === "Rechazada") {
+      return ["Rechazada"];
     }
+    return ["Pendiente", "Orden Pagada", "Verificada", "Empacada", "Enviada", "Entregada", "Cancelada"];
   }
 
   const handleSave = async () => {
@@ -249,11 +245,14 @@ export function OrderDetailModal({
       
       // Convertir el status al formato de la base de datos
       const statusMapping: Record<OrderStatus, string> = {
+        "Pendiente": "PENDING",
         "Orden Pagada": "PAID",
         "Verificada": "VERIFIED", 
         "Empacada": "PACKED",
         "Enviada": "SHIPPED",
-        "Cancelada": "CANCELLED"
+        "Entregada": "DELIVERED",
+        "Cancelada": "CANCELLED",
+        "Rechazada": "CANCELLED"
       }
 
       const dbStatus = statusMapping[currentStatus] || "PENDING"
@@ -364,42 +363,44 @@ export function OrderDetailModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {isEditing ? (
-              <>
+            {currentStatus !== "Rechazada" && (
+              isEditing ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={saving}
+                    className="border-[#333] bg-[#1F1F1F] text-gray-300 hover:bg-[#262626]"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-gradient-to-r from-[#D604E0] to-[#040AE0] hover:opacity-90 disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="size-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="size-4 mr-1" />
+                        Guardar
+                      </>
+                    )}
+                  </Button>
+                </>
+              ) : (
                 <Button
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="border-[#333] bg-[#1F1F1F] text-gray-300 hover:bg-[#262626]"
+                  onClick={() => setIsEditing(true)}
+                  className="bg-gradient-to-r from-[#D604E0] to-[#040AE0] hover:opacity-90"
                 >
-                  Cancelar
+                  <Pencil className="size-4 mr-1" />
+                  Editar
                 </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="bg-gradient-to-r from-[#D604E0] to-[#040AE0] hover:opacity-90 disabled:opacity-50"
-                >
-                  {saving ? (
-                    <>
-                      <div className="size-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="size-4 mr-1" />
-                      Guardar
-                    </>
-                  )}
-                </Button>
-              </>
-            ) : (
-              <Button
-                onClick={() => setIsEditing(true)}
-                className="bg-gradient-to-r from-[#D604E0] to-[#040AE0] hover:opacity-90"
-              >
-                <Pencil className="size-4 mr-1" />
-                Editar
-              </Button>
+              )
             )}
             <Button
               variant="ghost"
@@ -421,7 +422,11 @@ export function OrderDetailModal({
               title="Estado"
               icon={Clock}
               action={
-                isEditing && (
+                currentStatus === "Rechazada" ? (
+                  <div className="text-red-500 font-bold bg-red-500/10 px-3 py-1 rounded-md border border-red-500/30 text-sm">
+                    Pago Rechazado
+                  </div>
+                ) : isEditing && (
                   <Select
                     value={currentStatus}
                     onValueChange={(v) =>

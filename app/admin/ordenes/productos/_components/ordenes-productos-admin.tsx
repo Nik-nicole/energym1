@@ -106,6 +106,7 @@ interface ProductOrder {
   unitPrice: number;
   totalPrice: number;
   status: string;
+  transactionStatus: string | null;
   createdAt: Date;
   updatedAt: Date;
   user: User;
@@ -187,30 +188,37 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
       }
     };
 
-    const getStatusTimeline = (status: string) => {
-      type TimelineStatus = "completed" | "current" | "pending";
+    const getStatusTimeline = (orderInfo: ProductOrder) => {
+      type TimelineStatus = "completed" | "current" | "pending" | "error";
+      
+      if (orderInfo.transactionStatus === "REJECTED" || orderInfo.status === "CANCELLED") {
+        return [
+          { label: "Orden Creada", date: new Date(orderInfo.createdAt).toLocaleString("es-CO"), status: "error" as TimelineStatus },
+          { label: "Empacado", date: "Cancelado", status: "error" as TimelineStatus },
+          { label: "Enviado", date: "Cancelado", status: "error" as TimelineStatus },
+          { label: "Entregado", date: "Cancelado", status: "error" as TimelineStatus },
+        ];
+      }
+
       const baseTimeline: { label: string; date: string; status: TimelineStatus }[] = [
-        { label: "Orden Creada", date: new Date(order.createdAt).toLocaleString("es-CO"), status: "completed" },
+        { label: "Orden Creada", date: new Date(orderInfo.createdAt).toLocaleString("es-CO"), status: "completed" },
       ];
 
-      if (status === "PACKED" || status === "SHIPPED" || status === "DELIVERED") {
+      if (orderInfo.status === "PACKED" || orderInfo.status === "SHIPPED" || orderInfo.status === "DELIVERED") {
         baseTimeline.push({ label: "Empacado", date: "Procesado", status: "completed" });
-      }
-
-      if (status === "SHIPPED" || status === "DELIVERED") {
-        baseTimeline.push({ label: "Enviado", date: "En camino", status: "completed" });
-      }
-
-      if (status === "DELIVERED") {
-        baseTimeline.push({ label: "Entregado", date: "Recibido por el cliente", status: "completed" });
-      } else if (status === "SHIPPED") {
-        baseTimeline.push({ label: "Entregado", date: "Pendiente", status: "pending" });
-      } else if (status === "PACKED") {
-        baseTimeline.push({ label: "Enviado", date: "Pendiente", status: "pending" });
-        baseTimeline.push({ label: "Entregado", date: "Pendiente", status: "pending" });
       } else {
         baseTimeline.push({ label: "Empacado", date: "Pendiente", status: "pending" });
+      }
+
+      if (orderInfo.status === "SHIPPED" || orderInfo.status === "DELIVERED") {
+        baseTimeline.push({ label: "Enviado", date: "En camino", status: "completed" });
+      } else {
         baseTimeline.push({ label: "Enviado", date: "Pendiente", status: "pending" });
+      }
+
+      if (orderInfo.status === "DELIVERED") {
+        baseTimeline.push({ label: "Entregado", date: "Recibido por el cliente", status: "completed" });
+      } else {
         baseTimeline.push({ label: "Entregado", date: "Pendiente", status: "pending" });
       }
 
@@ -222,7 +230,7 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
       date: new Date(order.createdAt).toLocaleString("es-CO"),
       total: formatCurrency(order.totalPrice),
       status: getStatusText(order.status) as any,
-      timeline: getStatusTimeline(order.status),
+      timeline: getStatusTimeline(order),
       client: {
         name: order.customerName || `${order.user.firstName} ${order.user.lastName || ""}`,
         email: order.customerEmail || order.user.email,
@@ -308,22 +316,23 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
       return <div className="w-3 h-3 rounded-full bg-gray-500 mx-auto" />;
     }
     
+    // Si transactionStatus es REJECTED, todos los puntitos son rojos
+    if (order.transactionStatus === "REJECTED") {
+      return <div className="w-3 h-3 rounded-full bg-red-500 mx-auto" title="Pago rechazado" />;
+    }
+    
     if (order.status === "CANCELLED") {
       return <div className="w-3 h-3 rounded-full bg-red-500 mx-auto" />;
     }
     
-    // Estados que indican que la orden está pagada (incluye PAGO y VERIFIED)
-    const paidStatuses = ["PAGO", "PAID", "CONFIRMED", "VERIFIED", "PACKED", "SHIPPED", "DELIVERED"];
-    const isPaid = paidStatuses.includes(order.status);
-    
-    // Lógica específica para cada columna - manteniendo anteriores verdes
+    // Lógica específica para cada columna
     switch (columnIndex) {
-      case 0: // Pagado
+      case 0: // Pagado - basado en transactionStatus
         return (
           <div 
             className="w-3 h-3 rounded-full mx-auto" 
-            style={{ backgroundColor: isPaid ? '#22C55E' : '#6B7280' }}
-            title={`Status: ${order.status}, Pagado: ${isPaid ? 'Sí' : 'No'}`}
+            style={{ backgroundColor: order.transactionStatus === "PAID" ? '#22C55E' : '#6B7280' }}
+            title={`TransactionStatus: ${order.transactionStatus || 'Sin definir'}`}
           />
         );
       case 1: // Verificado (se pone verde cuando está verificado o superior)
@@ -820,23 +829,43 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
                       <span className="text-[#A0A0A0]">Total:</span>
                       <span className="text-white">{formatCurrency(selectedOrder.totalPrice)}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#A0A0A0]">Estado de Transacción:</span>
+                      <span className={`font-mono ${selectedOrder.transactionStatus === "REJECTED" ? "text-red-400" : selectedOrder.transactionStatus === "PAID" ? "text-green-400" : "text-gray-400"}`}>
+                        {selectedOrder.transactionStatus || 'N/A'}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 
+                {selectedOrder.transactionStatus === "REJECTED" && (
+                  <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                    <p className="text-red-400 text-sm font-medium">
+                      ⚠️ Pago rechazado. No se puede cambiar el estado de esta orden.
+                    </p>
+                  </div>
+                )}
+                
                 <div className="space-y-2">
                   <Label htmlFor="status" className="text-white">Nuevo Estado</Label>
-                  <Select value={newStatus} onValueChange={setNewStatus}>
+                  <Select value={selectedOrder.transactionStatus === "REJECTED" ? "CANCELLED" : newStatus} onValueChange={setNewStatus}>
                     <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
                       <SelectValue placeholder="Seleccionar estado" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
-                      <SelectItem value="PENDING" className="text-white">Pendiente</SelectItem>
-                      <SelectItem value="PAGO" className="text-white">Pagado</SelectItem>
-                      <SelectItem value="VERIFIED" className="text-white">Verificado</SelectItem>
-                      <SelectItem value="PACKED" className="text-white">Empacado</SelectItem>
-                      <SelectItem value="SHIPPED" className="text-white">Enviado</SelectItem>
-                      <SelectItem value="DELIVERED" className="text-white">Entregado</SelectItem>
-                      <SelectItem value="CANCELLED" className="text-white">Cancelado</SelectItem>
+                      {selectedOrder.transactionStatus === "REJECTED" ? (
+                        <SelectItem value="CANCELLED" className="text-white">Rechazada</SelectItem>
+                      ) : (
+                        <>
+                          <SelectItem value="PENDING" className="text-white">Pendiente</SelectItem>
+                          <SelectItem value="PAGO" className="text-white">Pagado</SelectItem>
+                          <SelectItem value="VERIFIED" className="text-white">Verificado</SelectItem>
+                          <SelectItem value="PACKED" className="text-white">Empacado</SelectItem>
+                          <SelectItem value="SHIPPED" className="text-white">Enviado</SelectItem>
+                          <SelectItem value="DELIVERED" className="text-white">Entregado</SelectItem>
+                          <SelectItem value="CANCELLED" className="text-white">Cancelado</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -851,7 +880,8 @@ export function OrdenesProductosAdmin({ productOrders }: OrdenesProductosAdminPr
                   </Button>
                   <Button
                     onClick={handleUpdateStatus}
-                    className="bg-[#040AE0] hover:bg-[#0308CC] text-white"
+                    disabled={selectedOrder.transactionStatus === "REJECTED"}
+                    className={`text-white ${selectedOrder.transactionStatus === "REJECTED" ? "bg-gray-600 cursor-not-allowed" : "bg-[#040AE0] hover:bg-[#0308CC]"}`}
                   >
                     Actualizar Estado
                   </Button>

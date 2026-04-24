@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar tipo de archivo
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/avif', 'image/heic', 'image/heif'];
     
     // Para HEIC/HEIF, también validar por extensión ya que algunos navegadores los detectan como octet-stream
     const isHeicByExtension = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     if (!isValidType) {
       console.error("Upload: Tipo de archivo no permitido:", file.type);
       return NextResponse.json(
-        { error: "Tipo de archivo no permitido. Solo JPG, PNG, WebP, HEIC y HEIF" },
+        { error: "Tipo de archivo no permitido. Solo JPG, PNG, WebP, AVIF, HEIC y HEIF" },
         { status: 400 }
       );
     }

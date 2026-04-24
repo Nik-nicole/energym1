@@ -74,6 +74,7 @@ interface PlanOrder {
   unitPrice: number;
   totalPrice: number;
   status: string;
+  transactionStatus: string | null;
   createdAt: Date;
   updatedAt: Date;
   user: User;
@@ -468,24 +469,42 @@ export function OrdenesPlanesAdmin({ planOrders }: OrdenesPlanesAdminProps) {
                         {getStatusText(selectedOrder.status)}
                       </Badge>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#A0A0A0]">Estado de Transacción:</span>
+                      <span className="text-white font-mono">{selectedOrder.transactionStatus || 'N/A'}</span>
+                    </div>
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="status" className="text-white">Nuevo Estado</Label>
-                  <Select value={newStatus} onValueChange={setNewStatus}>
-                    <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
+                  <Select value={selectedOrder.transactionStatus === "REJECTED" ? "CANCELLED" : newStatus} onValueChange={setNewStatus} disabled={selectedOrder.transactionStatus === "REJECTED"}>
+                    <SelectTrigger className={`bg-[#0A0A0A] border-[#1E1E1E] text-white ${selectedOrder.transactionStatus === "REJECTED" ? "opacity-50 cursor-not-allowed" : ""}`}>
                       <SelectValue placeholder="Seleccionar estado" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#0A0A0A] border-[#1E1E1E]">
-                      <SelectItem value="PENDING" className="text-white">Pendiente</SelectItem>
-                      <SelectItem value="VERIFIED" className="text-white">Verificado</SelectItem>
-                      <SelectItem value="CANCELLED" className="text-white">Cancelado</SelectItem>
+                      {selectedOrder.transactionStatus === "REJECTED" ? (
+                        <SelectItem value="CANCELLED" className="text-white">Rechazada</SelectItem>
+                      ) : (
+                        <>
+                          <SelectItem value="PENDING" className="text-white">Pendiente</SelectItem>
+                          <SelectItem value="VERIFIED" className="text-white">Verificado</SelectItem>
+                          <SelectItem value="CANCELLED" className="text-white">Cancelado</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {selectedOrder.status !== "VERIFIED" && (
+                {selectedOrder.transactionStatus === "REJECTED" && (
+                  <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                    <p className="text-red-400 text-sm font-medium">
+                      ⚠️ Pago rechazado. No se puede cambiar el estado de esta orden.
+                    </p>
+                  </div>
+                )}
+
+                {selectedOrder.status !== "VERIFIED" && selectedOrder.transactionStatus !== "REJECTED" && (
                   <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-3">
                     <p className="text-yellow-400 text-sm">
                       ⚠️ Solo los planes con estado "Verificado" pueden ser activados para los clientes.
@@ -503,7 +522,8 @@ export function OrdenesPlanesAdmin({ planOrders }: OrdenesPlanesAdminProps) {
                   </Button>
                   <Button
                     onClick={handleUpdateStatus}
-                    className="bg-[#040AE0] hover:bg-[#0308CC] text-white"
+                    disabled={selectedOrder.transactionStatus === "REJECTED"}
+                    className={`text-white ${selectedOrder.transactionStatus === "REJECTED" ? "bg-gray-600 cursor-not-allowed" : "bg-[#040AE0] hover:bg-[#0308CC]"}`}
                   >
                     Actualizar Estado
                   </Button>

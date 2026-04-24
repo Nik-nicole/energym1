@@ -3,6 +3,33 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/db';
 
+function calculateEndDate(startDate: Date, duration: string): Date | null {
+  const normalizedDuration = duration.toLowerCase();
+  const amount = parseInt(normalizedDuration) || 1;
+  const newEndDate = new Date(startDate);
+
+  if (normalizedDuration.includes('día') || normalizedDuration.includes('dia')) {
+    newEndDate.setDate(newEndDate.getDate() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('mes')) {
+    newEndDate.setMonth(newEndDate.getMonth() + amount);
+    return newEndDate;
+  }
+  if (normalizedDuration.includes('año') || normalizedDuration.includes('year')) {
+    newEndDate.setFullYear(newEndDate.getFullYear() + amount);
+    return newEndDate;
+  }
+
+  // Para planes por sesión, horas, etc., no hay fecha de fin basada en tiempo.
+  if (normalizedDuration.includes('sesion') || normalizedDuration.includes('hora')) {
+    return null;
+  }
+
+  // Fallback para duraciones desconocidas, no se establece fecha de fin.
+  return null;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -48,6 +75,10 @@ export async function POST(
       where: {
         userId: planOrder.userId,
         isActive: true,
+        OR: [
+          { endDate: null },
+          { endDate: { gt: new Date() } }
+        ]
       },
     });
 
@@ -60,24 +91,7 @@ export async function POST(
 
     // Calcular la fecha de finalización del plan
     const startDate = new Date();
-    const endDate = new Date();
-    
-    // Añadir duración del plan (asumimos que la duración viene en formato legible)
-    // Por ejemplo: "1 mes", "3 meses", "1 año"
-    const duration = planOrder.plan.duracion.toLowerCase();
-    if (duration.includes('mes')) {
-      const months = parseInt(duration) || 1;
-      endDate.setMonth(endDate.getMonth() + months);
-    } else if (duration.includes('año') || duration.includes('year')) {
-      const years = parseInt(duration) || 1;
-      endDate.setFullYear(endDate.getFullYear() + years);
-    } else if (duration.includes('día') || duration.includes('dia')) {
-      const days = parseInt(duration) || 1;
-      endDate.setDate(endDate.getDate() + days);
-    } else {
-      // Por defecto, 1 mes si no se puede interpretar
-      endDate.setMonth(endDate.getMonth() + 1);
-    }
+    const endDate = calculateEndDate(startDate, planOrder.plan.duracion);
 
     // Crear el UserPlan activo
     const userPlan = await prisma.userPlan.create({

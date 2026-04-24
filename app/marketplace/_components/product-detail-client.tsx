@@ -20,7 +20,7 @@ interface Producto {
   sede: {
     id: string;
     nombre: string;
-  };
+  } | null;
 }
 
 interface ProductDetailClientProps {
@@ -157,10 +157,12 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
                 <Badge className="bg-[#141414] border border-white/10 text-gray-300">
                   {product.categoria}
                 </Badge>
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-400">{product.sede.nombre}</span>
-                </div>
+                {product.sede && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-400">{product.sede.nombre}</span>
+                  </div>
+                )}
                 {product.destacado && (
                   <Badge className="bg-[#040AE0] text-white border-none">
                     Destacado
@@ -247,20 +249,6 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
                   <ShoppingBag className="w-5 h-5 mr-2" />
                   {product.stock > 0 ? "Agregar al Carrito" : "Agotado"}
                 </Button>
-                
-                <Link href={`/pago/producto/${product.id}`} className="flex-1">
-                  <Button
-                    disabled={product.stock === 0}
-                    className={`w-full py-4 rounded-xl font-medium transition-all ${
-                      product.stock > 0
-                        ? "gradient-bg hover:opacity-90 text-white"
-                        : "bg-gray-800 text-gray-500 cursor-not-allowed"
-                    }`}
-                  >
-                    <ExternalLink className="w-5 h-5 mr-2" />
-                    {product.stock > 0 ? "Comprar Ahora" : "Agotado"}
-                  </Button>
-                </Link>
               </div>
             </div>
 
@@ -277,7 +265,7 @@ export function ProductDetailClient({ product, relatedProducts }: ProductDetailC
                 </div>
                 <div>
                   <p className="text-gray-400">Sede</p>
-                  <p className="text-white font-medium">{product.sede.nombre}</p>
+                  <p className="text-white font-medium">{product.sede?.nombre || "No especificada"}</p>
                 </div>
                 <div>
                   <p className="text-gray-400">Estado</p>

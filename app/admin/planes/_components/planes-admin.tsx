@@ -83,6 +83,9 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showBenefits, setShowBenefits] = useState<{ [key: string]: boolean }>({});
+  
+  const PREDEFINED_DURATIONS = ["1 día", "15 días", "1 mes", "2 meses", "3 meses", "6 meses", "1 año", "2 años", "Trimestral", "Semestral", "Anual", "Ilimitado"];
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
 
   const validationRules = {
     nombre: { required: true, message: "El nombre del plan es obligatorio" },
@@ -139,6 +142,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
       orden: 0,
       sedeIds: [],
     });
+    setIsCustomDuration(false);
   };
 
   const handleCreate = async () => {
@@ -196,11 +200,35 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
       orden: plan.orden,
       sedeIds: plan.sedes.map((ps) => ps.sedeId),
     });
+    setIsCustomDuration(plan.duracion ? !PREDEFINED_DURATIONS.includes(plan.duracion) : false);
     setIsEditDialogOpen(true);
   };
 
   const handleUpdate = async () => {
     if (!editingPlan) return;
+
+    // Comprobar si hay cambios antes de enviar la petición
+    const currentSedeIds = editingPlan.sedes.map((s) => s.sedeId).sort();
+    const formSedeIds = [...formData.sedeIds].sort();
+    const currentBeneficios = editingPlan.beneficios.length > 0 ? editingPlan.beneficios : [""];
+
+    const hasChanges =
+      formData.nombre !== editingPlan.nombre ||
+      formData.precio !== editingPlan.precio ||
+      formData.descripcion !== editingPlan.descripcion ||
+      formData.duracion !== editingPlan.duracion ||
+      formData.tipo !== editingPlan.tipo ||
+      formData.esVip !== editingPlan.esVip ||
+      formData.activo !== editingPlan.activo ||
+      formData.destacado !== editingPlan.destacado ||
+      formData.orden !== editingPlan.orden ||
+      JSON.stringify(formData.beneficios) !== JSON.stringify(currentBeneficios) ||
+      JSON.stringify(formSedeIds) !== JSON.stringify(currentSedeIds);
+
+    if (!hasChanges) {
+      toast.warning("No se han detectado cambios. Modifica al menos un campo para actualizar el plan.");
+      return;
+    }
 
     // Validate form before submission
     const formDataForValidation = {
@@ -324,7 +352,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     maxLength={100}
                     showCharCount={true}
                     showWarning={true}
-                    {...getInputProps(errors.nombre)}
+                    {...(getInputProps(errors.nombre) as any)}
                   />
                   {errors.nombre && (
                     <p className="text-red-400 text-sm mt-1">{errors.nombre}</p>
@@ -337,13 +365,13 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     type="number"
                     step="0.01"
                     value={formData.precio}
-                    onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, precio: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                     placeholder="0.00"
                     maxLength={10}
                     showCharCount={true}
                     showWarning={true}
                     required={true}
-                    {...getInputProps(errors.precio)}
+                    {...(getInputProps(errors.precio) as any)}
                   />
                   {errors.precio && (
                     <p className="text-red-400 text-sm mt-1">{errors.precio}</p>
@@ -361,7 +389,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   maxLength={500}
                   showCharCount={true}
                   showWarning={true}
-                  {...getInputProps(errors.descripcion)}
+                  {...(getInputProps(errors.descripcion) as any)}
                 />
                 {errors.descripcion && (
                   <p className="text-red-400 text-sm mt-1">{errors.descripcion}</p>
@@ -386,7 +414,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                         <DialogTitle>Seleccionar plan para copiar beneficios</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-3 max-h-60 overflow-y-auto">
-                        {planes.filter((p: Plan) => p.id !== (formData as any).id).map((plan: Plan) => (
+                      {planes.filter((p: Plan) => p.id !== editingPlan?.id).map((plan: Plan) => (
                           <div
                             key={plan.id}
                             className="p-3 border border-[#1E1E1E] rounded-lg cursor-pointer hover:bg-[#1E1E1E] transition-colors"
@@ -416,6 +444,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                 {formData.beneficios.map((beneficio, index) => (
                   <div key={index} className="flex gap-2">
                     <ControlledInput
+                      id={`create-beneficio-${index}`}
                       value={beneficio}
                       onChange={(e) => updateBeneficio(index, e.target.value)}
                       placeholder="Beneficio"
@@ -445,8 +474,16 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                 <div className="space-y-2">
                   <Label htmlFor="duracion" className="text-[#F8F8F8]">Duración</Label>
                   <Select
-                    value={formData.duracion}
-                    onValueChange={(value) => setFormData({ ...formData, duracion: value })}
+                value={isCustomDuration ? "otro" : (formData.duracion || undefined)}
+                  onValueChange={(value) => {
+                    if (value === "otro") {
+                      setIsCustomDuration(true);
+                      setFormData({ ...formData, duracion: "" });
+                    } else {
+                      setIsCustomDuration(false);
+                      setFormData({ ...formData, duracion: value });
+                    }
+                  }}
                   >
                     <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
                       <SelectValue placeholder="Seleccionar duración" />
@@ -454,8 +491,8 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     <SelectContent className="bg-[#141414] border-[#1E1E1E]">
                       <SelectItem value="1 día">1 día</SelectItem>
                       <SelectItem value="15 días">15 días</SelectItem>
+                    <SelectItem value="1 mes">1 mes</SelectItem>
                       <SelectItem value="2 meses">2 meses</SelectItem>
-                      <SelectItem value="1 mes">1 mes</SelectItem>
                       <SelectItem value="3 meses">3 meses</SelectItem>
                       <SelectItem value="6 meses">6 meses</SelectItem>
                       <SelectItem value="1 año">1 año</SelectItem>
@@ -464,8 +501,21 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                       <SelectItem value="Semestral">Semestral</SelectItem>
                       <SelectItem value="Anual">Anual</SelectItem>
                       <SelectItem value="Ilimitado">Ilimitado</SelectItem>
+                    <SelectItem value="otro">Otro...</SelectItem>
                     </SelectContent>
                   </Select>
+                {isCustomDuration && (
+                  <div className="mt-2 animate-in fade-in slide-in-from-top-2">
+                    <ControlledInput
+                      id="custom-duracion"
+                      value={formData.duracion}
+                      onChange={(e) => setFormData({ ...formData, duracion: e.target.value })}
+                      placeholder='Ej: 15 sesiones, 20 horas'
+                      maxLength={50}
+                      className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    />
+                  </div>
+                )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="orden" className="text-[#F8F8F8]">Orden</Label>
@@ -508,7 +558,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                           id={`sede-${sede.id}`}
                           checked={formData.sedeIds.includes(sede.id)}
                           onCheckedChange={(checked) => {
-                            if (checked) {
+                          if (checked === true) {
                               setFormData({
                                 ...formData,
                                 sedeIds: [...formData.sedeIds, sede.id],
@@ -735,7 +785,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   showCharCount={true}
                   showWarning={true}
                   className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
-                  {...getInputProps(errors.nombre)}
+                  {...(getInputProps(errors.nombre) as any)}
                 />
               </div>
               <div className="space-y-2">
@@ -745,7 +795,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   type="number"
                   step="0.01"
                   value={formData.precio}
-                  onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, precio: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                   placeholder="0.00"
                   maxLength={10}
                   showCharCount={true}
@@ -788,7 +838,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                       <DialogTitle>Seleccionar plan para copiar beneficios</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 max-h-60 overflow-y-auto">
-                      {planes.filter((p: Plan) => p.id !== (formData as any).id).map((plan: Plan) => (
+                      {planes.filter((p: Plan) => p.id !== editingPlan?.id).map((plan: Plan) => (
                         <div
                           key={plan.id}
                           className="p-3 border border-[#1E1E1E] rounded-lg cursor-pointer hover:bg-[#1E1E1E] transition-colors"
@@ -816,14 +866,16 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                 </Dialog>
               </div>
               {formData.beneficios.map((beneficio, index) => (
-                <div key={index} className="flex gap-3">
-                  <input
-                    type="text"
+                <div key={`edit-beneficio-${index}`} className="flex gap-3">
+                  <ControlledInput
+                    id={`edit-beneficio-input-${index}`}
                     value={beneficio}
                     onChange={(e) => updateBeneficio(index, e.target.value)}
                     placeholder="Beneficio"
                     maxLength={200}
-                    className="flex-1 bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0] px-3 py-2 rounded-md"
+                    showCharCount={true}
+                    showWarning={true}
+                    className="flex-1 bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
                   />
                   <Button
                     type="button"
@@ -831,9 +883,9 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     size="sm"
                     onClick={() => removeBeneficio(index)}
                     disabled={formData.beneficios.length === 1}
-                    className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white px-2 py-1 flex-shrink-0"
+                    className="border-[#1E1E1E] text-[#F8F8F8] hover:bg-[#1E1E1E] hover:text-white px-3"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    Eliminar
                   </Button>
                 </div>
               ))}
@@ -846,8 +898,16 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
               <div className="space-y-2">
                 <Label htmlFor="edit-duracion" className="text-[#F8F8F8]">Duración</Label>
                 <Select
-                  value={formData.duracion}
-                  onValueChange={(value) => setFormData({ ...formData, duracion: value })}
+                value={isCustomDuration ? "otro" : (formData.duracion || undefined)}
+                  onValueChange={(value) => {
+                    if (value === "otro") {
+                      setIsCustomDuration(true);
+                      setFormData({ ...formData, duracion: "" });
+                    } else {
+                      setIsCustomDuration(false);
+                      setFormData({ ...formData, duracion: value });
+                    }
+                  }}
                 >
                   <SelectTrigger className="bg-[#0A0A0A] border-[#1E1E1E] text-white">
                     <SelectValue placeholder="Seleccionar duración" />
@@ -855,8 +915,8 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                   <SelectContent className="bg-[#141414] border-[#1E1E1E]">
                     <SelectItem value="1 día">1 día</SelectItem>
                     <SelectItem value="15 días">15 días</SelectItem>
-                    <SelectItem value="2 meses">2 meses</SelectItem>
                     <SelectItem value="1 mes">1 mes</SelectItem>
+                    <SelectItem value="2 meses">2 meses</SelectItem>
                     <SelectItem value="3 meses">3 meses</SelectItem>
                     <SelectItem value="6 meses">6 meses</SelectItem>
                     <SelectItem value="1 año">1 año</SelectItem>
@@ -865,8 +925,21 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                     <SelectItem value="Semestral">Semestral</SelectItem>
                     <SelectItem value="Anual">Anual</SelectItem>
                     <SelectItem value="Ilimitado">Ilimitado</SelectItem>
+                    <SelectItem value="otro">Otro...</SelectItem>
                   </SelectContent>
                 </Select>
+                {isCustomDuration && (
+                  <div className="mt-2 animate-in fade-in slide-in-from-top-2">
+                    <ControlledInput
+                      id="edit-custom-duracion"
+                      value={formData.duracion}
+                      onChange={(e) => setFormData({ ...formData, duracion: e.target.value })}
+                      placeholder='Ej: 15 sesiones, 20 horas'
+                      maxLength={50}
+                      className="bg-[#0A0A0A] border-[#1E1E1E] text-white placeholder-[#A0A0A0]"
+                    />
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-orden" className="text-[#F8F8F8]">Orden</Label>
@@ -909,7 +982,7 @@ export function PlanesAdmin({ planes, sedes }: PlanesAdminProps) {
                         id={`edit-sede-${sede.id}`}
                         checked={formData.sedeIds.includes(sede.id)}
                         onCheckedChange={(checked) => {
-                          if (checked) {
+                          if (checked === true) {
                             setFormData({
                               ...formData,
                               sedeIds: [...formData.sedeIds, sede.id],
